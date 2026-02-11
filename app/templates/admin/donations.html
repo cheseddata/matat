@@ -153,7 +153,17 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">All Donations</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+        <h1 style="margin: 0;">{{ t('nav.donations') }}</h1>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('salesperson.phone_entry') }}" class="btn btn-success" style="font-size: 14px;">
+                + {{ t('admin.process_donation') }}
+            </a>
+            <a href="{{ url_for('salesperson.send_link') }}" class="btn btn-primary" style="font-size: 14px;">
+                {{ t('admin.send_donation_link') }}
+            </a>
+        </div>
+    </div>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
