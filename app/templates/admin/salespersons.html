@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Salespersons - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .data-table th, .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.active {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .action-btn {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+    }
+
+    .action-btn.edit {
+        background: #3498db;
+        color: white;
+    }
+
+    .action-btn.reset {
+        background: #f39c12;
+        color: white;
+    }
+
+    .action-btn.delete {
+        background: #e74c3c;
+        color: white;
+    }
+
+    .ref-code {
+        font-family: monospace;
+        background: #f8f9fa;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+
+    .commission-info {
+        font-size: 12px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">Salesperson Management</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}" class="active">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+    </div>
+
+    <div class="header-row">
+        <h2>All Salespersons ({{ salespersons|length }})</h2>
+        <a href="{{ url_for('admin.create_salesperson') }}" class="btn">+ Add Salesperson</a>
+    </div>
+
+    {% if salespersons %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Username</th>
+                <th>Ref Code</th>
+                <th>Commission</th>
+                <th>Donations</th>
+                <th>Total Raised</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sp in salespersons %}
+            <tr>
+                <td>
+                    <strong>{{ sp.full_name }}</strong>
+                    <br><span style="font-size: 12px; color: #666;">{{ sp.email }}</span>
+                </td>
+                <td>{{ sp.username }}</td>
+                <td><span class="ref-code">{{ sp.ref_code }}</span></td>
+                <td>
+                    {% if sp.commission_type %}
+                    <span class="commission-info">
+                        {% if sp.commission_type == 'percentage' %}
+                        {{ sp.commission_rate }}%
+                        {% else %}
+                        ${{ "%.2f"|format(sp.commission_rate) }} flat
+                        {% endif %}
+                    </span>
+                    {% else %}
+                    <span style="color: #999;">Default</span>
+                    {% endif %}
+                </td>
+                <td>{{ stats[sp.id].count }}</td>
+                <td>${{ "%.2f"|format(stats[sp.id].total) }}</td>
+                <td>
+                    <span class="status-badge {{ 'active' if sp.active else 'inactive' }}">
+                        {{ 'Active' if sp.active else 'Inactive' }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ url_for('admin.edit_salesperson', id=sp.id) }}" class="action-btn edit">Edit</a>
+                    <button class="action-btn reset" onclick="resetPassword({{ sp.id }})">Reset PW</button>
+                    <form method="POST" action="{{ url_for('admin.delete_salesperson', id=sp.id) }}" style="display: inline;">
+                        <button type="submit" class="action-btn delete" onclick="return confirm('Delete this salesperson?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 40px;">
+        <p style="color: #666;">No salespersons yet.</p>
+        <a href="{{ url_for('admin.create_salesperson') }}" class="btn" style="margin-top: 15px;">Add Your First Salesperson</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function resetPassword(id) {
+    if (!confirm('Reset password for this salesperson?')) return;
+
+    fetch(`/admin/salespersons/${id}/reset-password`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('New password: ' + data.password);
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => alert('Error resetting password'));
+}
+</script>
+{% endblock %}

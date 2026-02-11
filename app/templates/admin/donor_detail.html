@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block title %}{{ donor.full_name }} - Donor - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .donor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .donor-info {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .donor-stats {
+        display: flex;
+        gap: 15px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 20px 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .stat-card .value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #27ae60;
+    }
+
+    .stat-card .label {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .info-row {
+        display: flex;
+        margin-bottom: 12px;
+    }
+
+    .info-label {
+        width: 100px;
+        font-weight: bold;
+        color: #666;
+    }
+
+    .info-value {
+        flex: 1;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.real {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.test {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.succeeded {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .status-badge.failed {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 30px 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #eee;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .data-table th, .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .action-btn {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        margin-right: 5px;
+    }
+
+    .action-btn.primary {
+        background: #3498db;
+        color: white;
+    }
+
+    .action-btn.secondary {
+        background: #6c757d;
+        color: white;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 15px;
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}" class="active">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+    </div>
+
+    <a href="{{ url_for('admin.donors') }}" class="back-link">&larr; Back to Donors</a>
+
+    <div class="donor-header">
+        <div class="donor-info">
+            <h1 style="margin-bottom: 20px;">{{ donor.full_name }}</h1>
+
+            <div class="info-row">
+                <div class="info-label">Email:</div>
+                <div class="info-value">{{ donor.email }}</div>
+            </div>
+
+            {% if donor.phone %}
+            <div class="info-row">
+                <div class="info-label">Phone:</div>
+                <div class="info-value">{{ donor.phone }}</div>
+            </div>
+            {% endif %}
+
+            {% if donor.full_address %}
+            <div class="info-row">
+                <div class="info-label">Address:</div>
+                <div class="info-value">{{ donor.full_address | replace('\n', '<br>') | safe }}</div>
+            </div>
+            {% endif %}
+
+            <div class="info-row">
+                <div class="info-label">Country:</div>
+                <div class="info-value">{{ donor.country or 'Not specified' }}</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Type:</div>
+                <div class="info-value">
+                    <span class="status-badge {{ 'test' if donor.test else 'real' }}">
+                        {{ 'Test Donor' if donor.test else 'Real Donor' }}
+                    </span>
+                    <button class="action-btn secondary" style="margin-left: 10px;" onclick="toggleTest({{ donor.id }})">Toggle</button>
+                </div>
+            </div>
+
+            {% if donor.stripe_customer_id %}
+            <div class="info-row">
+                <div class="info-label">Stripe ID:</div>
+                <div class="info-value"><code>{{ donor.stripe_customer_id }}</code></div>
+            </div>
+            {% endif %}
+
+            <div class="info-row">
+                <div class="info-label">Created:</div>
+                <div class="info-value">{{ donor.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
+        </div>
+
+        <div class="donor-stats">
+            <div class="stat-card">
+                <div class="value">${{ "%.2f"|format(total_donated) }}</div>
+                <div class="label">Total Donated</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ donation_count }}</div>
+                <div class="label">Donations</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Donations History -->
+    <h2 class="section-title">Donation History</h2>
+
+    {% if donations %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in donations %}
+            <tr>
+                <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>${{ "%.2f"|format(d.amount / 100) }}</td>
+                <td>{{ d.donation_type | replace('_', ' ') | title }}</td>
+                <td>{{ d.source or 'Direct' }}</td>
+                <td>
+                    <span class="status-badge {{ d.status }}">
+                        {{ d.status | title }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{{ url_for('admin.donation_detail', id=d.id) }}" class="action-btn primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
+        <p style="color: #666;">No donations yet.</p>
+    </div>
+    {% endif %}
+
+    <!-- Receipts -->
+    <h2 class="section-title">Receipts</h2>
+
+    {% if receipts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Receipt #</th>
+                <th>Date</th>
+                <th>Amount</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in receipts %}
+            <tr>
+                <td><strong>{{ r.receipt_number }}</strong></td>
+                <td>{{ r.created_at.strftime('%Y-%m-%d') }}</td>
+                <td>${{ "%.2f"|format(r.amount / 100) }}</td>
+                <td>
+                    <a href="{{ url_for('admin.download_receipt', id=r.id) }}" class="action-btn primary">Download</a>
+                    <button class="action-btn secondary" onclick="resendReceipt({{ r.id }})">Resend</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
+        <p style="color: #666;">No receipts yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleTest(id) {
+    fetch(`/admin/donors/${id}/toggle-test`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => alert('Error toggling test status'));
+}
+
+function resendReceipt(id) {
+    if (!confirm('Resend this receipt to {{ donor.email }}?')) return;
+
+    fetch(`/admin/receipts/${id}/resend`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Receipt sent successfully to {{ donor.email }}');
+        } else {
+            alert('Error: ' + (data.error || 'Failed to send receipt'));
+        }
+    })
+    .catch(err => alert('Error sending receipt'));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block title %}Receipt Lookup - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .search-box {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+    }
+
+    .search-form {
+        display: flex;
+        gap: 10px;
+    }
+
+    .search-form input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 16px;
+    }
+
+    .search-form button {
+        padding: 12px 25px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .search-form button:hover {
+        background: #2980b9;
+    }
+
+    .search-help {
+        margin-top: 10px;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .data-table th, .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .receipt-number {
+        font-family: monospace;
+        background: #f8f9fa;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 13px;
+    }
+
+    .action-btn {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        margin-right: 5px;
+    }
+
+    .action-btn.download {
+        background: #3498db;
+        color: white;
+    }
+
+    .action-btn.resend {
+        background: #27ae60;
+        color: white;
+    }
+
+    .action-btn:hover {
+        opacity: 0.9;
+    }
+
+    .status-sent {
+        color: #27ae60;
+        font-size: 11px;
+    }
+
+    .status-pending {
+        color: #f39c12;
+        font-size: 11px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">Receipt Lookup</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}" class="active">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+    </div>
+
+    <!-- Search Box -->
+    <div class="search-box">
+        <form method="GET" class="search-form">
+            <input type="text" name="q" placeholder="Search by receipt number, donor name, or email..."
+                   value="{{ search }}">
+            <button type="submit">Search</button>
+        </form>
+        <p class="search-help">
+            Search by receipt number (e.g., MM-2024-00001), donor email, or donor name.
+        </p>
+    </div>
+
+    {% if receipts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Receipt #</th>
+                <th>Date</th>
+                <th>Donor</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for receipt in receipts %}
+            <tr>
+                <td><span class="receipt-number">{{ receipt.receipt_number }}</span></td>
+                <td>{{ receipt.created_at.strftime('%m/%d/%Y %H:%M') }}</td>
+                <td>
+                    {% if receipt.donor %}
+                    <strong>{{ receipt.donor.full_name }}</strong>
+                    <br><span style="font-size: 12px; color: #666;">{{ receipt.donor.email }}</span>
+                    {% else %}
+                    <span style="color: #999;">Unknown</span>
+                    {% endif %}
+                </td>
+                <td><strong>${{ "%.2f"|format(receipt.amount / 100) }}</strong></td>
+                <td>
+                    {% if receipt.email_sent %}
+                    <span class="status-sent">Email Sent</span>
+                    {% else %}
+                    <span class="status-pending">Not Sent</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('admin.download_receipt', id=receipt.id) }}" class="action-btn download">
+                        Download
+                    </a>
+                    <button class="action-btn resend" onclick="resendReceipt({{ receipt.id }})">
+                        Resend
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% elif search %}
+    <div class="card empty-state">
+        <h3>No Results</h3>
+        <p>No receipts found matching "{{ search }}"</p>
+    </div>
+    {% else %}
+    <div class="card empty-state">
+        <h3>Recent Receipts</h3>
+        <p>No receipts have been generated yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function resendReceipt(id) {
+    if (!confirm('Resend this receipt to the donor?')) return;
+
+    fetch(`/admin/receipts/${id}/resend`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Receipt sent successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(err => alert('Error sending receipt'));
+}
+</script>
+{% endblock %}

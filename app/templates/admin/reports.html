@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Reports - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .reports-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 25px;
+    }
+
+    .report-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .report-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .report-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+
+    .report-icon.daily { background: #e8f4f8; }
+    .report-icon.monthly { background: #fef3e2; }
+    .report-icon.yearly { background: #e8f8e8; }
+
+    .report-card h3 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+    }
+
+    .report-card p {
+        color: #666;
+        margin: 0 0 20px 0;
+        font-size: 14px;
+    }
+
+    .report-link {
+        display: inline-block;
+        color: #3498db;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .report-link:hover {
+        text-decoration: underline;
+    }
+
+    .quick-access {
+        margin-top: 30px;
+    }
+
+    .quick-access h2 {
+        margin-bottom: 15px;
+    }
+
+    .quick-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .quick-link {
+        padding: 10px 20px;
+        background: #ecf0f1;
+        border-radius: 6px;
+        text-decoration: none;
+        color: #2c3e50;
+        font-size: 14px;
+    }
+
+    .quick-link:hover {
+        background: #3498db;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">Reports</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}" class="active">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+    </div>
+
+    <div class="reports-grid">
+        <div class="report-card">
+            <div class="report-icon daily">&#128197;</div>
+            <h3>Daily Report</h3>
+            <p>View donation activity for a specific day. Includes all donations, salesperson attribution, and daily totals.</p>
+            <a href="{{ url_for('admin.report_daily') }}" class="report-link">View Today's Report &rarr;</a>
+        </div>
+
+        <div class="report-card">
+            <div class="report-icon monthly">&#128198;</div>
+            <h3>Monthly Report</h3>
+            <p>Monthly summary with daily breakdown, top performers, and source analysis. Track trends and patterns.</p>
+            <a href="{{ url_for('admin.report_monthly') }}" class="report-link">View This Month &rarr;</a>
+        </div>
+
+        <div class="report-card">
+            <div class="report-icon yearly">&#128200;</div>
+            <h3>Yearly Report</h3>
+            <p>Annual overview with monthly totals, commission summary, and year-over-year growth metrics.</p>
+            <a href="{{ url_for('admin.report_yearly') }}" class="report-link">View This Year &rarr;</a>
+        </div>
+    </div>
+
+    <div class="quick-access">
+        <h2>Quick Access</h2>
+        <div class="quick-links">
+            <a href="{{ url_for('admin.report_daily') }}" class="quick-link">Today</a>
+            <a href="{{ url_for('admin.report_monthly') }}" class="quick-link">This Month</a>
+            <a href="{{ url_for('admin.report_monthly', month=(now.month - 1) if now.month > 1 else 12, year=now.year if now.month > 1 else now.year - 1) }}" class="quick-link">Last Month</a>
+            <a href="{{ url_for('admin.report_yearly') }}" class="quick-link">This Year</a>
+            <a href="{{ url_for('admin.report_yearly', year=now.year - 1) }}" class="quick-link">Last Year</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

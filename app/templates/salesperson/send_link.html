@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Send Donation Link - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .form-section h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+        color: #2c3e50;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    @media (max-width: 600px) {
+        .form-row { grid-template-columns: 1fr; }
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 16px;
+        transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+
+    .amount-presets {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 10px;
+    }
+
+    .amount-preset {
+        padding: 8px 16px;
+        border: 1px solid #ddd;
+        background: white;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .amount-preset:hover,
+    .amount-preset.selected {
+        background: #3498db;
+        color: white;
+        border-color: #3498db;
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 15px;
+        background: #27ae60;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .submit-btn:hover {
+        background: #219a52;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <a href="{{ url_for('salesperson.dashboard') }}" class="back-link">← Back to Dashboard</a>
+
+    <h1>Send Donation Link</h1>
+    <p style="color: #666; margin-bottom: 25px;">Send a personalized donation link via email to a potential donor.</p>
+
+    <form method="POST" action="{{ url_for('salesperson.send_link') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-section">
+            <h3>Donor Information</h3>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="donor_name">Donor Name</label>
+                    <input type="text" id="donor_name" name="donor_name" placeholder="John Doe">
+                </div>
+                <div class="form-group">
+                    <label for="donor_email">Email Address *</label>
+                    <input type="email" id="donor_email" name="donor_email" required placeholder="john@example.com">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="donor_address">Address (for receipt)</label>
+                <textarea id="donor_address" name="donor_address" rows="2" placeholder="123 Main St, City, State ZIP"></textarea>
+            </div>
+        </div>
+
+        <div class="form-section">
+            <h3>Donation Options</h3>
+
+            <div class="form-group">
+                <label>Suggested Amount</label>
+                <div class="amount-presets">
+                    <button type="button" class="amount-preset" data-amount="36">$36</button>
+                    <button type="button" class="amount-preset" data-amount="72">$72</button>
+                    <button type="button" class="amount-preset" data-amount="180">$180</button>
+                    <button type="button" class="amount-preset" data-amount="360">$360</button>
+                    <button type="button" class="amount-preset" data-amount="500">$500</button>
+                </div>
+                <input type="number" id="preset_amount" name="preset_amount" min="1" step="0.01" placeholder="Or enter custom amount">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="preset_type">Donation Type</label>
+                    <select id="preset_type" name="preset_type">
+                        <option value="onetime">One-Time</option>
+                        <option value="recurring">Monthly Recurring</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="language">Email Language</label>
+                    <select id="language" name="language">
+                        <option value="en">English</option>
+                        <option value="he">Hebrew</option>
+                    </select>
+                </div>
+            </div>
+
+            {% if campaigns %}
+            <div class="form-group">
+                <label for="campaign_id">Campaign (Optional)</label>
+                <select id="campaign_id" name="campaign_id">
+                    <option value="">No specific campaign</option>
+                    {% for campaign in campaigns %}
+                    <option value="{{ campaign.id }}">{{ campaign.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+        </div>
+
+        <button type="submit" class="submit-btn">Send Donation Link</button>
+    </form>
+</div>
+
+<script>
+document.querySelectorAll('.amount-preset').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('.amount-preset').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        document.getElementById('preset_amount').value = this.dataset.amount;
+    });
+});
+
+document.getElementById('preset_amount').addEventListener('input', function() {
+    document.querySelectorAll('.amount-preset').forEach(b => b.classList.remove('selected'));
+});
+</script>
+{% endblock %}

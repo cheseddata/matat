@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}My Commissions - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .summary-card.pending {
+        border-left: 4px solid #f39c12;
+    }
+
+    .summary-card.paid {
+        border-left: 4px solid #27ae60;
+    }
+
+    .summary-card.voided {
+        border-left: 4px solid #e74c3c;
+    }
+
+    .summary-value {
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .summary-card.pending .summary-value { color: #f39c12; }
+    .summary-card.paid .summary-value { color: #27ae60; }
+    .summary-card.voided .summary-value { color: #e74c3c; }
+
+    .summary-label {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .commissions-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .commissions-table th,
+    .commissions-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .commissions-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .commissions-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.paid { background: #d4edda; color: #155724; }
+    .status-badge.voided { background: #f8d7da; color: #721c24; }
+
+    .rate-info {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+
+    @media (max-width: 768px) {
+        .commissions-table {
+            display: block;
+            overflow-x: auto;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 25px;">My Commissions</h1>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+        <div class="summary-card pending">
+            <div class="summary-value">${{ "%.2f"|format(total_pending) }}</div>
+            <div class="summary-label">Pending</div>
+        </div>
+        <div class="summary-card paid">
+            <div class="summary-value">${{ "%.2f"|format(total_paid) }}</div>
+            <div class="summary-label">Paid</div>
+        </div>
+        <div class="summary-card voided">
+            <div class="summary-value">${{ "%.2f"|format(total_voided) }}</div>
+            <div class="summary-label">Voided</div>
+        </div>
+    </div>
+
+    {% if commissions %}
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <table class="commissions-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Donation</th>
+                    <th>Rate</th>
+                    <th>Commission</th>
+                    <th>Status</th>
+                    <th>Paid Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for commission in commissions %}
+                <tr>
+                    <td>{{ commission.created_at.strftime('%m/%d/%Y') }}</td>
+                    <td>${{ "%.2f"|format(commission.donation_amount_dollars) }}</td>
+                    <td>
+                        <span class="rate-info">
+                            {% if commission.commission_type == 'percentage' %}
+                            {{ commission.commission_rate }}%
+                            {% else %}
+                            ${{ "%.2f"|format(commission.commission_rate) }} flat
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td><strong>${{ "%.2f"|format(commission.commission_amount_dollars) }}</strong></td>
+                    <td><span class="status-badge {{ commission.status }}">{{ commission.status|capitalize }}</span></td>
+                    <td>
+                        {% if commission.paid_date %}
+                        {{ commission.paid_date.strftime('%m/%d/%Y') }}
+                        {% if commission.paid_reference %}
+                        <br><span style="font-size: 11px; color: #666;">{{ commission.paid_reference }}</span>
+                        {% endif %}
+                        {% else %}
+                        <span style="color: #999;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="card empty-state">
+        <h2>No Commissions Yet</h2>
+        <p>When donations are made through your links, commissions will appear here.</p>
+    </div>
+    {% endif %}
+
+    <div class="card" style="margin-top: 20px; background: #e8f4f8;">
+        <h3 style="margin-top: 0;">Commission Policy</h3>
+        <p style="color: #666; margin-bottom: 10px;">
+            Commissions are calculated based on your assigned rate when a donation is successfully processed.
+        </p>
+        <ul style="color: #666; margin: 0; padding-left: 20px;">
+            <li>Pending commissions become payable after the donation is confirmed</li>
+            <li>Commissions are voided if a donation is refunded</li>
+            <li>Payment is typically processed monthly</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

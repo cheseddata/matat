@@ -1,0 +1,352 @@
+{% extends "base.html" %}
+{% set lang = request.args.get('lang', 'en') %}
+{% block title %}{% if lang == 'he' %}תודה{% else %}Thank You{% endif %} - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-container {
+        max-width: 550px;
+        margin: 50px auto;
+        text-align: center;
+    }
+
+    .status-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+    }
+
+    .status-icon.loading {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        animation: spin 1s linear infinite;
+    }
+
+    .status-icon.success {
+        background: #d4edda;
+        color: #27ae60;
+    }
+
+    .status-icon.pending {
+        background: #fff3cd;
+        color: #f39c12;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .receipt-box {
+        margin: 25px 0;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 12px;
+        text-align: left;
+    }
+
+    .receipt-box.rtl {
+        text-align: right;
+        direction: rtl;
+    }
+
+    .receipt-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .receipt-row:last-child {
+        border-bottom: none;
+    }
+
+    .receipt-label {
+        color: #666;
+    }
+
+    .receipt-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .receipt-total {
+        font-size: 24px;
+        color: #27ae60;
+    }
+
+    .message-text {
+        color: #666;
+        margin: 15px 0;
+        line-height: 1.6;
+    }
+
+    .action-buttons {
+        margin-top: 30px;
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-secondary {
+        padding: 12px 25px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: background 0.2s;
+    }
+
+    .btn-secondary:hover {
+        background: #dfe6e9;
+    }
+
+    .share-section {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .share-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 15px;
+    }
+
+    .share-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        text-decoration: none;
+        font-size: 20px;
+    }
+
+    .share-btn.facebook { background: #1877f2; }
+    .share-btn.twitter { background: #1da1f2; }
+    .share-btn.whatsapp { background: #25d366; }
+    .share-btn.email-share { background: #666; }
+
+    /* Hidden states */
+    .hidden { display: none !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    <div class="card">
+        <!-- Loading State -->
+        <div id="loading-state">
+            <div class="status-icon loading"></div>
+            <h1>{% if lang == 'he' %}מעבד את התרומה שלך...{% else %}Processing Your Donation...{% endif %}</h1>
+            <p class="message-text">
+                {% if lang == 'he' %}
+                אנא המתן בזמן שאנו מאשרים את התשלום שלך.
+                {% else %}
+                Please wait while we confirm your payment.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Success State -->
+        <div id="success-state" class="hidden">
+            <div class="status-icon success">✓</div>
+            <h1>{% if lang == 'he' %}תודה רבה!{% else %}Thank You!{% endif %}</h1>
+            <p class="message-text">
+                {% if lang == 'he' %}
+                התרומה שלך התקבלה בהצלחה.
+                {% else %}
+                Your donation has been received successfully.
+                {% endif %}
+            </p>
+
+            <div class="receipt-box {% if lang == 'he' %}rtl{% endif %}">
+                <div class="receipt-row">
+                    <span class="receipt-label">{% if lang == 'he' %}סכום{% else %}Amount{% endif %}</span>
+                    <span class="receipt-value receipt-total">$<span id="amount-value">0.00</span></span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">{% if lang == 'he' %}מספר קבלה{% else %}Receipt #{% endif %}</span>
+                    <span class="receipt-value" id="receipt-number-value">-</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">{% if lang == 'he' %}סטטוס{% else %}Status{% endif %}</span>
+                    <span class="receipt-value" style="color: #27ae60;">
+                        {% if lang == 'he' %}הושלם{% else %}Completed{% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <p class="message-text">
+                {% if lang == 'he' %}
+                קבלה לצורכי מס תישלח לדוא"ל שלך בקרוב.
+                {% else %}
+                A tax-deductible receipt will be emailed to you shortly.
+                {% endif %}
+            </p>
+
+            <div class="share-section">
+                <p style="color: #666; font-size: 14px;">
+                    {% if lang == 'he' %}שתף את תמיכתך{% else %}Share your support{% endif %}
+                </p>
+                <div class="share-buttons">
+                    <a href="#" class="share-btn facebook" onclick="shareOnFacebook()" title="Facebook">f</a>
+                    <a href="#" class="share-btn twitter" onclick="shareOnTwitter()" title="Twitter">𝕏</a>
+                    <a href="#" class="share-btn whatsapp" onclick="shareOnWhatsApp()" title="WhatsApp">💬</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending State -->
+        <div id="pending-state" class="hidden">
+            <div class="status-icon pending">⏳</div>
+            <h1>{% if lang == 'he' %}התשלום בעיבוד{% else %}Payment Processing{% endif %}</h1>
+            <p class="message-text">
+                {% if lang == 'he' %}
+                התרומה שלך נמצאת בתהליך עיבוד. תקבל קבלה לדוא"ל ברגע שהתשלום יאושר.
+                {% else %}
+                Your donation is being processed. You will receive a tax-deductible receipt by email once the payment is confirmed.
+                {% endif %}
+            </p>
+            <p class="message-text" style="font-size: 14px;">
+                {% if lang == 'he' %}
+                זה עשוי לקחת מספר דקות לתשלומים מחשבון בנק.
+                {% else %}
+                This may take a few minutes for bank account payments.
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <a href="/donate" class="btn-secondary">
+                {% if lang == 'he' %}תרום שוב{% else %}Donate Again{% endif %}
+            </a>
+            <a href="/" class="btn-secondary">
+                {% if lang == 'he' %}חזרה לדף הבית{% else %}Return Home{% endif %}
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/**
+ * Donation Polling Script
+ *
+ * Handles the webhook race condition by polling the server
+ * until the donation record is found or max attempts reached.
+ */
+const paymentIntentId = '{{ payment_intent_id }}';
+const lang = '{{ lang }}';
+let attempts = 0;
+const maxAttempts = 20;  // ~40 seconds total
+const pollInterval = 2000;  // 2 seconds
+
+async function checkDonationStatus() {
+    if (!paymentIntentId) {
+        showPending();
+        return;
+    }
+
+    attempts++;
+    console.log(`Polling attempt ${attempts}/${maxAttempts}`);
+
+    try {
+        const response = await fetch(`/api/donation/status?pi=${encodeURIComponent(paymentIntentId)}`);
+        const data = await response.json();
+
+        if (data.found) {
+            if (data.status === 'succeeded') {
+                showSuccess(data);
+                return;
+            } else if (data.status === 'failed') {
+                showPending();  // Show pending instead of error for better UX
+                return;
+            }
+        }
+
+        // Not found yet or still processing
+        if (attempts >= maxAttempts) {
+            // Max attempts reached - show pending state
+            // The receipt will be emailed when webhook processes
+            showPending();
+            return;
+        }
+
+        // Continue polling
+        setTimeout(checkDonationStatus, pollInterval);
+
+    } catch (err) {
+        console.error('Polling error:', err);
+
+        if (attempts >= maxAttempts) {
+            showPending();
+        } else {
+            // Retry on error
+            setTimeout(checkDonationStatus, pollInterval);
+        }
+    }
+}
+
+function showSuccess(data) {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('pending-state').classList.add('hidden');
+    document.getElementById('success-state').classList.remove('hidden');
+
+    // Populate receipt data
+    if (data.amount) {
+        document.getElementById('amount-value').textContent = data.amount.toFixed(2);
+    }
+    if (data.receipt_number) {
+        document.getElementById('receipt-number-value').textContent = data.receipt_number;
+    }
+}
+
+function showPending() {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('success-state').classList.add('hidden');
+    document.getElementById('pending-state').classList.remove('hidden');
+}
+
+// Social sharing functions
+function shareOnFacebook() {
+    const url = encodeURIComponent(window.location.origin + '/donate');
+    const text = lang === 'he'
+        ? encodeURIComponent('תרמתי למתת מרדכי! הצטרפו אליי')
+        : encodeURIComponent('I just donated to Matat Mordechai! Join me in supporting this cause.');
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${text}`, '_blank', 'width=600,height=400');
+}
+
+function shareOnTwitter() {
+    const url = encodeURIComponent(window.location.origin + '/donate');
+    const text = lang === 'he'
+        ? encodeURIComponent('תרמתי למתת מרדכי! הצטרפו אליי')
+        : encodeURIComponent('I just donated to Matat Mordechai! Join me in supporting this cause.');
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank', 'width=600,height=400');
+}
+
+function shareOnWhatsApp() {
+    const url = window.location.origin + '/donate';
+    const text = lang === 'he'
+        ? `תרמתי למתת מרדכי! הצטרפו אליי: ${url}`
+        : `I just donated to Matat Mordechai! Join me: ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+
+// Start polling when page loads
+document.addEventListener('DOMContentLoaded', checkDonationStatus);
+</script>
+{% endblock %}

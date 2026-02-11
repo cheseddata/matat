@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}Donations - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .filters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        color: #2c3e50;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .data-table th, .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.succeeded { background: #d4edda; color: #155724; }
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.failed { background: #f8d7da; color: #721c24; }
+    .status-badge.refunded { background: #cce5ff; color: #004085; }
+
+    .type-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        background: #e8f4f8;
+        color: #2c3e50;
+    }
+
+    .view-btn {
+        padding: 4px 12px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 12px;
+    }
+
+    .view-btn:hover {
+        background: #2980b9;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        margin-top: 25px;
+    }
+
+    .pagination a, .pagination span {
+        padding: 8px 14px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        text-decoration: none;
+        color: #2c3e50;
+    }
+
+    .pagination a:hover {
+        background: #f8f9fa;
+    }
+
+    .pagination .active {
+        background: #3498db;
+        color: white;
+        border-color: #3498db;
+    }
+
+    .pagination .disabled {
+        color: #999;
+        cursor: not-allowed;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">All Donations</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}" class="active">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+        <a href="{{ url_for('admin.donations', status='all') }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">All</a>
+        <a href="{{ url_for('admin.donations', status='succeeded') }}" class="filter-btn {{ 'active' if status_filter == 'succeeded' else '' }}">Succeeded</a>
+        <a href="{{ url_for('admin.donations', status='pending') }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">Pending</a>
+        <a href="{{ url_for('admin.donations', status='failed') }}" class="filter-btn {{ 'active' if status_filter == 'failed' else '' }}">Failed</a>
+        <a href="{{ url_for('admin.donations', status='refunded') }}" class="filter-btn {{ 'active' if status_filter == 'refunded' else '' }}">Refunded</a>
+    </div>
+
+    {% if donations.items %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Donor</th>
+                <th>Amount</th>
+                <th>Type</th>
+                <th>Salesperson</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for donation in donations.items %}
+            <tr>
+                <td>{{ donation.created_at.strftime('%m/%d/%Y %H:%M') }}</td>
+                <td>
+                    {% if donation.donor %}
+                    <strong>{{ donation.donor.full_name }}</strong>
+                    <br><span style="font-size: 12px; color: #666;">{{ donation.donor.email }}</span>
+                    {% else %}
+                    <span style="color: #999;">Unknown</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>${{ "%.2f"|format(donation.amount_dollars) }}</strong>
+                    {% if donation.stripe_fee %}
+                    <br><span style="font-size: 11px; color: #999;">Fee: ${{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="type-badge">{{ donation.donation_type|replace('_', ' ')|title }}</span>
+                </td>
+                <td>
+                    {% if donation.salesperson %}
+                    {{ donation.salesperson.full_name }}
+                    {% else %}
+                    <span style="color: #999;">—</span>
+                    {% endif %}
+                </td>
+                <td>{{ donation.source or 'direct' }}</td>
+                <td>
+                    <span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span>
+                </td>
+                <td>
+                    <a href="{{ url_for('admin.donation_detail', id=donation.id) }}" class="view-btn">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if donations.pages > 1 %}
+    <div class="pagination">
+        {% if donations.has_prev %}
+        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.prev_num) }}">&laquo; Prev</a>
+        {% else %}
+        <span class="disabled">&laquo; Prev</span>
+        {% endif %}
+
+        {% for page_num in donations.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == donations.page %}
+                <span class="active">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('admin.donations', status=status_filter, page=page_num) }}">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+            <span>...</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if donations.has_next %}
+        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.next_num) }}">Next &raquo;</a>
+        {% else %}
+        <span class="disabled">Next &raquo;</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="card empty-state">
+        <h3>No Donations</h3>
+        <p>No donations found with the selected filter.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

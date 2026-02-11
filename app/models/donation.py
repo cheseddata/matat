@@ -1,0 +1,81 @@
+from datetime import datetime
+from ..extensions import db
+
+
+class Donation(db.Model):
+    """All donation transactions."""
+    __tablename__ = 'donations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    donor_id = db.Column(db.Integer, db.ForeignKey('donors.id', ondelete='RESTRICT'), nullable=False)
+    salesperson_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='RESTRICT'), nullable=True)
+    campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id', ondelete='RESTRICT'), nullable=True)
+    link_id = db.Column(db.Integer, db.ForeignKey('donation_links.id', ondelete='SET NULL'), nullable=True)
+    
+    # Stripe fields
+    stripe_payment_intent_id = db.Column(db.String(255), unique=True, nullable=True)
+    stripe_charge_id = db.Column(db.String(255), nullable=True)
+    stripe_balance_transaction_id = db.Column(db.String(255), nullable=True)
+    stripe_subscription_id = db.Column(db.String(255), nullable=True)
+    stripe_receipt_url = db.Column(db.String(500), nullable=True)
+    stripe_metadata = db.Column(db.JSON, nullable=True)
+    
+    # Amount fields (in cents)
+    amount = db.Column(db.Integer, nullable=False)  # Gross amount in cents
+    currency = db.Column(db.String(10), default='usd')
+    stripe_fee = db.Column(db.Integer, nullable=True)  # Actual fee in cents
+    stripe_fee_details = db.Column(db.JSON, nullable=True)  # Itemized breakdown
+    net_amount = db.Column(db.Integer, nullable=True)  # Net after fees in cents
+    
+    # Payment method
+    payment_method_type = db.Column(db.String(50), nullable=True)  # card/us_bank_account
+    payment_method_last4 = db.Column(db.String(4), nullable=True)
+    payment_method_brand = db.Column(db.String(50), nullable=True)  # visa/mastercard/amex
+    bank_name = db.Column(db.String(255), nullable=True)  # For ACH
+    
+    # Status and type
+    status = db.Column(db.String(20), default='pending')  # pending/succeeded/failed/refunded
+    donation_type = db.Column(db.String(20), default='one_time')  # one_time/recurring
+    source = db.Column(db.String(50), nullable=True)  # phone/email_link/direct/campaign_page
+    
+    # Receipt
+    receipt_number = db.Column(db.String(50), nullable=True)
+    receipt_sent = db.Column(db.Boolean, default=False)
+    receipt_sent_at = db.Column(db.DateTime, nullable=True)
+    
+    # Refund fields
+    refund_amount = db.Column(db.Integer, nullable=True)  # In cents
+    refund_date = db.Column(db.DateTime, nullable=True)
+    fee_refunded = db.Column(db.Integer, nullable=True)  # Usually $0
+    fee_lost_on_refund = db.Column(db.Integer, nullable=True)  # stripe_fee - fee_refunded
+    
+    # Soft delete and timestamps
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    commission = db.relationship('Commission', backref='donation', uselist=False)
+    receipt = db.relationship('Receipt', backref='donation', uselist=False)
+    
+    @property
+    def is_deleted(self):
+        return self.deleted_at is not None
+    
+    @property
+    def amount_dollars(self):
+        return self.amount / 100 if self.amount else 0
+    
+    @property
+    def net_amount_dollars(self):
+        return self.net_amount / 100 if self.net_amount else 0
+    
+    @property
+    def stripe_fee_dollars(self):
+        return self.stripe_fee / 100 if self.stripe_fee else 0
+    
+    @classmethod
+    def query_active(cls):
+        return cls.query.filter(cls.deleted_at.is_(None))
+    
+    def __repr__(self):
+        return f'<Donation {self.id} ${self.amount_dollars}>'

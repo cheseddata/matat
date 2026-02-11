@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+{% block title %}Settings - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 25px;
+    }
+
+    @media (max-width: 500px) {
+        .settings-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .settings-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .settings-card h2 {
+        margin: 0 0 20px 0;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        font-size: 18px;
+    }
+
+    .help-text {
+        font-size: 13px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .stripe-mode {
+        display: flex;
+        gap: 15px;
+        margin-top: 10px;
+    }
+
+    .stripe-mode label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        cursor: pointer;
+        flex: 1;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .stripe-mode input[type="radio"] {
+        width: auto;
+    }
+
+    .stripe-mode input[type="radio"]:checked + span {
+        font-weight: 600;
+    }
+
+    .stripe-mode label:has(input:checked) {
+        border-color: #3498db;
+        background: #e8f4f8;
+    }
+
+    .mode-test { color: #f39c12; }
+    .mode-live { color: #27ae60; }
+
+    .commission-preview {
+        background: #e8f4f8;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        font-size: 14px;
+    }
+
+    .save-section {
+        grid-column: 1 / -1;
+        text-align: center;
+        padding: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">System Settings</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}" class="active">Settings</a>
+    </div>
+
+    <form method="POST">
+        <div class="settings-grid">
+            <!-- Organization Settings -->
+            <div class="settings-card">
+                <h2>Organization Details</h2>
+
+                <div class="form-group">
+                    <label>Organization Name</label>
+                    <input type="text" name="org_name" value="{{ config.org_name or '' }}"
+                           placeholder="e.g., Matat Mordechai Foundation">
+                    <p class="help-text">Appears on receipts and emails.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Receipt Prefix</label>
+                    <input type="text" name="org_prefix" value="{{ config.org_prefix or 'MM' }}"
+                           placeholder="e.g., MM" maxlength="5">
+                    <p class="help-text">Short prefix for receipt numbers (e.g., MM-2024-00001).</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Tax ID / EIN</label>
+                    <input type="text" name="tax_id" value="{{ config.tax_id or '' }}"
+                           placeholder="e.g., 12-3456789">
+                    <p class="help-text">Displayed on tax receipts for donors.</p>
+                </div>
+            </div>
+
+            <!-- Commission Settings -->
+            <div class="settings-card">
+                <h2>Default Commission Settings</h2>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    System-wide defaults used when no campaign or salesperson override exists.
+                </p>
+
+                <div class="form-group">
+                    <label>Default Commission Type</label>
+                    <select name="default_commission_type" id="commissionType" onchange="updatePreview()">
+                        <option value="">No Commission</option>
+                        <option value="percentage" {{ 'selected' if config.default_commission_type == 'percentage' else '' }}>Percentage</option>
+                        <option value="flat" {{ 'selected' if config.default_commission_type == 'flat' else '' }}>Flat Amount</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Default Commission Rate</label>
+                    <input type="number" step="0.01" name="default_commission_rate" id="commissionRate"
+                           value="{{ config.default_commission_rate or '' }}"
+                           placeholder="e.g., 10 for 10% or 5.00 for $5"
+                           onchange="updatePreview()">
+                </div>
+
+                <div class="commission-preview" id="commissionPreview" style="display: none;">
+                    <strong>Default:</strong> <span id="previewText"></span>
+                </div>
+            </div>
+
+            <!-- Site Settings -->
+            <div class="settings-card">
+                <h2>Site Settings</h2>
+
+                <div class="form-group">
+                    <label>Site URL</label>
+                    <input type="url" name="site_url" value="{{ config.site_url or 'https://matatmordechai.org' }}"
+                           placeholder="https://matatmordechai.org">
+                    <p class="help-text">Base URL for generating donation links.</p>
+                </div>
+            </div>
+
+            <!-- Mailtrap Settings -->
+            <div class="settings-card">
+                <h2>Email Configuration (Mailtrap)</h2>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    Mailtrap is the recommended email provider. If configured, it will be used instead of SMTP.
+                </p>
+
+                <div class="form-group">
+                    <label>Mailtrap API Token</label>
+                    <input type="password" name="mailtrap_token" value="{{ config.mailtrap_token or '' }}"
+                           placeholder="Your Mailtrap API token">
+                    <p class="help-text">Get your token from Mailtrap Dashboard > Email Sending > API.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>From Name</label>
+                    <input type="text" name="email_from_name" value="{{ config.email_from_name or 'Matat Mordechai' }}"
+                           placeholder="Matat Mordechai">
+                </div>
+
+                <div class="form-group">
+                    <label>From Email Address</label>
+                    <input type="email" name="email_from_address" value="{{ config.email_from_address or '' }}"
+                           placeholder="donations@matatmordechai.org">
+                    <p class="help-text">Must be a verified sender domain in Mailtrap.</p>
+                </div>
+            </div>
+
+            <!-- Email/SMTP Settings -->
+            <div class="settings-card">
+                <h2>Email Configuration (SMTP - Fallback)</h2>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    SMTP will only be used if Mailtrap is not configured.
+                </p>
+
+                <div class="form-group">
+                    <label>SMTP Host</label>
+                    <input type="text" name="smtp_host" value="{{ config.smtp_host or '' }}"
+                           placeholder="smtp.gmail.com">
+                </div>
+
+                <div class="form-group">
+                    <label>SMTP Port</label>
+                    <input type="number" name="smtp_port" value="{{ config.smtp_port or 587 }}"
+                           placeholder="587">
+                </div>
+
+                <div class="form-group">
+                    <label>SMTP Username</label>
+                    <input type="text" name="smtp_username" value="{{ config.smtp_username or '' }}"
+                           placeholder="your-email@gmail.com">
+                </div>
+
+                <div class="form-group">
+                    <label>SMTP Password</label>
+                    <input type="password" name="smtp_password" value="{{ config.smtp_password or '' }}"
+                           placeholder="App password or SMTP password">
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" name="smtp_use_tls" id="smtp_use_tls"
+                               {{ 'checked' if config.smtp_use_tls != False else '' }} style="width: auto;">
+                        <label for="smtp_use_tls" style="margin: 0;">Use TLS</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stripe Settings -->
+            <div class="settings-card">
+                <h2>Stripe Configuration</h2>
+
+                <div class="form-group">
+                    <label>Payment Mode</label>
+                    <div class="stripe-mode">
+                        <label>
+                            <input type="radio" name="stripe_mode" value="test"
+                                   {{ 'checked' if config.stripe_mode != 'live' else '' }}>
+                            <span class="mode-test">Test Mode</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="stripe_mode" value="live"
+                                   {{ 'checked' if config.stripe_mode == 'live' else '' }}>
+                            <span class="mode-live">Live Mode</span>
+                        </label>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 20px; color: #f39c12;">Test Keys</h4>
+                <div class="form-group">
+                    <label>Test Secret Key (sk_test_...)</label>
+                    <input type="password" name="stripe_test_secret_key"
+                           value="{{ config.stripe_test_secret_key or '' }}"
+                           placeholder="sk_test_...">
+                </div>
+                <div class="form-group">
+                    <label>Test Publishable Key (pk_test_...)</label>
+                    <input type="text" name="stripe_test_publishable_key"
+                           value="{{ config.stripe_test_publishable_key or '' }}"
+                           placeholder="pk_test_...">
+                </div>
+
+                <h4 style="margin-top: 20px; color: #27ae60;">Live Keys</h4>
+                <div class="form-group">
+                    <label>Live Secret Key (sk_live_...)</label>
+                    <input type="password" name="stripe_live_secret_key"
+                           value="{{ config.stripe_live_secret_key or '' }}"
+                           placeholder="sk_live_...">
+                </div>
+                <div class="form-group">
+                    <label>Live Publishable Key (pk_live_...)</label>
+                    <input type="text" name="stripe_live_publishable_key"
+                           value="{{ config.stripe_live_publishable_key or '' }}"
+                           placeholder="pk_live_...">
+                </div>
+
+                <h4 style="margin-top: 20px;">Webhook</h4>
+                <div class="form-group">
+                    <label>Webhook Secret (whsec_...)</label>
+                    <input type="password" name="stripe_webhook_secret"
+                           value="{{ config.stripe_webhook_secret or '' }}"
+                           placeholder="whsec_...">
+                    <p class="help-text">Webhook URL: <code>https://matatmordechai.org/api/stripe/webhook</code></p>
+                </div>
+            </div>
+
+            <!-- Info Section -->
+            <div class="settings-card">
+                <h2>System Information</h2>
+
+                <div style="font-size: 14px; color: #666;">
+                    <p><strong>Application:</strong> Matat Mordechai</p>
+                    <p><strong>Version:</strong> 1.0.0</p>
+                    <p><strong>Database:</strong> MySQL</p>
+                    <p><strong>PDF Engine:</strong> WeasyPrint</p>
+                    <p><strong>Email:</strong> Mailtrap / SMTP</p>
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                    <h4 style="margin: 0 0 10px 0;">Quick Links</h4>
+                    <p><a href="{{ url_for('admin.reports') }}">View Reports</a></p>
+                    <p><a href="{{ url_for('admin.receipts') }}">Receipt Lookup</a></p>
+                    <p><a href="{{ url_for('admin.commissions', status='pending') }}">Pending Commissions</a></p>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="save-section">
+                <button type="submit" class="btn btn-success" style="padding: 15px 50px; font-size: 16px;">
+                    Save Settings
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updatePreview() {
+    const type = document.getElementById('commissionType').value;
+    const rate = document.getElementById('commissionRate').value;
+    const preview = document.getElementById('commissionPreview');
+    const text = document.getElementById('previewText');
+
+    if (type && rate) {
+        preview.style.display = 'block';
+        if (type === 'percentage') {
+            text.textContent = `${rate}% of each donation`;
+        } else {
+            text.textContent = `$${parseFloat(rate).toFixed(2)} per donation`;
+        }
+    } else if (!type) {
+        preview.style.display = 'block';
+        text.textContent = 'No commissions will be generated by default';
+    } else {
+        preview.style.display = 'none';
+    }
+}
+
+updatePreview();
+</script>
+{% endblock %}

@@ -1,0 +1,502 @@
+{% extends "base.html" %}
+{% block title %}{% if lang == 'he' %}תרומה{% else %}Donate{% endif %} - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .donation-container { max-width: 650px; margin: 30px auto; }
+
+    /* Language toggle */
+    .lang-toggle { text-align: right; margin-bottom: 15px; }
+    .lang-toggle a { color: #3498db; text-decoration: none; font-size: 14px; }
+    .lang-toggle a:hover { text-decoration: underline; }
+
+    /* Donation type tabs */
+    .donation-type-tabs { display: flex; margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 2px solid #3498db; }
+    .donation-type-tabs button { flex: 1; padding: 12px; border: none; background: white; cursor: pointer; font-size: 16px; font-weight: 500; transition: all 0.2s; }
+    .donation-type-tabs button.active { background: #3498db; color: white; }
+    .donation-type-tabs button:hover:not(.active) { background: #ecf0f1; }
+
+    /* Amount buttons */
+    .amount-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px; }
+    .amount-btn {
+        padding: 18px 15px;
+        border: 2px solid #3498db;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .amount-btn:hover, .amount-btn.selected { background: #3498db; color: white; }
+
+    /* Custom amount */
+    .custom-amount {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+    }
+    .custom-amount input {
+        font-size: 28px;
+        padding: 10px;
+        width: 180px;
+        border: 2px solid #ddd;
+        border-radius: 4px;
+        text-align: center;
+    }
+    .custom-amount input:focus { border-color: #3498db; outline: none; }
+
+    /* Recurring info */
+    .recurring-info {
+        background: #e8f4f8;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #2c3e50;
+        display: none;
+    }
+    .recurring-info.show { display: block; }
+
+    /* Card element */
+    #payment-element {
+        border: 2px solid #ddd;
+        padding: 15px;
+        border-radius: 8px;
+        background: white;
+        min-height: 44px;
+    }
+    #payment-element.StripeElement--focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 1px #3498db;
+    }
+    #payment-element.StripeElement--invalid {
+        border-color: #fa755a;
+    }
+    #payment-errors { color: #e74c3c; margin-top: 10px; font-size: 14px; }
+
+    /* Processing state */
+    .processing { opacity: 0.6; pointer-events: none; }
+
+    /* Donor info grid */
+    .donor-info { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .donor-info .full-width { grid-column: 1 / -1; }
+    @media (max-width: 600px) {
+        .donor-info { grid-template-columns: 1fr; }
+        .amount-buttons { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* Campaign banner */
+    .campaign-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    .campaign-banner h2 { margin-bottom: 8px; }
+    .campaign-banner p { opacity: 0.9; margin: 0; }
+
+    /* Submit button */
+    #submit-btn {
+        width: 100%;
+        margin-top: 25px;
+        padding: 18px;
+        font-size: 20px;
+        font-weight: 600;
+        background: #27ae60;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    #submit-btn:hover { background: #219a52; }
+    #submit-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+
+    /* Section headers */
+    .section-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+        gap: 10px;
+    }
+    .section-header h3 { margin: 0; }
+    .section-number {
+        width: 28px;
+        height: 28px;
+        background: #3498db;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 14px;
+    }
+
+    /* Secure badge */
+    .secure-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 15px;
+        color: #666;
+        font-size: 13px;
+    }
+
+    /* RTL support */
+    [dir="rtl"] .donor-info { direction: rtl; }
+    [dir="rtl"] .section-header { flex-direction: row-reverse; }
+    [dir="rtl"] .lang-toggle { text-align: left; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="donation-container" dir="{{ 'rtl' if lang == 'he' else 'ltr' }}">
+    <div class="lang-toggle">
+        {% if lang == 'he' %}
+        <a href="{{ request.url.replace('lang=he', 'lang=en') if 'lang=he' in request.url else request.url + ('&' if '?' in request.url else '?') + 'lang=en' }}">English</a>
+        {% else %}
+        <a href="{{ request.url.replace('lang=en', 'lang=he') if 'lang=en' in request.url else request.url + ('&' if '?' in request.url else '?') + 'lang=he' }}">עברית</a>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h1 style="text-align: center; margin-bottom: 25px;">
+            {% if lang == 'he' %}תרומה למתת מרדכי{% else %}Donate to Matat Mordechai{% endif %}
+        </h1>
+
+        {% if campaign %}
+        <div class="campaign-banner">
+            <h2>{{ campaign.name }}</h2>
+            {% if campaign.description %}<p>{{ campaign.description }}</p>{% endif %}
+        </div>
+        {% endif %}
+
+        {% if salesperson %}
+        <p style="color: #666; margin-bottom: 20px; text-align: center;">
+            {% if lang == 'he' %}הופנה על ידי: {{ salesperson.full_name }}{% else %}Referred by: {{ salesperson.full_name }}{% endif %}
+        </p>
+        {% endif %}
+
+        <form id="donation-form">
+            <!-- Step 1: Donation Type -->
+            <div class="donation-type-tabs">
+                <button type="button" id="onetime-tab" class="active" data-type="one_time">
+                    {% if lang == 'he' %}תרומה חד-פעמית{% else %}One-Time{% endif %}
+                </button>
+                <button type="button" id="monthly-tab" data-type="recurring">
+                    {% if lang == 'he' %}תרומה חודשית{% else %}Monthly{% endif %}
+                </button>
+            </div>
+
+            <div class="recurring-info" id="recurring-info">
+                {% if lang == 'he' %}
+                כרטיס האשראי שלך יחויב באופן אוטומטי מדי חודש. ניתן לבטל בכל עת.
+                {% else %}
+                Your card will be automatically charged each month. You can cancel anytime.
+                {% endif %}
+            </div>
+
+            <!-- Step 2: Amount -->
+            <div class="section-header">
+                <span class="section-number">1</span>
+                <h3>{% if lang == 'he' %}סכום התרומה{% else %}Donation Amount{% endif %}</h3>
+            </div>
+
+            <div class="amount-buttons">
+                <button type="button" class="amount-btn" data-amount="36">$36</button>
+                <button type="button" class="amount-btn" data-amount="72">$72</button>
+                <button type="button" class="amount-btn" data-amount="180">$180</button>
+                <button type="button" class="amount-btn" data-amount="360">$360</button>
+                <button type="button" class="amount-btn" data-amount="500">$500</button>
+                <button type="button" class="amount-btn" data-amount="1000">$1,000</button>
+            </div>
+            <div class="custom-amount">
+                <span style="font-size: 28px; font-weight: bold;">$</span>
+                <input type="number" id="amount" name="amount" min="1" step="0.01"
+                       value="{{ preset_amount or '' }}"
+                       placeholder="{% if lang == 'he' %}סכום אחר{% else %}Other{% endif %}" required>
+            </div>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+
+            <!-- Step 3: Your Information -->
+            <div class="section-header">
+                <span class="section-number">2</span>
+                <h3>{% if lang == 'he' %}פרטים אישיים{% else %}Your Information{% endif %}</h3>
+            </div>
+
+            <div class="donor-info">
+                <div class="form-group">
+                    <label for="first_name">{% if lang == 'he' %}שם פרטי{% else %}First Name{% endif %} *</label>
+                    <input type="text" id="first_name" name="first_name" required
+                           value="{{ donor_name.split()[0] if donor_name else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="last_name">{% if lang == 'he' %}שם משפחה{% else %}Last Name{% endif %} *</label>
+                    <input type="text" id="last_name" name="last_name" required
+                           value="{{ donor_name.split()[-1] if donor_name and ' ' in donor_name else '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="email">{% if lang == 'he' %}דוא"ל{% else %}Email{% endif %} *</label>
+                    <input type="email" id="email" name="email" required value="{{ donor_email }}">
+                </div>
+                <div class="form-group">
+                    <label for="phone">{% if lang == 'he' %}טלפון{% else %}Phone{% endif %}</label>
+                    <input type="tel" id="phone" name="phone" placeholder="{% if lang == 'he' %}(אופציונלי){% else %}(Optional){% endif %}">
+                </div>
+                <div class="form-group full-width">
+                    <label for="address_line1">{% if lang == 'he' %}כתובת{% else %}Address{% endif %} *</label>
+                    <input type="text" id="address_line1" name="address_line1" required value="{{ donor_address }}">
+                </div>
+                <div class="form-group">
+                    <label for="city">{% if lang == 'he' %}עיר{% else %}City{% endif %} *</label>
+                    <input type="text" id="city" name="city" required>
+                </div>
+                <div class="form-group">
+                    <label for="state">{% if lang == 'he' %}מדינה/מחוז{% else %}State{% endif %} *</label>
+                    <input type="text" id="state" name="state" required>
+                </div>
+                <div class="form-group">
+                    <label for="zip">{% if lang == 'he' %}מיקוד{% else %}ZIP Code{% endif %} *</label>
+                    <input type="text" id="zip" name="zip" required>
+                </div>
+                <div class="form-group">
+                    <label for="country">{% if lang == 'he' %}ארץ{% else %}Country{% endif %}</label>
+                    <select id="country" name="country">
+                        <option value="US" selected>United States</option>
+                        <option value="IL">Israel</option>
+                        <option value="CA">Canada</option>
+                        <option value="GB">United Kingdom</option>
+                        <option value="AU">Australia</option>
+                        <option value="FR">France</option>
+                        <option value="DE">Germany</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+
+            <!-- Step 4: Payment - Always in English -->
+            <div class="section-header">
+                <span class="section-number">3</span>
+                <h3>Payment Details</h3>
+            </div>
+
+            <div id="payment-element"></div>
+            <div id="payment-errors" role="alert"></div>
+
+            <!-- Hidden fields -->
+            <input type="hidden" id="ref_code" value="{{ ref_code or '' }}">
+            <input type="hidden" id="aff_code" value="{{ aff_code or '' }}">
+            <input type="hidden" id="link_id" value="{{ request.args.get('link_id', '') }}">
+            <input type="hidden" id="donation_type" value="{{ donation_type or 'one_time' }}">
+            <input type="hidden" id="lang" value="{{ lang }}">
+
+            <button type="submit" class="btn" id="submit-btn">
+                {% if lang == 'he' %}תרום עכשיו{% else %}Donate Now{% endif %}
+            </button>
+
+            <div class="secure-badge">
+                🔒 {% if lang == 'he' %}תשלום מאובטח על ידי Stripe{% else %}Secure payment powered by Stripe{% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+// Initialize Stripe
+const stripeKey = '{{ stripe_publishable_key }}';
+console.log('Stripe key present:', stripeKey ? 'Yes' : 'NO - MISSING!');
+
+if (!stripeKey) {
+    document.getElementById('payment-errors').textContent = 'Payment system not configured. Please contact support.';
+}
+
+const stripe = Stripe(stripeKey);
+const elements = stripe.elements({ locale: 'en' });
+
+// Create Card Element (simpler and more reliable) - always in English
+const cardElement = elements.create('card', {
+    style: {
+        base: {
+            fontSize: '16px',
+            color: '#32325d',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            '::placeholder': { color: '#aab7c4' }
+        },
+        invalid: {
+            color: '#fa755a',
+            iconColor: '#fa755a'
+        }
+    }
+});
+cardElement.mount('#payment-element');
+
+// Show card validation errors
+cardElement.on('change', function(event) {
+    const displayError = document.getElementById('payment-errors');
+    if (event.error) {
+        displayError.textContent = event.error.message;
+    } else {
+        displayError.textContent = '';
+    }
+});
+
+// Donation type toggle
+let donationType = '{{ donation_type or "one_time" }}';
+const onetimeTab = document.getElementById('onetime-tab');
+const monthlyTab = document.getElementById('monthly-tab');
+const recurringInfo = document.getElementById('recurring-info');
+const donationTypeInput = document.getElementById('donation_type');
+
+function setDonationType(type) {
+    donationType = type;
+    donationTypeInput.value = type;
+
+    if (type === 'recurring') {
+        onetimeTab.classList.remove('active');
+        monthlyTab.classList.add('active');
+        recurringInfo.classList.add('show');
+        document.getElementById('submit-btn').textContent =
+            '{{ "תרום חודשי" if lang == "he" else "Donate Monthly" }}';
+    } else {
+        monthlyTab.classList.remove('active');
+        onetimeTab.classList.add('active');
+        recurringInfo.classList.remove('show');
+        document.getElementById('submit-btn').textContent =
+            '{{ "תרום עכשיו" if lang == "he" else "Donate Now" }}';
+    }
+}
+
+onetimeTab.addEventListener('click', () => setDonationType('one_time'));
+monthlyTab.addEventListener('click', () => setDonationType('recurring'));
+
+// Initialize based on preset
+{% if donation_type == 'recurring' %}
+setDonationType('recurring');
+{% endif %}
+
+// Amount buttons
+document.querySelectorAll('.amount-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        document.getElementById('amount').value = this.dataset.amount;
+    });
+});
+
+// Pre-select amount if set
+{% if preset_amount %}
+const presetAmt = {{ preset_amount }};
+const presetBtn = document.querySelector('[data-amount="' + presetAmt + '"]');
+if (presetBtn) {
+    presetBtn.classList.add('selected');
+}
+document.getElementById('amount').value = presetAmt;
+{% endif %}
+
+// Clear amount button selection when typing custom amount
+document.getElementById('amount').addEventListener('input', function() {
+    document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+});
+
+// Form submission
+document.getElementById('donation-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const form = this;
+    const submitBtn = document.getElementById('submit-btn');
+    const amount = document.getElementById('amount').value;
+    const errorDisplay = document.getElementById('payment-errors');
+
+    if (!amount || parseFloat(amount) <= 0) {
+        errorDisplay.textContent = '{{ "נא להזין סכום תקין" if lang == "he" else "Please enter a valid donation amount" }}';
+        return;
+    }
+
+    form.classList.add('processing');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '{{ "מעבד..." if lang == "he" else "Processing..." }}';
+    errorDisplay.textContent = '';
+
+    try {
+        // Create PaymentIntent
+        const response = await fetch('/donate/create-payment-intent', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                amount: parseFloat(amount),
+                first_name: document.getElementById('first_name').value,
+                last_name: document.getElementById('last_name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                address_line1: document.getElementById('address_line1').value,
+                city: document.getElementById('city').value,
+                state: document.getElementById('state').value,
+                zip: document.getElementById('zip').value,
+                country: document.getElementById('country').value,
+                ref_code: document.getElementById('ref_code').value,
+                aff_code: document.getElementById('aff_code').value,
+                link_id: document.getElementById('link_id').value,
+                donation_type: donationType,
+                language: document.getElementById('lang').value,
+                source: document.getElementById('link_id').value ? 'email_link' : 'direct'
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        // Confirm payment with Card Element
+        const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+            payment_method: {
+                card: cardElement,
+                billing_details: {
+                    name: document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value,
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value,
+                    address: {
+                        line1: document.getElementById('address_line1').value,
+                        city: document.getElementById('city').value,
+                        state: document.getElementById('state').value,
+                        postal_code: document.getElementById('zip').value,
+                        country: document.getElementById('country').value
+                    }
+                }
+            }
+        });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        // Redirect to success page
+        window.location.href = '/donate/success?payment_intent=' + data.paymentIntentId;
+
+    } catch (err) {
+        errorDisplay.textContent = err.message;
+        form.classList.remove('processing');
+        submitBtn.disabled = false;
+        submitBtn.textContent = donationType === 'recurring'
+            ? '{{ "תרום חודשי" if lang == "he" else "Donate Monthly" }}'
+            : '{{ "תרום עכשיו" if lang == "he" else "Donate Now" }}';
+    }
+});
+</script>
+{% endblock %}

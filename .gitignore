@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+.env
+*.log
+*.pid
+instance/
+.webassets-cache/
+.DS_Store
+migrations/versions/__pycache__/
+gunicorn*.log
+*.pdf
+uploads/

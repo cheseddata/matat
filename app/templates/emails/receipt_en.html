@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="color: #2c3e50;">Matat Mordechai</h1>
+    </div>
+    
+    <p>{{ donation.created_at.strftime('%B %d, %Y') }}</p>
+    <p>{{ donor.full_name }}<br>
+    {{ donor.address_line1 }}<br>
+    {% if donor.address_line2 %}{{ donor.address_line2 }}<br>{% endif %}
+    {{ donor.city }}, {{ donor.state }} {{ donor.zip }}</p>
+    
+    <p><strong>Receipt #{{ receipt.receipt_number }}</strong></p>
+    
+    <p>Dear {{ donor.first_name }},</p>
+    
+    <p>Thank you for your donation totaling <strong>${{ "%.2f"|format(amount) }}</strong> to Matat Mordechai.</p>
+    
+    <p>Your generosity helps ensure the growth and success of our programs.</p>
+    
+    <hr style="margin: 20px 0;">
+    
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr style="background: #f8f9fa;">
+            <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Date</th>
+            <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Status</th>
+            <th style="padding: 10px; text-align: left; border-bottom: 1px solid #ddd;">Type</th>
+            <th style="padding: 10px; text-align: right; border-bottom: 1px solid #ddd;">Amount</th>
+        </tr>
+        <tr>
+            <td style="padding: 10px;">{{ donation.created_at.strftime('%m/%d/%Y') }}</td>
+            <td style="padding: 10px;">Completed</td>
+            <td style="padding: 10px;">{{ donation.donation_type|capitalize }}</td>
+            <td style="padding: 10px; text-align: right;">${{ "%.2f"|format(amount) }}</td>
+        </tr>
+    </table>
+    
+    <hr style="margin: 20px 0;">
+    
+    <p><strong>Donation Amount: ${{ "%.2f"|format(amount) }}</strong></p>
+    
+    <p style="color: #666; font-size: 14px;">
+        For accounting purposes our 501(c)(3) tax ID number is <strong>{{ receipt.tax_id_used or 'XX-XXXXXXX' }}</strong>
+    </p>
+    
+    <p style="color: #666; font-size: 14px; font-style: italic;">
+        No goods or services were rendered in exchange for this contribution.
+    </p>
+    
+    <hr style="margin: 20px 0;">
+    
+    <p style="text-align: center; color: #999; font-size: 12px;">
+        Matat Mordechai<br>
+        Thank you for your support!
+    </p>
+</body>
+</html>

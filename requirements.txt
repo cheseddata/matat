@@ -1,0 +1,15 @@
+Flask==3.1.*
+Flask-SQLAlchemy==3.1.*
+Flask-Migrate==4.0.*
+Flask-Login==0.6.*
+Flask-WTF==1.2.*
+Flask-Bcrypt==1.0.*
+PyMySQL==1.1.*
+cryptography==44.*
+stripe==11.*
+weasyprint==63.*
+sendgrid==6.*
+python-dotenv==1.0.*
+gunicorn==23.*
+shortuuid==1.0.*
+Pillow==11.*

@@ -1,0 +1,426 @@
+{% extends "base.html" %}
+{% block title %}Commissions - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .stats-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .stat-box {
+        background: white;
+        padding: 20px 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .stat-box.pending {
+        border-left: 4px solid #f39c12;
+    }
+
+    .stat-box.paid {
+        border-left: 4px solid #27ae60;
+    }
+
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .stat-box.pending .stat-value { color: #f39c12; }
+    .stat-box.paid .stat-value { color: #27ae60; }
+
+    .stat-label {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .filters {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .filter-btn {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+        color: #2c3e50;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .bulk-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .data-table th, .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.paid { background: #d4edda; color: #155724; }
+    .status-badge.voided { background: #f8d7da; color: #721c24; }
+
+    .pay-btn {
+        padding: 4px 12px;
+        background: #27ae60;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .pay-btn:hover {
+        background: #219a52;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 400px;
+        width: 100%;
+    }
+
+    .modal-content h3 {
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">Commission Management</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}" class="active">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+        <div class="stat-box pending">
+            <div class="stat-value">${{ "%.2f"|format(total_pending) }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+        <div class="stat-box paid">
+            <div class="stat-value">${{ "%.2f"|format(total_paid) }}</div>
+            <div class="stat-label">Total Paid</div>
+        </div>
+        <a href="{{ url_for('admin.commissions_by_salesperson') }}" class="stat-box" style="text-decoration: none; color: inherit;">
+            <div class="stat-value" style="font-size: 16px;">View by Salesperson</div>
+            <div class="stat-label">Grouped View</div>
+        </a>
+    </div>
+
+    <!-- Filters and Bulk Actions -->
+    <div class="filters">
+        <a href="{{ url_for('admin.commissions', status='all') }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">All</a>
+        <a href="{{ url_for('admin.commissions', status='pending') }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">Pending</a>
+        <a href="{{ url_for('admin.commissions', status='paid') }}" class="filter-btn {{ 'active' if status_filter == 'paid' else '' }}">Paid</a>
+        <a href="{{ url_for('admin.commissions', status='voided') }}" class="filter-btn {{ 'active' if status_filter == 'voided' else '' }}">Voided</a>
+
+        <div class="bulk-actions">
+            <span id="selectedCount">0 selected</span>
+            <button class="btn" onclick="openBulkPayModal()" id="bulkPayBtn" disabled>Pay Selected</button>
+        </div>
+    </div>
+
+    {% if commissions %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>Date</th>
+                <th>Salesperson</th>
+                <th>Donation</th>
+                <th>Rate</th>
+                <th>Commission</th>
+                <th>Status</th>
+                <th>Paid Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for commission in commissions %}
+            <tr>
+                <td>
+                    {% if commission.status == 'pending' %}
+                    <input type="checkbox" class="commission-cb" value="{{ commission.id }}" onchange="updateSelected()">
+                    {% endif %}
+                </td>
+                <td>{{ commission.created_at.strftime('%m/%d/%Y') }}</td>
+                <td>
+                    {% if commission.salesperson %}
+                    {{ commission.salesperson.full_name }}
+                    {% else %}
+                    <span style="color: #999;">Unknown</span>
+                    {% endif %}
+                </td>
+                <td>${{ "%.2f"|format(commission.donation_amount_dollars) }}</td>
+                <td>
+                    {% if commission.commission_type == 'percentage' %}
+                    {{ commission.commission_rate }}%
+                    {% else %}
+                    ${{ "%.2f"|format(commission.commission_rate) }} flat
+                    {% endif %}
+                </td>
+                <td><strong>${{ "%.2f"|format(commission.commission_amount_dollars) }}</strong></td>
+                <td><span class="status-badge {{ commission.status }}">{{ commission.status|capitalize }}</span></td>
+                <td>
+                    {% if commission.paid_date %}
+                    {{ commission.paid_date.strftime('%m/%d/%Y') }}
+                    {% if commission.paid_reference %}
+                    <br><span style="font-size: 11px; color: #666;">{{ commission.paid_reference }}</span>
+                    {% endif %}
+                    {% else %}
+                    —
+                    {% endif %}
+                </td>
+                <td>
+                    {% if commission.status == 'pending' %}
+                    <button class="pay-btn" onclick="openPayModal({{ commission.id }}, {{ commission.commission_amount_dollars }})">Pay</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="card" style="text-align: center; padding: 40px;">
+        <p style="color: #666;">No commissions found.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Pay Modal -->
+<div class="modal" id="payModal">
+    <div class="modal-content">
+        <h3>Mark Commission as Paid</h3>
+        <form id="payForm" onsubmit="submitPay(event)">
+            <input type="hidden" id="payCommissionId">
+            <p style="margin-bottom: 15px;"><strong>Amount:</strong> $<span id="payAmount"></span></p>
+            <div class="form-group">
+                <label>Payment Method</label>
+                <select name="method" id="payMethod">
+                    <option value="check">Check</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cash">Cash</option>
+                    <option value="paypal">PayPal</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Reference Number</label>
+                <input type="text" name="reference" id="payReference" placeholder="e.g., Check #1234">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-success">Confirm Payment</button>
+                <button type="button" class="btn" style="background: #95a5a6;" onclick="closePayModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Pay Modal -->
+<div class="modal" id="bulkPayModal">
+    <div class="modal-content">
+        <h3>Pay Multiple Commissions</h3>
+        <form id="bulkPayForm" onsubmit="submitBulkPay(event)">
+            <p style="margin-bottom: 15px;"><strong id="bulkCount"></strong> commissions selected</p>
+            <div class="form-group">
+                <label>Payment Method</label>
+                <select name="method" id="bulkPayMethod">
+                    <option value="check">Check</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="cash">Cash</option>
+                    <option value="paypal">PayPal</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Reference Number</label>
+                <input type="text" name="reference" id="bulkPayReference" placeholder="e.g., Batch #001">
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn btn-success">Confirm Bulk Payment</button>
+                <button type="button" class="btn" style="background: #95a5a6;" onclick="closeBulkPayModal()">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleSelectAll() {
+    const checked = document.getElementById('selectAll').checked;
+    document.querySelectorAll('.commission-cb').forEach(cb => cb.checked = checked);
+    updateSelected();
+}
+
+function updateSelected() {
+    const selected = document.querySelectorAll('.commission-cb:checked').length;
+    document.getElementById('selectedCount').textContent = selected + ' selected';
+    document.getElementById('bulkPayBtn').disabled = selected === 0;
+}
+
+function openPayModal(id, amount) {
+    document.getElementById('payCommissionId').value = id;
+    document.getElementById('payAmount').textContent = amount.toFixed(2);
+    document.getElementById('payModal').classList.add('active');
+}
+
+function closePayModal() {
+    document.getElementById('payModal').classList.remove('active');
+}
+
+function submitPay(e) {
+    e.preventDefault();
+    const id = document.getElementById('payCommissionId').value;
+    const method = document.getElementById('payMethod').value;
+    const reference = document.getElementById('payReference').value;
+
+    fetch(`/admin/commissions/${id}/pay`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({method, reference})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function openBulkPayModal() {
+    const selected = document.querySelectorAll('.commission-cb:checked').length;
+    document.getElementById('bulkCount').textContent = selected;
+    document.getElementById('bulkPayModal').classList.add('active');
+}
+
+function closeBulkPayModal() {
+    document.getElementById('bulkPayModal').classList.remove('active');
+}
+
+function submitBulkPay(e) {
+    e.preventDefault();
+    const ids = Array.from(document.querySelectorAll('.commission-cb:checked')).map(cb => parseInt(cb.value));
+    const method = document.getElementById('bulkPayMethod').value;
+    const reference = document.getElementById('bulkPayReference').value;
+
+    fetch('/admin/commissions/pay-bulk', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ids, method, reference})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`${data.updated} commissions marked as paid.`);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% block title %}Campaigns - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+
+    .campaigns-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+    }
+
+    .campaign-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .campaign-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .campaign-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+    }
+
+    .campaign-name {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.active {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.inactive {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .campaign-description {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 15px;
+        line-height: 1.5;
+    }
+
+    .campaign-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        margin-bottom: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .campaign-stat {
+        text-align: center;
+    }
+
+    .campaign-stat-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .campaign-stat-label {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .campaign-meta {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 15px;
+    }
+
+    .campaign-code {
+        font-family: monospace;
+        background: #e8f4f8;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    .commission-info {
+        font-size: 12px;
+        color: #666;
+        padding: 10px;
+        background: #fff3cd;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+
+    .campaign-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .campaign-actions a {
+        flex: 1;
+        text-align: center;
+        padding: 8px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .btn-edit {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-view {
+        background: #ecf0f1;
+        color: #2c3e50;
+    }
+
+    .btn-edit:hover {
+        background: #2980b9;
+    }
+
+    .btn-view:hover {
+        background: #ddd;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+        grid-column: 1 / -1;
+    }
+
+    .goal-progress {
+        margin-top: 10px;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: #ecf0f1;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #27ae60, #2ecc71);
+        border-radius: 4px;
+        transition: width 0.3s;
+    }
+
+    .progress-text {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">Campaign Management</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
+        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.campaigns') }}" class="active">Campaigns</a>
+        <a href="{{ url_for('admin.reports') }}">Reports</a>
+        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+    </div>
+
+    <div class="header-row">
+        <h2>All Campaigns ({{ campaigns|length }})</h2>
+        <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success">+ Create Campaign</a>
+    </div>
+
+    <div class="campaigns-grid">
+        {% if campaigns %}
+        {% for campaign in campaigns %}
+        <div class="campaign-card">
+            <div class="campaign-header">
+                <h3 class="campaign-name">{{ campaign.name }}</h3>
+                <span class="status-badge {{ 'active' if campaign.is_active else 'inactive' }}">
+                    {{ 'Active' if campaign.is_active else 'Inactive' }}
+                </span>
+            </div>
+
+            {% if campaign.description %}
+            <p class="campaign-description">{{ campaign.description[:100] }}{{ '...' if campaign.description|length > 100 else '' }}</p>
+            {% endif %}
+
+            <div class="campaign-stats">
+                <div class="campaign-stat">
+                    <div class="campaign-stat-value">${{ "%.0f"|format((campaign.current_amount or 0) / 100) }}</div>
+                    <div class="campaign-stat-label">Raised</div>
+                </div>
+                <div class="campaign-stat">
+                    <div class="campaign-stat-value">{{ campaign.donation_count or 0 }}</div>
+                    <div class="campaign-stat-label">Donations</div>
+                </div>
+            </div>
+
+            {% if campaign.goal_amount %}
+            <div class="goal-progress">
+                {% set progress = ((campaign.current_amount or 0) / campaign.goal_amount * 100)|int %}
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ [progress, 100]|min }}%"></div>
+                </div>
+                <div class="progress-text">
+                    <span>{{ progress }}% of goal</span>
+                    <span>${{ "%.0f"|format(campaign.goal_amount / 100) }}</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="campaign-meta">
+                <strong>Code:</strong> <span class="campaign-code">{{ campaign.aff_code }}</span>
+                <br>
+                <strong>Created:</strong> {{ campaign.created_at.strftime('%m/%d/%Y') }}
+            </div>
+
+            {% if campaign.commission_override_type %}
+            <div class="commission-info">
+                <strong>Commission Override:</strong>
+                {% if campaign.commission_override_type == 'percentage' %}
+                {{ campaign.commission_override_rate }}%
+                {% else %}
+                ${{ "%.2f"|format(campaign.commission_override_rate) }} flat
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="campaign-actions">
+                <a href="{{ url_for('admin.edit_campaign', id=campaign.id) }}" class="btn-edit">Edit</a>
+                <a href="#" class="btn-view" onclick="copyLink('{{ campaign.aff_code }}')">Copy Link</a>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state card">
+            <h3>No Campaigns</h3>
+            <p>Create your first campaign to start fundraising.</p>
+            <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success" style="margin-top: 15px;">Create Campaign</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function copyLink(affCode) {
+    const baseUrl = window.location.origin;
+    const link = `${baseUrl}/d/${affCode}`;
+
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Campaign link copied to clipboard!');
+    }).catch(() => {
+        prompt('Copy this link:', link);
+    });
+}
+</script>
+{% endblock %}
