@@ -268,18 +268,31 @@
 
             <!-- Receipt Info -->
             <div class="detail-card sidebar-section">
-                <h3>Receipt</h3>
-                {% if donation.receipt_number %}
+                <h3>{{ t('nav.receipts') }}</h3>
+                {% if donation.receipt %}
                 <div class="detail-row">
-                    <div class="detail-label">Number</div>
-                    <div class="detail-value"><span class="stripe-id">{{ donation.receipt_number }}</span></div>
+                    <div class="detail-label">{{ t('receipt.receipt_number') }}</div>
+                    <div class="detail-value"><span class="stripe-id">{{ donation.receipt.receipt_number }}</span></div>
                 </div>
                 <div class="detail-row">
-                    <div class="detail-label">Sent</div>
-                    <div class="detail-value">{{ 'Yes' if donation.receipt_sent else 'No' }}</div>
+                    <div class="detail-label">{{ t('common.status') }}</div>
+                    <div class="detail-value">{{ t('common.completed') if donation.receipt_sent else t('common.pending') }}</div>
+                </div>
+                <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <a href="{{ url_for('admin.download_receipt', id=donation.receipt.id) }}" class="btn btn-primary" style="font-size: 13px; padding: 8px 12px;">
+                        Download PDF
+                    </a>
+                    <button onclick="resendReceipt({{ donation.receipt.id }})" class="btn" style="font-size: 13px; padding: 8px 12px; background: #6c757d;">
+                        Resend Email
+                    </button>
                 </div>
                 {% else %}
-                <p style="color: #999; font-size: 14px;">No receipt generated.</p>
+                <p style="color: #999; font-size: 14px; margin-bottom: 15px;">No receipt generated yet.</p>
+                {% if donation.status == 'succeeded' %}
+                <button onclick="sendReceipt({{ donation.id }})" class="btn btn-success" style="font-size: 13px; padding: 8px 12px;">
+                    Generate & Send Receipt
+                </button>
+                {% endif %}
                 {% endif %}
             </div>
 
@@ -314,4 +327,67 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function sendReceipt(donationId) {
+    if (!confirm('Generate and send receipt to {{ donation.donor.email if donation.donor else "donor" }}?')) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '{{ t("common.loading") }}';
+
+    fetch(`/admin/donations/${donationId}/send-receipt`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'Receipt sent successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to send receipt'));
+            btn.disabled = false;
+            btn.textContent = 'Generate & Send Receipt';
+        }
+    })
+    .catch(err => {
+        alert('Error sending receipt');
+        btn.disabled = false;
+        btn.textContent = 'Generate & Send Receipt';
+    });
+}
+
+function resendReceipt(receiptId) {
+    if (!confirm('Resend receipt to {{ donation.donor.email if donation.donor else "donor" }}?')) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '{{ t("common.loading") }}';
+
+    fetch(`/admin/receipts/${receiptId}/resend`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('Receipt sent successfully!');
+            btn.disabled = false;
+            btn.textContent = 'Resend Email';
+        } else {
+            alert('Error: ' + (data.error || 'Failed to send receipt'));
+            btn.disabled = false;
+            btn.textContent = 'Resend Email';
+        }
+    })
+    .catch(err => {
+        alert('Error sending receipt');
+        btn.disabled = false;
+        btn.textContent = 'Resend Email';
+    });
+}
+</script>
 {% endblock %}

@@ -596,6 +596,40 @@ def download_receipt(id):
     return redirect(url_for('admin.receipts'))
 
 
+@admin_bp.route('/donations/<int:id>/send-receipt', methods=['POST'])
+@admin_required
+def send_donation_receipt(id):
+    """Generate and send receipt for a donation."""
+    from ...services.receipt_service import create_receipt
+    from ...services.email_service import send_receipt_email
+
+    donation = Donation.query.get_or_404(id)
+    donor = Donor.query.get(donation.donor_id)
+
+    if not donor:
+        return jsonify({'error': 'Donor not found'}), 400
+
+    if donation.status != 'succeeded':
+        return jsonify({'error': 'Can only send receipts for successful donations'}), 400
+
+    # Check if receipt already exists
+    receipt = Receipt.query.filter_by(donation_id=donation.id).first()
+
+    if not receipt:
+        # Create new receipt
+        receipt = create_receipt(donation, donor)
+        if not receipt:
+            return jsonify({'error': 'Failed to create receipt'}), 500
+
+    # Send email
+    success = send_receipt_email(donor, donation, receipt)
+
+    if success:
+        return jsonify({'success': True, 'message': f'Receipt sent to {donor.email}'})
+    else:
+        return jsonify({'error': 'Failed to send email'}), 500
+
+
 # =============================================================================
 # DONATIONS MANAGEMENT
 # =============================================================================
