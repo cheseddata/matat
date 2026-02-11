@@ -180,25 +180,25 @@
 
     <!-- Filters -->
     <div class="filters">
-        <a href="{{ url_for('admin.donations', status='all') }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">All</a>
-        <a href="{{ url_for('admin.donations', status='succeeded') }}" class="filter-btn {{ 'active' if status_filter == 'succeeded' else '' }}">Succeeded</a>
-        <a href="{{ url_for('admin.donations', status='pending') }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">Pending</a>
-        <a href="{{ url_for('admin.donations', status='failed') }}" class="filter-btn {{ 'active' if status_filter == 'failed' else '' }}">Failed</a>
-        <a href="{{ url_for('admin.donations', status='refunded') }}" class="filter-btn {{ 'active' if status_filter == 'refunded' else '' }}">Refunded</a>
+        <a href="{{ url_for('admin.donations', status='all') }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">{{ t('common.all') }}</a>
+        <a href="{{ url_for('admin.donations', status='succeeded') }}" class="filter-btn {{ 'active' if status_filter == 'succeeded' else '' }}">{{ t('common.succeeded') }}</a>
+        <a href="{{ url_for('admin.donations', status='pending') }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">{{ t('common.pending') }}</a>
+        <a href="{{ url_for('admin.donations', status='failed') }}" class="filter-btn {{ 'active' if status_filter == 'failed' else '' }}">{{ t('common.failed') }}</a>
+        <a href="{{ url_for('admin.donations', status='refunded') }}" class="filter-btn {{ 'active' if status_filter == 'refunded' else '' }}">{{ t('common.refunded') }}</a>
     </div>
 
     {% if donations.items %}
     <table class="data-table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Donor</th>
-                <th>Amount</th>
-                <th>Type</th>
-                <th>Salesperson</th>
-                <th>Source</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{{ t('common.date') }}</th>
+                <th>{{ t('my_links.donor') }}</th>
+                <th>{{ t('common.amount') }}</th>
+                <th>{{ t('common.type') }}</th>
+                <th>{{ t('admin.salesperson_info') }}</th>
+                <th>{{ t('common.source') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('common.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -210,13 +210,13 @@
                     <strong>{{ donation.donor.full_name }}</strong>
                     <br><span style="font-size: 12px; color: #666;">{{ donation.donor.email }}</span>
                     {% else %}
-                    <span style="color: #999;">Unknown</span>
+                    <span style="color: #999;">{{ t('common.unknown') }}</span>
                     {% endif %}
                 </td>
                 <td>
                     <strong>${{ "%.2f"|format(donation.amount_dollars) }}</strong>
                     {% if donation.stripe_fee %}
-                    <br><span style="font-size: 11px; color: #999;">Fee: ${{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
+                    <br><span style="font-size: 11px; color: #999;">{{ t('common.fee') }}: ${{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
                     {% endif %}
                 </td>
                 <td>
@@ -234,7 +234,7 @@
                     <span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span>
                 </td>
                 <td>
-                    <a href="{{ url_for('admin.donation_detail', id=donation.id) }}" class="view-btn">View</a>
+                    <a href="{{ url_for('admin.donation_detail', id=donation.id) }}" class="view-btn">{{ t('common.view') }}</a>
                 </td>
             </tr>
             {% endfor %}
@@ -245,9 +245,9 @@
     {% if donations.pages > 1 %}
     <div class="pagination">
         {% if donations.has_prev %}
-        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.prev_num) }}">&laquo; Prev</a>
+        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.prev_num) }}">&laquo; {{ t('common.prev') }}</a>
         {% else %}
-        <span class="disabled">&laquo; Prev</span>
+        <span class="disabled">&laquo; {{ t('common.prev') }}</span>
         {% endif %}
 
         {% for page_num in donations.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
@@ -263,17 +263,17 @@
         {% endfor %}
 
         {% if donations.has_next %}
-        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.next_num) }}">Next &raquo;</a>
+        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.next_num) }}">{{ t('common.next') }} &raquo;</a>
         {% else %}
-        <span class="disabled">Next &raquo;</span>
+        <span class="disabled">{{ t('common.next') }} &raquo;</span>
         {% endif %}
     </div>
     {% endif %}
 
     {% else %}
     <div class="card empty-state">
-        <h3>No Donations</h3>
-        <p>No donations found with the selected filter.</p>
+        <h3>{{ t('admin.no_donations') }}</h3>
+        <p>{{ t('common.no_data') }}</p>
     </div>
     {% endif %}
 </div>

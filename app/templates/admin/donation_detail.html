@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Donation #{{ donation.id }} - Admin{% endblock %}
+{% block title %}{{ t('admin.donation_details') }} #{{ donation.id }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -147,74 +147,74 @@
 
 {% block content %}
 <div class="container">
-    <a href="{{ url_for('admin.donations') }}" class="back-link">&larr; Back to Donations</a>
+    <a href="{{ url_for('admin.donations') }}" class="back-link">&larr; {{ t('common.back_to') }} {{ t('nav.donations') }}</a>
 
-    <h1 style="margin-bottom: 25px;">Donation Details</h1>
+    <h1 style="margin-bottom: 25px;">{{ t('admin.donation_details') }}</h1>
 
     <div class="detail-grid">
         <!-- Main Details -->
         <div class="detail-card">
-            <h2>Donation #{{ donation.id }}</h2>
+            <h2>{{ t('my_commissions.donation') }} #{{ donation.id }}</h2>
 
             <div class="amount-large">${{ "%.2f"|format(donation.amount_dollars) }}</div>
             <span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span>
 
             <div style="margin-top: 25px;">
                 <div class="detail-row">
-                    <div class="detail-label">Created</div>
+                    <div class="detail-label">{{ t('common.created') }}</div>
                     <div class="detail-value">{{ donation.created_at.strftime('%B %d, %Y at %H:%M') }}</div>
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">Type</div>
+                    <div class="detail-label">{{ t('common.type') }}</div>
                     <div class="detail-value">{{ donation.donation_type|replace('_', ' ')|title }}</div>
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">Source</div>
-                    <div class="detail-value">{{ donation.source or 'Direct' }}</div>
+                    <div class="detail-label">{{ t('common.source') }}</div>
+                    <div class="detail-value">{{ donation.source or t('common.direct') }}</div>
                 </div>
 
                 {% if donation.stripe_fee %}
                 <div class="detail-row">
-                    <div class="detail-label">Stripe Fee</div>
+                    <div class="detail-label">{{ t('common.stripe_fee') }}</div>
                     <div class="detail-value">${{ "%.2f"|format(donation.stripe_fee_dollars) }}</div>
                 </div>
 
                 <div class="detail-row">
-                    <div class="detail-label">Net Amount</div>
+                    <div class="detail-label">{{ t('common.net_amount') }}</div>
                     <div class="detail-value">${{ "%.2f"|format(donation.amount_dollars - donation.stripe_fee_dollars) }}</div>
                 </div>
                 {% endif %}
 
                 {% if donation.status == 'refunded' and donation.refund_amount %}
                 <div class="detail-row">
-                    <div class="detail-label">Refund Amount</div>
+                    <div class="detail-label">{{ t('common.refund_amount') }}</div>
                     <div class="detail-value" style="color: #e74c3c;">${{ "%.2f"|format(donation.refund_amount / 100) }}</div>
                 </div>
                 {% endif %}
             </div>
 
             <!-- Donor Info -->
-            <h3 style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">Donor Information</h3>
+            <h3 style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">{{ t('receipt.donor_info') }}</h3>
             {% if donation.donor %}
             <div class="detail-row">
-                <div class="detail-label">Name</div>
+                <div class="detail-label">{{ t('common.name') }}</div>
                 <div class="detail-value">{{ donation.donor.full_name }}</div>
             </div>
             <div class="detail-row">
-                <div class="detail-label">Email</div>
+                <div class="detail-label">{{ t('common.email') }}</div>
                 <div class="detail-value">{{ donation.donor.email }}</div>
             </div>
             {% if donation.donor.phone %}
             <div class="detail-row">
-                <div class="detail-label">Phone</div>
+                <div class="detail-label">{{ t('common.phone') }}</div>
                 <div class="detail-value">{{ donation.donor.phone }}</div>
             </div>
             {% endif %}
             {% if donation.donor.address_line1 %}
             <div class="detail-row">
-                <div class="detail-label">Address</div>
+                <div class="detail-label">{{ t('receipt.address') }}</div>
                 <div class="detail-value">
                     {{ donation.donor.address_line1 }}<br>
                     {% if donation.donor.address_line2 %}{{ donation.donor.address_line2 }}<br>{% endif %}
@@ -224,18 +224,18 @@
             </div>
             {% endif %}
             {% else %}
-            <p style="color: #999;">Donor information not available.</p>
+            <p style="color: #999;">{{ t('common.no_data') }}</p>
             {% endif %}
 
             <!-- Salesperson Info -->
             {% if donation.salesperson %}
-            <h3 style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">Salesperson</h3>
+            <h3 style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">{{ t('admin.salesperson_info') }}</h3>
             <div class="detail-row">
-                <div class="detail-label">Name</div>
+                <div class="detail-label">{{ t('common.name') }}</div>
                 <div class="detail-value">{{ donation.salesperson.full_name }}</div>
             </div>
             <div class="detail-row">
-                <div class="detail-label">Ref Code</div>
+                <div class="detail-label">{{ t('admin.ref_code') }}</div>
                 <div class="detail-value"><span class="stripe-id">{{ donation.salesperson.ref_code }}</span></div>
             </div>
             {% endif %}
@@ -245,22 +245,22 @@
         <div>
             <!-- Stripe Info -->
             <div class="detail-card sidebar-section">
-                <h3>Stripe Information</h3>
+                <h3>{{ t('admin.stripe_info') }}</h3>
                 {% if donation.stripe_payment_intent_id %}
                 <div class="detail-row">
-                    <div class="detail-label">Payment Intent</div>
+                    <div class="detail-label">{{ t('admin.payment_intent') }}</div>
                     <div class="detail-value"><span class="stripe-id">{{ donation.stripe_payment_intent_id }}</span></div>
                 </div>
                 {% endif %}
                 {% if donation.stripe_charge_id %}
                 <div class="detail-row">
-                    <div class="detail-label">Charge ID</div>
+                    <div class="detail-label">{{ t('admin.charge_id') }}</div>
                     <div class="detail-value"><span class="stripe-id">{{ donation.stripe_charge_id }}</span></div>
                 </div>
                 {% endif %}
                 {% if donation.stripe_customer_id %}
                 <div class="detail-row">
-                    <div class="detail-label">Customer ID</div>
+                    <div class="detail-label">{{ t('admin.customer_id') }}</div>
                     <div class="detail-value"><span class="stripe-id">{{ donation.stripe_customer_id }}</span></div>
                 </div>
                 {% endif %}
@@ -280,17 +280,17 @@
                 </div>
                 <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
                     <a href="{{ url_for('admin.download_receipt', id=donation.receipt.id) }}" class="btn btn-primary" style="font-size: 13px; padding: 8px 12px;">
-                        Download PDF
+                        {{ t('receipt.download_pdf') }}
                     </a>
                     <button onclick="resendReceipt({{ donation.receipt.id }})" class="btn" style="font-size: 13px; padding: 8px 12px; background: #6c757d;">
-                        Resend Email
+                        {{ t('receipt.resend_email') }}
                     </button>
                 </div>
                 {% else %}
-                <p style="color: #999; font-size: 14px; margin-bottom: 15px;">No receipt generated yet.</p>
+                <p style="color: #999; font-size: 14px; margin-bottom: 15px;">{{ t('receipt.no_receipt') }}</p>
                 {% if donation.status == 'succeeded' %}
                 <button onclick="sendReceipt({{ donation.id }})" class="btn btn-success" style="font-size: 13px; padding: 8px 12px;">
-                    Generate & Send Receipt
+                    {{ t('receipt.generate_send') }}
                 </button>
                 {% endif %}
                 {% endif %}
@@ -298,28 +298,28 @@
 
             <!-- Timeline -->
             <div class="detail-card sidebar-section">
-                <h3>Timeline</h3>
+                <h3>{{ t('admin.timeline') }}</h3>
                 <div class="timeline">
                     <div class="timeline-item">
                         <div class="timeline-date">{{ donation.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
-                        <div class="timeline-text">Donation created</div>
+                        <div class="timeline-text">{{ t('admin.donation_created') }}</div>
                     </div>
                     {% if donation.status == 'succeeded' %}
                     <div class="timeline-item">
                         <div class="timeline-date">{{ donation.created_at.strftime('%m/%d/%Y %H:%M') }}</div>
-                        <div class="timeline-text">Payment succeeded</div>
+                        <div class="timeline-text">{{ t('admin.payment_succeeded') }}</div>
                     </div>
                     {% endif %}
                     {% if donation.receipt_sent %}
                     <div class="timeline-item">
                         <div class="timeline-date">{{ donation.created_at.strftime('%m/%d/%Y') }}</div>
-                        <div class="timeline-text">Receipt sent</div>
+                        <div class="timeline-text">{{ t('admin.receipt_sent') }}</div>
                     </div>
                     {% endif %}
                     {% if donation.status == 'refunded' %}
                     <div class="timeline-item">
                         <div class="timeline-date">—</div>
-                        <div class="timeline-text">Donation refunded</div>
+                        <div class="timeline-text">{{ t('admin.donation_refunded') }}</div>
                     </div>
                     {% endif %}
                 </div>
@@ -332,7 +332,7 @@
 {% block extra_js %}
 <script>
 function sendReceipt(donationId) {
-    if (!confirm('Generate and send receipt to {{ donation.donor.email if donation.donor else "donor" }}?')) return;
+    if (!confirm('{{ t("receipt.generate_send") }}?')) return;
 
     const btn = event.target;
     btn.disabled = true;
@@ -348,23 +348,23 @@ function sendReceipt(donationId) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert(data.message || 'Receipt sent successfully!');
+            alert(data.message || '{{ t("common.success") }}');
             location.reload();
         } else {
-            alert('Error: ' + (data.error || 'Failed to send receipt'));
+            alert('{{ t("common.error") }}: ' + (data.error || ''));
             btn.disabled = false;
-            btn.textContent = 'Generate & Send Receipt';
+            btn.textContent = '{{ t("receipt.generate_send") }}';
         }
     })
     .catch(err => {
-        alert('Error sending receipt');
+        alert('{{ t("common.error") }}');
         btn.disabled = false;
-        btn.textContent = 'Generate & Send Receipt';
+        btn.textContent = '{{ t("receipt.generate_send") }}';
     });
 }
 
 function resendReceipt(receiptId) {
-    if (!confirm('Resend receipt to {{ donation.donor.email if donation.donor else "donor" }}?')) return;
+    if (!confirm('{{ t("receipt.resend_email") }}?')) return;
 
     const btn = event.target;
     btn.disabled = true;
@@ -380,19 +380,19 @@ function resendReceipt(receiptId) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Receipt sent successfully!');
+            alert('{{ t("common.success") }}');
             btn.disabled = false;
-            btn.textContent = 'Resend Email';
+            btn.textContent = '{{ t("receipt.resend_email") }}';
         } else {
-            alert('Error: ' + (data.error || 'Failed to send receipt'));
+            alert('{{ t("common.error") }}: ' + (data.error || ''));
             btn.disabled = false;
-            btn.textContent = 'Resend Email';
+            btn.textContent = '{{ t("receipt.resend_email") }}';
         }
     })
     .catch(err => {
-        alert('Error sending receipt');
+        alert('{{ t("common.error") }}');
         btn.disabled = false;
-        btn.textContent = 'Resend Email';
+        btn.textContent = '{{ t("receipt.resend_email") }}';
     });
 }
 </script>
