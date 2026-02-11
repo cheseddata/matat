@@ -122,46 +122,46 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">Admin Dashboard</h1>
+    <h1 style="margin-bottom: 20px;">{{ t('admin.title') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
-        <a href="{{ url_for('admin.dashboard') }}" class="active">Dashboard</a>
-        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
-        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
-        <a href="{{ url_for('admin.donations') }}">Donations</a>
-        <a href="{{ url_for('admin.donors') }}">Donors</a>
-        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
-        <a href="{{ url_for('admin.reports') }}">Reports</a>
-        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
-        <a href="{{ url_for('admin.settings') }}">Settings</a>
+        <a href="{{ url_for('admin.dashboard') }}" class="active">{{ t('nav.dashboard') }}</a>
+        <a href="{{ url_for('admin.salespersons') }}">{{ t('nav.salespersons') }}</a>
+        <a href="{{ url_for('admin.commissions') }}">{{ t('nav.commissions') }}</a>
+        <a href="{{ url_for('admin.donations') }}">{{ t('nav.donations') }}</a>
+        <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
+        <a href="{{ url_for('admin.campaigns') }}">{{ t('nav.campaigns') }}</a>
+        <a href="{{ url_for('admin.reports') }}">{{ t('nav.reports') }}</a>
+        <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
+        <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
     </div>
 
     <!-- Stats Grid -->
     <div class="stats-grid">
         <div class="stat-card primary">
             <div class="stat-value">${{ "%.2f"|format(total_income) }}</div>
-            <div class="stat-label">Total Income</div>
+            <div class="stat-label">{{ t('admin.total_income') }}</div>
         </div>
         <div class="stat-card success">
             <div class="stat-value">${{ "%.2f"|format(this_month_income) }}</div>
-            <div class="stat-label">This Month</div>
+            <div class="stat-label">{{ t('dashboard.this_month') }}</div>
         </div>
         <div class="stat-card info">
             <div class="stat-value">${{ "%.2f"|format(today_income) }}</div>
-            <div class="stat-label">Today</div>
+            <div class="stat-label">{{ t('admin.today') }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ donation_count }}</div>
-            <div class="stat-label">Total Donations</div>
+            <div class="stat-label">{{ t('dashboard.total_donations') }}</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">{{ active_salespersons }}</div>
-            <div class="stat-label">Active Salespersons</div>
+            <div class="stat-label">{{ t('admin.active_salespersons') }}</div>
         </div>
         <div class="stat-card warning">
             <div class="stat-value">${{ "%.2f"|format(pending_commissions) }}</div>
-            <div class="stat-label">Pending Commissions</div>
+            <div class="stat-label">{{ t('dashboard.pending_commissions') }}</div>
         </div>
     </div>
 
@@ -169,19 +169,19 @@
         <!-- Recent Donations -->
         <div class="card">
             <div class="section-header">
-                <h2>Recent Donations</h2>
-                <a href="{{ url_for('admin.donations') }}">View All →</a>
+                <h2>{{ t('dashboard.recent_donations') }}</h2>
+                <a href="{{ url_for('admin.donations') }}">{{ t('common.view') }} →</a>
             </div>
 
             {% if recent_donations %}
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>Date</th>
-                        <th>Donor</th>
-                        <th>Amount</th>
-                        <th>Salesperson</th>
-                        <th>Status</th>
+                        <th>{{ t('common.date') }}</th>
+                        <th>{{ t('my_links.donor') }}</th>
+                        <th>{{ t('common.amount') }}</th>
+                        <th>{{ t('nav.salespersons') }}</th>
+                        <th>{{ t('common.status') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -197,15 +197,15 @@
                 </tbody>
             </table>
             {% else %}
-            <p style="text-align: center; color: #666; padding: 30px;">No donations yet.</p>
+            <p style="text-align: center; color: #666; padding: 30px;">{{ t('dashboard.no_donations') }}</p>
             {% endif %}
         </div>
 
         <!-- Top Salespersons -->
         <div class="card">
             <div class="section-header">
-                <h2>Top Salespersons</h2>
-                <span style="font-size: 12px; color: #666;">This Month</span>
+                <h2>{{ t('admin.top_salespersons') }}</h2>
+                <span style="font-size: 12px; color: #666;">{{ t('dashboard.this_month') }}</span>
             </div>
 
             {% if top_salespersons %}

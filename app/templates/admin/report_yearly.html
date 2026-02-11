@@ -224,15 +224,15 @@
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
-        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
-        <a href="{{ url_for('admin.salespersons') }}">Salespersons</a>
-        <a href="{{ url_for('admin.commissions') }}">Commissions</a>
-        <a href="{{ url_for('admin.donations') }}">Donations</a>
-        <a href="{{ url_for('admin.donors') }}">Donors</a>
-        <a href="{{ url_for('admin.campaigns') }}">Campaigns</a>
-        <a href="{{ url_for('admin.reports') }}" class="active">Reports</a>
-        <a href="{{ url_for('admin.receipts') }}">Receipts</a>
-        <a href="{{ url_for('admin.settings') }}">Settings</a>
+        <a href="{{ url_for('admin.dashboard') }}">{{ t('nav.dashboard') }}</a>
+        <a href="{{ url_for('admin.salespersons') }}">{{ t('nav.salespersons') }}</a>
+        <a href="{{ url_for('admin.commissions') }}">{{ t('nav.commissions') }}</a>
+        <a href="{{ url_for('admin.donations') }}">{{ t('nav.donations') }}</a>
+        <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
+        <a href="{{ url_for('admin.campaigns') }}">{{ t('nav.campaigns') }}</a>
+        <a href="{{ url_for('admin.reports') }}" class="active">{{ t('nav.reports') }}</a>
+        <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
+        <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
     </div>
 
     <!-- Report Header -->
@@ -297,7 +297,7 @@
                 <thead>
                     <tr>
                         <th>Month</th>
-                        <th>Donations</th>
+                        <th>{{ t('nav.donations') }}</th>
                         <th>Amount</th>
                     </tr>
                 </thead>
