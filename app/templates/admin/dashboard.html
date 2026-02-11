@@ -222,27 +222,27 @@
             </div>
             {% endfor %}
             {% else %}
-            <p style="text-align: center; color: #666; padding: 30px;">No data for this month.</p>
+            <p style="text-align: center; color: #666; padding: 30px;">{{ t('common.no_data') }}</p>
             {% endif %}
         </div>
     </div>
 
-    <!-- Quick Stats -->
+    <!-- Quick Actions -->
     <div class="card" style="margin-top: 20px;">
-        <h2>Quick Actions</h2>
+        <h2>{{ t('dashboard.quick_actions') }}</h2>
         <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 15px;">
             <a href="{{ url_for('salesperson.phone_entry') }}" class="btn btn-primary" style="background: #27ae60;">
-                💳 Process Donation
+                {{ t('admin.process_donation') }}
             </a>
             <a href="{{ url_for('salesperson.send_link') }}" class="btn" style="background: #3498db;">
-                📧 Send Donation Link
+                {{ t('admin.send_donation_link') }}
             </a>
-            <a href="{{ url_for('admin.create_salesperson') }}" class="btn">+ Add Salesperson</a>
-            <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success">+ Create Campaign</a>
+            <a href="{{ url_for('admin.create_salesperson') }}" class="btn">+ {{ t('admin.add_salesperson') }}</a>
+            <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success">+ {{ t('admin.create_campaign') }}</a>
             <a href="{{ url_for('admin.commissions', status='pending') }}" class="btn" style="background: #f39c12;">
-                Pay Commissions (${{ "%.2f"|format(pending_commissions) }})
+                {{ t('admin.pay_commissions') }} (${{ "%.2f"|format(pending_commissions) }})
             </a>
-            <a href="{{ url_for('admin.report_daily') }}" class="btn" style="background: #9b59b6;">Today's Report</a>
+            <a href="{{ url_for('admin.report_daily') }}" class="btn" style="background: #9b59b6;">{{ t('admin.todays_report') }}</a>
         </div>
     </div>
 </div>

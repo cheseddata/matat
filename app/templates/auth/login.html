@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% block title %}Login - Matat Mordechai{% endblock %}
+{% block title %}{{ t('auth.login') }} - Matat Mordechai{% endblock %}
 
 {% block content %}
 <div style="max-width: 400px; margin: 50px auto;">
     <div class="card">
-        <h2>Login</h2>
+        <h2>{{ t('auth.login') }}</h2>
         <form method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
-                <label for="username">Username</label>
+                <label for="username">{{ t('auth.username') }}</label>
                 <input type="text" id="username" name="username" required autofocus>
             </div>
             <div class="form-group">
-                <label for="password">Password</label>
+                <label for="password">{{ t('auth.password') }}</label>
                 <input type="password" id="password" name="password" required>
             </div>
-            <button type="submit" class="btn">Login</button>
+            <button type="submit" class="btn">{{ t('auth.login_btn') }}</button>
         </form>
     </div>
 </div>
