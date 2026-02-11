@@ -91,22 +91,9 @@
         border-color: #3498db;
     }
 
+    /* Stripe card element - keep it simple */
     #payment-element {
-        border: 1px solid #ddd;
-        padding: 15px;
-        border-radius: 8px;
-        background: white;
-        margin-bottom: 15px;
-        min-height: 40px;
-    }
-
-    #payment-element.StripeElement--focus {
-        border-color: #3498db;
-        box-shadow: 0 0 0 1px #3498db;
-    }
-
-    #payment-element.StripeElement--invalid {
-        border-color: #fa755a;
+        min-height: 44px;
     }
 
     #payment-errors {
@@ -219,8 +206,11 @@
             <div class="form-section" style="border: 2px solid #3498db;">
                 <h3 style="color: #3498db;">2. {{ t('phone_entry.payment_details') }}</h3>
                 <p style="color: #666; margin-bottom: 15px;">{{ t('phone_entry.enter_card') }}</p>
-                <div id="payment-element"></div>
-                <div id="payment-errors" role="alert"></div>
+                <div id="card-container" style="background: #fff; border: 2px solid #ccc; border-radius: 8px; padding: 20px; min-height: 60px;">
+                    <div id="payment-element" style="min-height: 44px;"></div>
+                </div>
+                <div id="payment-errors" role="alert" style="color: #e74c3c; margin-top: 10px; font-size: 14px;"></div>
+                <div id="stripe-debug" style="font-size: 11px; color: #999; margin-top: 5px;"></div>
             </div>
 
             <!-- STEP 3: Donor Info (can fill this after getting the card) -->
@@ -335,42 +325,92 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     });
 });
 
-// Stripe setup
+// Stripe setup with debug output
 const stripeKey = '{{ stripe_publishable_key }}';
-console.log('Stripe key:', stripeKey ? 'Present' : 'MISSING');
+const errorDisplay = document.getElementById('payment-errors');
+const debugDisplay = document.getElementById('stripe-debug');
 
-if (!stripeKey) {
-    document.getElementById('payment-errors').textContent = 'Stripe is not configured. Please set up Stripe keys in Settings.';
+function debug(msg) {
+    console.log(msg);
+    if (debugDisplay) {
+        debugDisplay.innerHTML += msg + '<br>';
+    }
 }
 
-const stripe = Stripe(stripeKey);
-const elements = stripe.elements({ locale: 'en' });
+debug('1. Starting Stripe initialization...');
+debug('2. Stripe key: ' + (stripeKey ? stripeKey.substring(0, 20) + '...' : 'MISSING!'));
 
-// Use Card Element for simpler card input - always in English
-const cardElement = elements.create('card', {
-    style: {
-        base: {
-            fontSize: '16px',
-            color: '#32325d',
-            fontFamily: {% if is_rtl %}'Assistant', {% endif %}'-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-            '::placeholder': { color: '#aab7c4' }
-        },
-        invalid: {
-            color: '#fa755a',
-            iconColor: '#fa755a'
+if (!stripeKey) {
+    errorDisplay.textContent = 'ERROR: Stripe is not configured. Please set up Stripe keys in Settings.';
+} else {
+    try {
+        debug('3. Creating Stripe instance...');
+        const stripe = Stripe(stripeKey);
+        debug('4. Stripe instance created');
+
+        debug('5. Creating elements...');
+        const elements = stripe.elements({ locale: 'en' });
+        debug('6. Elements created');
+
+        debug('7. Creating card element...');
+        const cardElement = elements.create('card', {
+            style: {
+                base: {
+                    fontSize: '18px',
+                    color: '#32325d',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    lineHeight: '28px',
+                    '::placeholder': { color: '#aab7c4' }
+                },
+                invalid: {
+                    color: '#fa755a',
+                    iconColor: '#fa755a'
+                }
+            }
+        });
+        debug('8. Card element created');
+
+        const paymentEl = document.getElementById('payment-element');
+        debug('9. Payment element found: ' + (paymentEl ? 'YES' : 'NO'));
+
+        if (paymentEl) {
+            debug('10. Mounting card element...');
+            cardElement.mount('#payment-element');
+            debug('11. Mount called');
+        } else {
+            errorDisplay.textContent = 'Error: Payment element div not found';
         }
-    }
-});
-cardElement.mount('#payment-element');
 
-cardElement.on('change', function(event) {
-    const displayError = document.getElementById('payment-errors');
-    if (event.error) {
-        displayError.textContent = event.error.message;
-    } else {
-        displayError.textContent = '';
+        cardElement.on('ready', function() {
+            debug('12. Card element READY - you can now enter card details');
+            debugDisplay.style.color = '#27ae60';
+        });
+
+        cardElement.on('change', function(event) {
+            if (event.error) {
+                errorDisplay.textContent = event.error.message;
+            } else {
+                errorDisplay.textContent = '';
+            }
+            if (event.complete) {
+                debug('Card info complete!');
+            }
+        });
+
+        cardElement.on('focus', function() {
+            debug('Card element focused');
+        });
+
+        // Store globally for form submission
+        window.cardElement = cardElement;
+        window.stripe = stripe;
+
+    } catch (err) {
+        debug('ERROR: ' + err.message);
+        errorDisplay.textContent = 'Error initializing Stripe: ' + err.message;
+        console.error('Stripe init error:', err);
     }
-});
+}
 
 // Amount display
 document.getElementById('amount').addEventListener('input', function() {
@@ -432,9 +472,9 @@ document.getElementById('payment-form').addEventListener('submit', async functio
         }
 
         // Confirm payment with card element
-        const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+        const { error, paymentIntent } = await window.stripe.confirmCardPayment(data.clientSecret, {
             payment_method: {
-                card: cardElement,
+                card: window.cardElement,
                 billing_details: {
                     name: document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value,
                     email: document.getElementById('email').value,

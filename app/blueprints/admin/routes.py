@@ -554,25 +554,32 @@ def resend_receipt(id):
     """Resend receipt email."""
     from ...services.email_service import send_receipt_email
     from ...services.receipt_service import regenerate_receipt_pdf
+    import traceback
 
-    receipt = Receipt.query.get_or_404(id)
-    donation = Donation.query.get(receipt.donation_id)
-    donor = Donor.query.get(receipt.donor_id)
+    try:
+        receipt = Receipt.query.get_or_404(id)
+        donation = Donation.query.get(receipt.donation_id)
+        donor = Donor.query.get(receipt.donor_id)
 
-    if not donation or not donor:
-        return jsonify({'error': 'Donation or donor not found'}), 400
+        if not donation or not donor:
+            return jsonify({'error': 'Donation or donor not found'}), 400
 
-    # Regenerate PDF if needed
-    if not receipt.pdf_path:
-        regenerate_receipt_pdf(receipt)
+        # Regenerate PDF if needed
+        if not receipt.pdf_path:
+            regenerate_receipt_pdf(receipt)
 
-    # Send email
-    success = send_receipt_email(donor, donation, receipt)
+        # Send email
+        success = send_receipt_email(donor, donation, receipt)
 
-    if success:
-        return jsonify({'success': True})
-    else:
-        return jsonify({'error': 'Failed to send email'}), 500
+        if success:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'error': 'Email send failed - check email configuration'}), 500
+
+    except Exception as e:
+        print(f"Error in resend_receipt: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 @admin_bp.route('/receipts/<int:id>/download')
@@ -602,32 +609,39 @@ def send_donation_receipt(id):
     """Generate and send receipt for a donation."""
     from ...services.receipt_service import create_receipt
     from ...services.email_service import send_receipt_email
+    import traceback
 
-    donation = Donation.query.get_or_404(id)
-    donor = Donor.query.get(donation.donor_id)
+    try:
+        donation = Donation.query.get_or_404(id)
+        donor = Donor.query.get(donation.donor_id)
 
-    if not donor:
-        return jsonify({'error': 'Donor not found'}), 400
+        if not donor:
+            return jsonify({'error': 'Donor not found'}), 400
 
-    if donation.status != 'succeeded':
-        return jsonify({'error': 'Can only send receipts for successful donations'}), 400
+        if donation.status != 'succeeded':
+            return jsonify({'error': 'Can only send receipts for successful donations'}), 400
 
-    # Check if receipt already exists
-    receipt = Receipt.query.filter_by(donation_id=donation.id).first()
+        # Check if receipt already exists
+        receipt = Receipt.query.filter_by(donation_id=donation.id).first()
 
-    if not receipt:
-        # Create new receipt
-        receipt = create_receipt(donation, donor)
         if not receipt:
-            return jsonify({'error': 'Failed to create receipt'}), 500
+            # Create new receipt
+            receipt = create_receipt(donation, donor)
+            if not receipt:
+                return jsonify({'error': 'Failed to create receipt'}), 500
 
-    # Send email
-    success = send_receipt_email(donor, donation, receipt)
+        # Send email
+        success = send_receipt_email(donor, donation, receipt)
 
-    if success:
-        return jsonify({'success': True, 'message': f'Receipt sent to {donor.email}'})
-    else:
-        return jsonify({'error': 'Failed to send email'}), 500
+        if success:
+            return jsonify({'success': True, 'message': f'Receipt sent to {donor.email}'})
+        else:
+            return jsonify({'error': 'Email send failed - check email configuration'}), 500
+
+    except Exception as e:
+        print(f"Error in send_donation_receipt: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 
 # =============================================================================
