@@ -233,22 +233,35 @@
 {% block extra_js %}
 <script>
 function resendReceipt(id) {
-    if (!confirm('Resend this receipt to the donor?')) return;
+    if (!confirm('{{ t("receipt.resend_email") }}?')) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = '{{ t("common.loading") }}';
 
     fetch(`/admin/receipts/${id}/resend`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'}
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
     })
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Receipt sent successfully!');
+            alert('{{ t("common.success") }}');
             location.reload();
         } else {
-            alert('Error: ' + data.error);
+            alert('{{ t("common.error") }}: ' + (data.error || ''));
+            btn.disabled = false;
+            btn.textContent = '{{ t("common.resend") }}';
         }
     })
-    .catch(err => alert('Error sending receipt'));
+    .catch(err => {
+        alert('{{ t("common.error") }}');
+        btn.disabled = false;
+        btn.textContent = '{{ t("common.resend") }}';
+    });
 }
 </script>
 {% endblock %}
