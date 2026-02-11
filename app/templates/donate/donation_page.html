@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{% if lang == 'he' %}תרומה{% else %}Donate{% endif %} - Matat Mordechai{% endblock %}
+{% block title %}{{ t('donate.title') }} - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -168,7 +168,7 @@
 
     <div class="card">
         <h1 style="text-align: center; margin-bottom: 25px;">
-            {% if lang == 'he' %}תרומה למתת מרדכי{% else %}Donate to Matat Mordechai{% endif %}
+            {{ t('donate.page_title') }}
         </h1>
 
         {% if campaign %}
@@ -180,7 +180,7 @@
 
         {% if salesperson %}
         <p style="color: #666; margin-bottom: 20px; text-align: center;">
-            {% if lang == 'he' %}הופנה על ידי: {{ salesperson.full_name }}{% else %}Referred by: {{ salesperson.full_name }}{% endif %}
+            {{ t('donate.referred_by') }}: {{ salesperson.full_name }}
         </p>
         {% endif %}
 
@@ -188,25 +188,21 @@
             <!-- Step 1: Donation Type -->
             <div class="donation-type-tabs">
                 <button type="button" id="onetime-tab" class="active" data-type="one_time">
-                    {% if lang == 'he' %}תרומה חד-פעמית{% else %}One-Time{% endif %}
+                    {{ t('donate.one_time') }}
                 </button>
                 <button type="button" id="monthly-tab" data-type="recurring">
-                    {% if lang == 'he' %}תרומה חודשית{% else %}Monthly{% endif %}
+                    {{ t('donate.monthly') }}
                 </button>
             </div>
 
             <div class="recurring-info" id="recurring-info">
-                {% if lang == 'he' %}
-                כרטיס האשראי שלך יחויב באופן אוטומטי מדי חודש. ניתן לבטל בכל עת.
-                {% else %}
-                Your card will be automatically charged each month. You can cancel anytime.
-                {% endif %}
+                {{ t('donate.recurring_info') }}
             </div>
 
             <!-- Step 2: Amount -->
             <div class="section-header">
                 <span class="section-number">1</span>
-                <h3>{% if lang == 'he' %}סכום התרומה{% else %}Donation Amount{% endif %}</h3>
+                <h3>{{ t('donate.donation_amount') }}</h3>
             </div>
 
             <div class="amount-buttons">
@@ -221,7 +217,7 @@
                 <span style="font-size: 28px; font-weight: bold;">$</span>
                 <input type="number" id="amount" name="amount" min="1" step="0.01"
                        value="{{ preset_amount or '' }}"
-                       placeholder="{% if lang == 'he' %}סכום אחר{% else %}Other{% endif %}" required>
+                       placeholder="{{ t('donate.other') }}" required>
             </div>
 
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
@@ -229,64 +225,64 @@
             <!-- Step 3: Your Information -->
             <div class="section-header">
                 <span class="section-number">2</span>
-                <h3>{% if lang == 'he' %}פרטים אישיים{% else %}Your Information{% endif %}</h3>
+                <h3>{{ t('donate.donor_info') }}</h3>
             </div>
 
             <div class="donor-info">
                 <div class="form-group">
-                    <label for="first_name">{% if lang == 'he' %}שם פרטי{% else %}First Name{% endif %} *</label>
+                    <label for="first_name">{{ t('phone_entry.first_name') }} *</label>
                     <input type="text" id="first_name" name="first_name" required
                            value="{{ donor_name.split()[0] if donor_name else '' }}">
                 </div>
                 <div class="form-group">
-                    <label for="last_name">{% if lang == 'he' %}שם משפחה{% else %}Last Name{% endif %} *</label>
+                    <label for="last_name">{{ t('phone_entry.last_name') }} *</label>
                     <input type="text" id="last_name" name="last_name" required
                            value="{{ donor_name.split()[-1] if donor_name and ' ' in donor_name else '' }}">
                 </div>
                 <div class="form-group">
-                    <label for="email">{% if lang == 'he' %}דוא"ל{% else %}Email{% endif %} *</label>
+                    <label for="email">{{ t('common.email') }} *</label>
                     <input type="email" id="email" name="email" required value="{{ donor_email }}">
                 </div>
                 <div class="form-group">
-                    <label for="phone">{% if lang == 'he' %}טלפון{% else %}Phone{% endif %}</label>
-                    <input type="tel" id="phone" name="phone" placeholder="{% if lang == 'he' %}(אופציונלי){% else %}(Optional){% endif %}">
+                    <label for="phone">{{ t('common.phone') }}</label>
+                    <input type="tel" id="phone" name="phone" placeholder="({{ t('donate.optional') }})">
                 </div>
                 <div class="form-group full-width">
-                    <label for="address_line1">{% if lang == 'he' %}כתובת{% else %}Address{% endif %} *</label>
+                    <label for="address_line1">{{ t('phone_entry.address') }} *</label>
                     <input type="text" id="address_line1" name="address_line1" required value="{{ donor_address }}">
                 </div>
                 <div class="form-group">
-                    <label for="city">{% if lang == 'he' %}עיר{% else %}City{% endif %} *</label>
+                    <label for="city">{{ t('phone_entry.city') }} *</label>
                     <input type="text" id="city" name="city" required>
                 </div>
                 <div class="form-group">
-                    <label for="state">{% if lang == 'he' %}מדינה/מחוז{% else %}State{% endif %} *</label>
+                    <label for="state">{{ t('phone_entry.state') }} *</label>
                     <input type="text" id="state" name="state" required>
                 </div>
                 <div class="form-group">
-                    <label for="zip">{% if lang == 'he' %}מיקוד{% else %}ZIP Code{% endif %} *</label>
+                    <label for="zip">{{ t('phone_entry.zip') }} *</label>
                     <input type="text" id="zip" name="zip" required>
                 </div>
                 <div class="form-group">
-                    <label for="country">{% if lang == 'he' %}ארץ{% else %}Country{% endif %}</label>
+                    <label for="country">{{ t('common.country') }}</label>
                     <select id="country" name="country">
-                        <option value="US" selected>United States</option>
-                        <option value="IL">Israel</option>
-                        <option value="CA">Canada</option>
-                        <option value="GB">United Kingdom</option>
-                        <option value="AU">Australia</option>
-                        <option value="FR">France</option>
-                        <option value="DE">Germany</option>
+                        <option value="US" selected>{{ t('countries.US') }}</option>
+                        <option value="IL">{{ t('countries.IL') }}</option>
+                        <option value="CA">{{ t('countries.CA') }}</option>
+                        <option value="GB">{{ t('countries.GB') }}</option>
+                        <option value="AU">{{ t('countries.AU') }}</option>
+                        <option value="FR">{{ t('countries.FR') }}</option>
+                        <option value="DE">{{ t('countries.DE') }}</option>
                     </select>
                 </div>
             </div>
 
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
 
-            <!-- Step 4: Payment - Always in English -->
+            <!-- Step 4: Payment -->
             <div class="section-header">
                 <span class="section-number">3</span>
-                <h3>Payment Details</h3>
+                <h3>{{ t('donate.payment_details') }}</h3>
             </div>
 
             <div id="payment-element"></div>
@@ -300,11 +296,11 @@
             <input type="hidden" id="lang" value="{{ lang }}">
 
             <button type="submit" class="btn" id="submit-btn">
-                {% if lang == 'he' %}תרום עכשיו{% else %}Donate Now{% endif %}
+                {{ t('donate.donate_btn') }}
             </button>
 
             <div class="secure-badge">
-                🔒 {% if lang == 'he' %}תשלום מאובטח על ידי Stripe{% else %}Secure payment powered by Stripe{% endif %}
+                🔒 {{ t('donate.secure_payment') }}
             </div>
         </form>
     </div>
@@ -319,7 +315,7 @@ const stripeKey = '{{ stripe_publishable_key }}';
 console.log('Stripe key present:', stripeKey ? 'Yes' : 'NO - MISSING!');
 
 if (!stripeKey) {
-    document.getElementById('payment-errors').textContent = 'Payment system not configured. Please contact support.';
+    document.getElementById('payment-errors').textContent = '{{ t("donate.payment_not_configured") }}';
 }
 
 const stripe = Stripe(stripeKey);
@@ -368,13 +364,13 @@ function setDonationType(type) {
         monthlyTab.classList.add('active');
         recurringInfo.classList.add('show');
         document.getElementById('submit-btn').textContent =
-            '{{ "תרום חודשי" if lang == "he" else "Donate Monthly" }}';
+            '{{ t("donate.donate_monthly") }}';
     } else {
         monthlyTab.classList.remove('active');
         onetimeTab.classList.add('active');
         recurringInfo.classList.remove('show');
         document.getElementById('submit-btn').textContent =
-            '{{ "תרום עכשיו" if lang == "he" else "Donate Now" }}';
+            '{{ t("donate.donate_btn") }}';
     }
 }
 
@@ -420,13 +416,13 @@ document.getElementById('donation-form').addEventListener('submit', async functi
     const errorDisplay = document.getElementById('payment-errors');
 
     if (!amount || parseFloat(amount) <= 0) {
-        errorDisplay.textContent = '{{ "נא להזין סכום תקין" if lang == "he" else "Please enter a valid donation amount" }}';
+        errorDisplay.textContent = '{{ t("donate.enter_valid_amount") }}';
         return;
     }
 
     form.classList.add('processing');
     submitBtn.disabled = true;
-    submitBtn.textContent = '{{ "מעבד..." if lang == "he" else "Processing..." }}';
+    submitBtn.textContent = '{{ t("donate.processing") }}';
     errorDisplay.textContent = '';
 
     try {
@@ -494,8 +490,8 @@ document.getElementById('donation-form').addEventListener('submit', async functi
         form.classList.remove('processing');
         submitBtn.disabled = false;
         submitBtn.textContent = donationType === 'recurring'
-            ? '{{ "תרום חודשי" if lang == "he" else "Donate Monthly" }}'
-            : '{{ "תרום עכשיו" if lang == "he" else "Donate Now" }}';
+            ? '{{ t("donate.donate_monthly") }}'
+            : '{{ t("donate.donate_btn") }}';
     }
 });
 </script>

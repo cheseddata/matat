@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Donors - Admin - Matat Mordechai{% endblock %}
+{% block title %}{{ t('nav.donors') }} - Admin - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -194,7 +194,7 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">Donor Management</h1>
+    <h1 style="margin-bottom: 20px;">{{ t('nav.donors') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
@@ -213,15 +213,15 @@
     <div class="stats-row">
         <div class="stat-badge">
             <div class="count">{{ total_donors }}</div>
-            <div class="label">Total Donors</div>
+            <div class="label">{{ t('common.total') }} {{ t('nav.donors') }}</div>
         </div>
         <div class="stat-badge">
             <div class="count">{{ real_donors }}</div>
-            <div class="label">Real Donors</div>
+            <div class="label">{{ t('admin.real_donor') }}</div>
         </div>
         <div class="stat-badge">
             <div class="count">{{ test_donors }}</div>
-            <div class="label">Test Donors</div>
+            <div class="label">{{ t('admin.test_donor') }}</div>
         </div>
     </div>
 
@@ -229,27 +229,27 @@
     <div class="header-row">
         <form class="search-box" method="GET">
             <input type="hidden" name="type" value="{{ filter_type }}">
-            <input type="text" name="q" placeholder="Search by name, email, phone..." value="{{ search }}">
-            <button type="submit">Search</button>
+            <input type="text" name="q" placeholder="{{ t('common.search') }}..." value="{{ search }}">
+            <button type="submit">{{ t('common.search') }}</button>
         </form>
     </div>
 
     <div class="filter-tabs">
-        <a href="{{ url_for('admin.donors', q=search, type='all') }}" class="{{ 'active' if filter_type == 'all' else '' }}">All ({{ total_donors }})</a>
-        <a href="{{ url_for('admin.donors', q=search, type='real') }}" class="{{ 'active' if filter_type == 'real' else '' }}">Real ({{ real_donors }})</a>
-        <a href="{{ url_for('admin.donors', q=search, type='test') }}" class="{{ 'active' if filter_type == 'test' else '' }}">Test ({{ test_donors }})</a>
+        <a href="{{ url_for('admin.donors', q=search, type='all') }}" class="{{ 'active' if filter_type == 'all' else '' }}">{{ t('common.all') }} ({{ total_donors }})</a>
+        <a href="{{ url_for('admin.donors', q=search, type='real') }}" class="{{ 'active' if filter_type == 'real' else '' }}">{{ t('common.real') }} ({{ real_donors }})</a>
+        <a href="{{ url_for('admin.donors', q=search, type='test') }}" class="{{ 'active' if filter_type == 'test' else '' }}">{{ t('common.test') }} ({{ test_donors }})</a>
     </div>
 
     {% if donors.items %}
     <table class="data-table">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Location</th>
-                <th>Type</th>
-                <th>Created</th>
-                <th>Actions</th>
+                <th>{{ t('common.name') }}</th>
+                <th>{{ t('common.email') }}</th>
+                <th>{{ t('common.country') }}</th>
+                <th>{{ t('common.type') }}</th>
+                <th>{{ t('common.created') }}</th>
+                <th>{{ t('common.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -273,13 +273,13 @@
                 </td>
                 <td>
                     <span class="status-badge {{ 'test' if donor.test else 'real' }}">
-                        {{ 'Test' if donor.test else 'Real' }}
+                        {{ t('common.test') if donor.test else t('common.real') }}
                     </span>
                 </td>
                 <td>{{ donor.created_at.strftime('%Y-%m-%d') }}</td>
                 <td>
-                    <a href="{{ url_for('admin.donor_detail', id=donor.id) }}" class="action-btn view">View</a>
-                    <button class="action-btn toggle" onclick="toggleTest({{ donor.id }})">Toggle Test</button>
+                    <a href="{{ url_for('admin.donor_detail', id=donor.id) }}" class="action-btn view">{{ t('common.view') }}</a>
+                    <button class="action-btn toggle" onclick="toggleTest({{ donor.id }})">{{ t('common.toggle') }}</button>
                 </td>
             </tr>
             {% endfor %}
@@ -290,7 +290,7 @@
     {% if donors.pages > 1 %}
     <div class="pagination">
         {% if donors.has_prev %}
-        <a href="{{ url_for('admin.donors', q=search, type=filter_type, page=donors.prev_num) }}">&laquo; Prev</a>
+        <a href="{{ url_for('admin.donors', q=search, type=filter_type, page=donors.prev_num) }}">&laquo; {{ t('common.prev') }}</a>
         {% endif %}
 
         {% for p in donors.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
@@ -306,7 +306,7 @@
         {% endfor %}
 
         {% if donors.has_next %}
-        <a href="{{ url_for('admin.donors', q=search, type=filter_type, page=donors.next_num) }}">Next &raquo;</a>
+        <a href="{{ url_for('admin.donors', q=search, type=filter_type, page=donors.next_num) }}">{{ t('common.next') }} &raquo;</a>
         {% endif %}
     </div>
     {% endif %}
@@ -314,11 +314,7 @@
     {% else %}
     <div class="card" style="text-align: center; padding: 40px;">
         <p style="color: #666;">
-            {% if search %}
-            No donors found matching "{{ search }}".
-            {% else %}
-            No donors yet.
-            {% endif %}
+            {{ t('common.no_data') }}
         </p>
     </div>
     {% endif %}

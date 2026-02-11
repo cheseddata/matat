@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Commissions - Admin - Matat Mordechai{% endblock %}
+{% block title %}{{ t('nav.commissions') }} - Admin - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -179,7 +179,7 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">Commission Management</h1>
+    <h1 style="margin-bottom: 20px;">{{ t('nav.commissions') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
@@ -198,28 +198,28 @@
     <div class="stats-row">
         <div class="stat-box pending">
             <div class="stat-value">${{ "%.2f"|format(total_pending) }}</div>
-            <div class="stat-label">Pending</div>
+            <div class="stat-label">{{ t('common.pending') }}</div>
         </div>
         <div class="stat-box paid">
             <div class="stat-value">${{ "%.2f"|format(total_paid) }}</div>
-            <div class="stat-label">Total Paid</div>
+            <div class="stat-label">{{ t('dashboard.paid_commissions') }}</div>
         </div>
         <a href="{{ url_for('admin.commissions_by_salesperson') }}" class="stat-box" style="text-decoration: none; color: inherit;">
-            <div class="stat-value" style="font-size: 16px;">View by Salesperson</div>
-            <div class="stat-label">Grouped View</div>
+            <div class="stat-value" style="font-size: 16px;">{{ t('nav.salespersons') }}</div>
+            <div class="stat-label">{{ t('common.view_all') }}</div>
         </a>
     </div>
 
     <!-- Filters and Bulk Actions -->
     <div class="filters">
-        <a href="{{ url_for('admin.commissions', status='all') }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">All</a>
-        <a href="{{ url_for('admin.commissions', status='pending') }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">Pending</a>
-        <a href="{{ url_for('admin.commissions', status='paid') }}" class="filter-btn {{ 'active' if status_filter == 'paid' else '' }}">Paid</a>
-        <a href="{{ url_for('admin.commissions', status='voided') }}" class="filter-btn {{ 'active' if status_filter == 'voided' else '' }}">Voided</a>
+        <a href="{{ url_for('admin.commissions', status='all') }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">{{ t('common.all') }}</a>
+        <a href="{{ url_for('admin.commissions', status='pending') }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">{{ t('common.pending') }}</a>
+        <a href="{{ url_for('admin.commissions', status='paid') }}" class="filter-btn {{ 'active' if status_filter == 'paid' else '' }}">{{ t('common.completed') }}</a>
+        <a href="{{ url_for('admin.commissions', status='voided') }}" class="filter-btn {{ 'active' if status_filter == 'voided' else '' }}">{{ t('common.refunded') }}</a>
 
         <div class="bulk-actions">
-            <span id="selectedCount">0 selected</span>
-            <button class="btn" onclick="openBulkPayModal()" id="bulkPayBtn" disabled>Pay Selected</button>
+            <span id="selectedCount">0</span>
+            <button class="btn" onclick="openBulkPayModal()" id="bulkPayBtn" disabled>{{ t('admin.bulk_pay') }}</button>
         </div>
     </div>
 
@@ -228,14 +228,14 @@
         <thead>
             <tr>
                 <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
-                <th>Date</th>
-                <th>Salesperson</th>
-                <th>Donation</th>
-                <th>Rate</th>
-                <th>Commission</th>
-                <th>Status</th>
-                <th>Paid Date</th>
-                <th>Actions</th>
+                <th>{{ t('common.date') }}</th>
+                <th>{{ t('admin.salesperson_info') }}</th>
+                <th>{{ t('nav.donations') }}</th>
+                <th>{{ t('admin.commission_rate') }}</th>
+                <th>{{ t('nav.commissions') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('admin.paid_date') }}</th>
+                <th>{{ t('common.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -251,7 +251,7 @@
                     {% if commission.salesperson %}
                     {{ commission.salesperson.full_name }}
                     {% else %}
-                    <span style="color: #999;">Unknown</span>
+                    <span style="color: #999;">{{ t('common.unknown') }}</span>
                     {% endif %}
                 </td>
                 <td>${{ "%.2f"|format(commission.donation_amount_dollars) }}</td>
@@ -276,7 +276,7 @@
                 </td>
                 <td>
                     {% if commission.status == 'pending' %}
-                    <button class="pay-btn" onclick="openPayModal({{ commission.id }}, {{ commission.commission_amount_dollars }})">Pay</button>
+                    <button class="pay-btn" onclick="openPayModal({{ commission.id }}, {{ commission.commission_amount_dollars }})">{{ t('admin.mark_paid') }}</button>
                     {% endif %}
                 </td>
             </tr>
@@ -285,7 +285,7 @@
     </table>
     {% else %}
     <div class="card" style="text-align: center; padding: 40px;">
-        <p style="color: #666;">No commissions found.</p>
+        <p style="color: #666;">{{ t('admin.no_commissions') }}</p>
     </div>
     {% endif %}
 </div>
@@ -293,12 +293,12 @@
 <!-- Pay Modal -->
 <div class="modal" id="payModal">
     <div class="modal-content">
-        <h3>Mark Commission as Paid</h3>
+        <h3>{{ t('admin.mark_paid') }}</h3>
         <form id="payForm" onsubmit="submitPay(event)">
             <input type="hidden" id="payCommissionId">
-            <p style="margin-bottom: 15px;"><strong>Amount:</strong> $<span id="payAmount"></span></p>
+            <p style="margin-bottom: 15px;"><strong>{{ t('common.amount') }}:</strong> $<span id="payAmount"></span></p>
             <div class="form-group">
-                <label>Payment Method</label>
+                <label>{{ t('receipt.payment_method') }}</label>
                 <select name="method" id="payMethod">
                     <option value="check">Check</option>
                     <option value="bank_transfer">Bank Transfer</option>
@@ -307,12 +307,12 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Reference Number</label>
+                <label>Reference</label>
                 <input type="text" name="reference" id="payReference" placeholder="e.g., Check #1234">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="btn btn-success">Confirm Payment</button>
-                <button type="button" class="btn" style="background: #95a5a6;" onclick="closePayModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">{{ t('common.save') }}</button>
+                <button type="button" class="btn" style="background: #95a5a6;" onclick="closePayModal()">{{ t('common.cancel') }}</button>
             </div>
         </form>
     </div>
@@ -321,11 +321,11 @@
 <!-- Bulk Pay Modal -->
 <div class="modal" id="bulkPayModal">
     <div class="modal-content">
-        <h3>Pay Multiple Commissions</h3>
+        <h3>{{ t('admin.bulk_pay') }}</h3>
         <form id="bulkPayForm" onsubmit="submitBulkPay(event)">
-            <p style="margin-bottom: 15px;"><strong id="bulkCount"></strong> commissions selected</p>
+            <p style="margin-bottom: 15px;"><strong id="bulkCount"></strong></p>
             <div class="form-group">
-                <label>Payment Method</label>
+                <label>{{ t('receipt.payment_method') }}</label>
                 <select name="method" id="bulkPayMethod">
                     <option value="check">Check</option>
                     <option value="bank_transfer">Bank Transfer</option>
@@ -334,12 +334,12 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Reference Number</label>
+                <label>Reference</label>
                 <input type="text" name="reference" id="bulkPayReference" placeholder="e.g., Batch #001">
             </div>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="btn btn-success">Confirm Bulk Payment</button>
-                <button type="button" class="btn" style="background: #95a5a6;" onclick="closeBulkPayModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">{{ t('common.save') }}</button>
+                <button type="button" class="btn" style="background: #95a5a6;" onclick="closeBulkPayModal()">{{ t('common.cancel') }}</button>
             </div>
         </form>
     </div>

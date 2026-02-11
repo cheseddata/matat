@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Daily Report - {{ report_date.strftime('%m/%d/%Y') }} - Admin{% endblock %}
+{% block title %}{{ t('admin.daily_report') }} - {{ report_date.strftime('%m/%d/%Y') }} - Admin{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -126,7 +126,7 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">Daily Report</h1>
+    <h1 style="margin-bottom: 20px;">{{ t('admin.daily_report') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
@@ -144,10 +144,10 @@
     <!-- Report Header -->
     <div class="report-header">
         <div class="date-nav">
-            <a href="{{ url_for('admin.report_daily', date=prev_date) }}">&larr; Previous Day</a>
+            <a href="{{ url_for('admin.report_daily', date=prev_date) }}">&larr; {{ t('common.prev') }}</a>
             <input type="date" class="date-picker" value="{{ report_date.strftime('%Y-%m-%d') }}"
                    onchange="window.location.href='{{ url_for('admin.report_daily') }}?date=' + this.value">
-            <a href="{{ url_for('admin.report_daily', date=next_date) }}">Next Day &rarr;</a>
+            <a href="{{ url_for('admin.report_daily', date=next_date) }}">{{ t('common.next') }} &rarr;</a>
         </div>
         <h2>{{ report_date.strftime('%A, %B %d, %Y') }}</h2>
     </div>
@@ -156,19 +156,19 @@
     <div class="stats-row">
         <div class="stat-box">
             <div class="stat-value">${{ "%.2f"|format(total) }}</div>
-            <div class="stat-label">Total Raised</div>
+            <div class="stat-label">{{ t('common.total') }}</div>
         </div>
         <div class="stat-box">
             <div class="stat-value">{{ count }}</div>
-            <div class="stat-label">Successful Donations</div>
+            <div class="stat-label">{{ t('nav.donations') }}</div>
         </div>
         <div class="stat-box">
             <div class="stat-value">${{ "%.2f"|format(fees) }}</div>
-            <div class="stat-label">Processing Fees</div>
+            <div class="stat-label">{{ t('common.stripe_fee') }}</div>
         </div>
         <div class="stat-box">
             <div class="stat-value">${{ "%.2f"|format(total - fees) }}</div>
-            <div class="stat-label">Net Amount</div>
+            <div class="stat-label">{{ t('common.net_amount') }}</div>
         </div>
     </div>
 
@@ -177,14 +177,14 @@
         <table class="data-table">
             <thead>
                 <tr>
-                    <th>Time</th>
-                    <th>Donor</th>
-                    <th>Amount</th>
-                    <th>Fee</th>
-                    <th>Net</th>
-                    <th>Salesperson</th>
-                    <th>Source</th>
-                    <th>Status</th>
+                    <th>{{ t('common.date') }}</th>
+                    <th>{{ t('nav.donors') }}</th>
+                    <th>{{ t('common.amount') }}</th>
+                    <th>{{ t('common.fee') }}</th>
+                    <th>{{ t('common.net_amount') }}</th>
+                    <th>{{ t('admin.salesperson_info') }}</th>
+                    <th>{{ t('common.source') }}</th>
+                    <th>{{ t('common.status') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -195,7 +195,7 @@
                         {% if donation.donor %}
                         {{ donation.donor.full_name }}
                         {% else %}
-                        <span style="color: #999;">Unknown</span>
+                        <span style="color: #999;">{{ t('common.unknown') }}</span>
                         {% endif %}
                     </td>
                     <td><strong>${{ "%.2f"|format(donation.amount_dollars) }}</strong></td>
@@ -208,7 +208,7 @@
                         <span style="color: #999;">—</span>
                         {% endif %}
                     </td>
-                    <td>{{ donation.source or 'direct' }}</td>
+                    <td>{{ donation.source or t('common.direct') }}</td>
                     <td><span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span></td>
                 </tr>
                 {% endfor %}
@@ -217,8 +217,8 @@
     </div>
     {% else %}
     <div class="card empty-state">
-        <h3>No Donations</h3>
-        <p>No donations were recorded on this day.</p>
+        <h3>{{ t('nav.donations') }}</h3>
+        <p>{{ t('admin.no_donations') }}</p>
     </div>
     {% endif %}
 </div>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Send Donation Link - Matat Mordechai{% endblock %}
+{% block title %}{{ t('send_link.title') }} - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -118,39 +118,39 @@
 
 {% block content %}
 <div class="form-container">
-    <a href="{{ url_for('salesperson.dashboard') }}" class="back-link">← Back to Dashboard</a>
+    <a href="{{ url_for('salesperson.dashboard') }}" class="back-link">← {{ t('common.back_to') }} {{ t('nav.dashboard') }}</a>
 
-    <h1>Send Donation Link</h1>
-    <p style="color: #666; margin-bottom: 25px;">Send a personalized donation link via email to a potential donor.</p>
+    <h1>{{ t('send_link.title') }}</h1>
+    <p style="color: #666; margin-bottom: 25px;">{{ t('send_link.subtitle') }}</p>
 
     <form method="POST" action="{{ url_for('salesperson.send_link') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <div class="form-section">
-            <h3>Donor Information</h3>
+            <h3>{{ t('phone_entry.donor_info') }}</h3>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="donor_name">Donor Name</label>
+                    <label for="donor_name">{{ t('send_link.donor_name') }}</label>
                     <input type="text" id="donor_name" name="donor_name" placeholder="John Doe">
                 </div>
                 <div class="form-group">
-                    <label for="donor_email">Email Address *</label>
+                    <label for="donor_email">{{ t('send_link.donor_email') }} *</label>
                     <input type="email" id="donor_email" name="donor_email" required placeholder="john@example.com">
                 </div>
             </div>
 
             <div class="form-group">
-                <label for="donor_address">Address (for receipt)</label>
+                <label for="donor_address">{{ t('send_link.donor_address') }}</label>
                 <textarea id="donor_address" name="donor_address" rows="2" placeholder="123 Main St, City, State ZIP"></textarea>
             </div>
         </div>
 
         <div class="form-section">
-            <h3>Donation Options</h3>
+            <h3>{{ t('send_link.donation_options') }}</h3>
 
             <div class="form-group">
-                <label>Suggested Amount</label>
+                <label>{{ t('phone_entry.suggested_amount') }}</label>
                 <div class="amount-presets">
                     <button type="button" class="amount-preset" data-amount="36">$36</button>
                     <button type="button" class="amount-preset" data-amount="72">$72</button>
@@ -158,31 +158,31 @@
                     <button type="button" class="amount-preset" data-amount="360">$360</button>
                     <button type="button" class="amount-preset" data-amount="500">$500</button>
                 </div>
-                <input type="number" id="preset_amount" name="preset_amount" min="1" step="0.01" placeholder="Or enter custom amount">
+                <input type="number" id="preset_amount" name="preset_amount" min="1" step="0.01" placeholder="{{ t('send_link.custom_amount') }}">
             </div>
 
             <div class="form-row">
                 <div class="form-group">
-                    <label for="preset_type">Donation Type</label>
+                    <label for="preset_type">{{ t('send_link.donation_type') }}</label>
                     <select id="preset_type" name="preset_type">
-                        <option value="onetime">One-Time</option>
-                        <option value="recurring">Monthly Recurring</option>
+                        <option value="onetime">{{ t('send_link.one_time') }}</option>
+                        <option value="recurring">{{ t('send_link.monthly') }}</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="language">Email Language</label>
+                    <label for="language">{{ t('send_link.language') }}</label>
                     <select id="language" name="language">
-                        <option value="en">English</option>
-                        <option value="he">Hebrew</option>
+                        <option value="en">{{ t('languages.en') }}</option>
+                        <option value="he">{{ t('languages.he') }}</option>
                     </select>
                 </div>
             </div>
 
             {% if campaigns %}
             <div class="form-group">
-                <label for="campaign_id">Campaign (Optional)</label>
+                <label for="campaign_id">{{ t('send_link.campaign') }}</label>
                 <select id="campaign_id" name="campaign_id">
-                    <option value="">No specific campaign</option>
+                    <option value="">{{ t('send_link.select_campaign') }}</option>
                     {% for campaign in campaigns %}
                     <option value="{{ campaign.id }}">{{ campaign.name }}</option>
                     {% endfor %}
@@ -191,7 +191,7 @@
             {% endif %}
         </div>
 
-        <button type="submit" class="submit-btn">Send Donation Link</button>
+        <button type="submit" class="submit-btn">{{ t('send_link.send_link_btn') }}</button>
     </form>
 </div>
 

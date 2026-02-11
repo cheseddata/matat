@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Reports - Admin - Matat Mordechai{% endblock %}
+{% block title %}{{ t('nav.reports') }} - Admin - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -134,34 +134,34 @@
     <div class="reports-grid">
         <div class="report-card">
             <div class="report-icon daily">&#128197;</div>
-            <h3>Daily Report</h3>
-            <p>View donation activity for a specific day. Includes all donations, salesperson attribution, and daily totals.</p>
-            <a href="{{ url_for('admin.report_daily') }}" class="report-link">View Today's Report &rarr;</a>
+            <h3>{{ t('admin.daily_report') }}</h3>
+            <p></p>
+            <a href="{{ url_for('admin.report_daily') }}" class="report-link">{{ t('admin.today') }} &rarr;</a>
         </div>
 
         <div class="report-card">
             <div class="report-icon monthly">&#128198;</div>
-            <h3>Monthly Report</h3>
-            <p>Monthly summary with daily breakdown, top performers, and source analysis. Track trends and patterns.</p>
-            <a href="{{ url_for('admin.report_monthly') }}" class="report-link">View This Month &rarr;</a>
+            <h3>{{ t('admin.monthly_report') }}</h3>
+            <p></p>
+            <a href="{{ url_for('admin.report_monthly') }}" class="report-link">{{ t('dashboard.this_month') }} &rarr;</a>
         </div>
 
         <div class="report-card">
             <div class="report-icon yearly">&#128200;</div>
-            <h3>Yearly Report</h3>
-            <p>Annual overview with monthly totals, commission summary, and year-over-year growth metrics.</p>
-            <a href="{{ url_for('admin.report_yearly') }}" class="report-link">View This Year &rarr;</a>
+            <h3>{{ t('admin.yearly_report') }}</h3>
+            <p></p>
+            <a href="{{ url_for('admin.report_yearly') }}" class="report-link">{{ t('common.view') }} &rarr;</a>
         </div>
     </div>
 
     <div class="quick-access">
-        <h2>Quick Access</h2>
+        <h2>{{ t('dashboard.quick_actions') }}</h2>
         <div class="quick-links">
-            <a href="{{ url_for('admin.report_daily') }}" class="quick-link">Today</a>
-            <a href="{{ url_for('admin.report_monthly') }}" class="quick-link">This Month</a>
-            <a href="{{ url_for('admin.report_monthly', month=(now.month - 1) if now.month > 1 else 12, year=now.year if now.month > 1 else now.year - 1) }}" class="quick-link">Last Month</a>
-            <a href="{{ url_for('admin.report_yearly') }}" class="quick-link">This Year</a>
-            <a href="{{ url_for('admin.report_yearly', year=now.year - 1) }}" class="quick-link">Last Year</a>
+            <a href="{{ url_for('admin.report_daily') }}" class="quick-link">{{ t('admin.today') }}</a>
+            <a href="{{ url_for('admin.report_monthly') }}" class="quick-link">{{ t('dashboard.this_month') }}</a>
+            <a href="{{ url_for('admin.report_monthly', month=(now.month - 1) if now.month > 1 else 12, year=now.year if now.month > 1 else now.year - 1) }}" class="quick-link">{{ t('admin.monthly_report') }}</a>
+            <a href="{{ url_for('admin.report_yearly') }}" class="quick-link">{{ t('admin.yearly_report') }}</a>
+            <a href="{{ url_for('admin.report_yearly', year=now.year - 1) }}" class="quick-link">{{ now.year - 1 }}</a>
         </div>
     </div>
 </div>

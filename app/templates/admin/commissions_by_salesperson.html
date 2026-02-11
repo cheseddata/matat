@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Commissions by Salesperson - Admin{% endblock %}
+{% block title %}{{ t('nav.commissions') }} - {{ t('nav.salespersons') }} - Admin{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -92,8 +92,8 @@
 
 {% block content %}
 <div class="container">
-    <a href="{{ url_for('admin.commissions') }}" class="back-link">&larr; Back to All Commissions</a>
-    <h1 style="margin-bottom: 20px;">Commissions by Salesperson</h1>
+    <a href="{{ url_for('admin.commissions') }}" class="back-link">&larr; {{ t('common.back_to') }} {{ t('nav.commissions') }}</a>
+    <h1 style="margin-bottom: 20px;">{{ t('nav.commissions') }} - {{ t('nav.salespersons') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
@@ -112,11 +112,11 @@
     <table class="data-table">
         <thead>
             <tr>
-                <th>Salesperson</th>
-                <th>Total Commissions</th>
-                <th>Pending</th>
-                <th>Paid</th>
-                <th>Actions</th>
+                <th>{{ t('admin.salesperson_info') }}</th>
+                <th>{{ t('common.total') }} {{ t('nav.commissions') }}</th>
+                <th>{{ t('common.pending') }}</th>
+                <th>{{ t('common.completed') }}</th>
+                <th>{{ t('common.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -132,10 +132,10 @@
                 <td>
                     {% if pending and pending > 0 %}
                     <button class="pay-all-btn" onclick="payAllForSalesperson({{ sp.id }}, {{ (pending or 0) / 100 }})">
-                        Pay All Pending
+                        {{ t('admin.mark_paid') }}
                     </button>
                     {% else %}
-                    <span style="color: #999; font-size: 12px;">All paid</span>
+                    <span style="color: #999; font-size: 12px;">{{ t('common.completed') }}</span>
                     {% endif %}
                 </td>
             </tr>
@@ -144,7 +144,7 @@
     </table>
     {% else %}
     <div class="card" style="text-align: center; padding: 40px;">
-        <p style="color: #666;">No commissions found.</p>
+        <p style="color: #666;">{{ t('admin.no_commissions') }}</p>
     </div>
     {% endif %}
 </div>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Campaigns - Admin - Matat Mordechai{% endblock %}
+{% block title %}{{ t('nav.campaigns') }} - Admin - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -209,7 +209,7 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">Campaign Management</h1>
+    <h1 style="margin-bottom: 20px;">{{ t('nav.campaigns') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
@@ -225,8 +225,8 @@
     </div>
 
     <div class="header-row">
-        <h2>All Campaigns ({{ campaigns|length }})</h2>
-        <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success">+ Create Campaign</a>
+        <h2>{{ t('common.all') }} {{ t('nav.campaigns') }} ({{ campaigns|length }})</h2>
+        <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success">+ {{ t('admin.create_campaign') }}</a>
     </div>
 
     <div class="campaigns-grid">
@@ -236,7 +236,7 @@
             <div class="campaign-header">
                 <h3 class="campaign-name">{{ campaign.name }}</h3>
                 <span class="status-badge {{ 'active' if campaign.is_active else 'inactive' }}">
-                    {{ 'Active' if campaign.is_active else 'Inactive' }}
+                    {{ t('common.active') if campaign.is_active else t('common.inactive') }}
                 </span>
             </div>
 
@@ -247,7 +247,7 @@
             <div class="campaign-stats">
                 <div class="campaign-stat">
                     <div class="campaign-stat-value">${{ "%.0f"|format((campaign.current_amount or 0) / 100) }}</div>
-                    <div class="campaign-stat-label">Raised</div>
+                    <div class="campaign-stat-label">{{ t('common.total') }}</div>
                 </div>
                 <div class="campaign-stat">
                     <div class="campaign-stat-value">{{ campaign.donation_count or 0 }}</div>
@@ -269,33 +269,33 @@
             {% endif %}
 
             <div class="campaign-meta">
-                <strong>Code:</strong> <span class="campaign-code">{{ campaign.aff_code }}</span>
+                <strong>{{ t('admin.ref_code') }}:</strong> <span class="campaign-code">{{ campaign.aff_code }}</span>
                 <br>
-                <strong>Created:</strong> {{ campaign.created_at.strftime('%m/%d/%Y') }}
+                <strong>{{ t('common.created') }}:</strong> {{ campaign.created_at.strftime('%m/%d/%Y') }}
             </div>
 
             {% if campaign.commission_override_type %}
             <div class="commission-info">
-                <strong>Commission Override:</strong>
+                <strong>{{ t('admin.commission_override') }}:</strong>
                 {% if campaign.commission_override_type == 'percentage' %}
                 {{ campaign.commission_override_rate }}%
                 {% else %}
-                ${{ "%.2f"|format(campaign.commission_override_rate) }} flat
+                ${{ "%.2f"|format(campaign.commission_override_rate) }} {{ t('admin.flat_amount') }}
                 {% endif %}
             </div>
             {% endif %}
 
             <div class="campaign-actions">
-                <a href="{{ url_for('admin.edit_campaign', id=campaign.id) }}" class="btn-edit">Edit</a>
-                <a href="#" class="btn-view" onclick="copyLink('{{ campaign.aff_code }}')">Copy Link</a>
+                <a href="{{ url_for('admin.edit_campaign', id=campaign.id) }}" class="btn-edit">{{ t('common.edit') }}</a>
+                <a href="#" class="btn-view" onclick="copyLink('{{ campaign.aff_code }}')">{{ t('common.copy') }}</a>
             </div>
         </div>
         {% endfor %}
         {% else %}
         <div class="empty-state card">
-            <h3>No Campaigns</h3>
-            <p>Create your first campaign to start fundraising.</p>
-            <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success" style="margin-top: 15px;">Create Campaign</a>
+            <h3>{{ t('common.no_data') }}</h3>
+            <p></p>
+            <a href="{{ url_for('admin.create_campaign') }}" class="btn btn-success" style="margin-top: 15px;">{{ t('admin.create_campaign') }}</a>
         </div>
         {% endif %}
     </div>

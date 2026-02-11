@@ -43,12 +43,16 @@ app/
 - **Email BCC:** All outgoing emails BCC'd to support@matatmordechai.org
 
 ## Critical Commands
-- **Start Server:** `cd /root/matat && source venv/bin/activate && gunicorn -w 2 -b 127.0.0.1:5050 run:app`
-- **Reload Server:** `kill -HUP $(pgrep -f 'gunicorn.*5050')`
+- **Start Server:** `sudo systemctl start matat`
+- **Restart Server:** `sudo systemctl restart matat`
+- **Check Status:** `sudo systemctl status matat`
+- **View Logs:** `sudo journalctl -u matat -f`
 - **Migrations:** `flask db migrate -m "description"` followed by `flask db upgrade`
 - **Seeding:** `python seed.py` to create initial admin and config
-- **Import Donors:** `flask import-donors unified_payments.csv`
+- **Import Donors:** `flask import-donors unified_payments.csv` (creates Donor records)
+- **Import Donations:** `flask import-donations unified_payments.csv` (imports full donation history)
 - **RTL:** Hebrew templates must include `dir="rtl"` and use the 'Assistant' font.
+- **Stripe Payments:** Card element always uses `locale: 'en'` for English-only payment forms.
 
 ## Environment Variables
 ```
@@ -70,3 +74,11 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 ## Production URLs
 - Main site: https://matatmordechai.org
 - Admin: https://matatmordechai.org/admin
+- Donation page: https://matatmordechai.org/donate
+
+## Important Notes
+- **Site URL:** Use matatmordechai.org (NOT donate.matatmordechai.org)
+- **Email BCC:** All outgoing emails automatically BCC'd to support@matatmordechai.org
+- **Language Toggle:** Cookie-based, accessible on all authenticated pages
+- **Translation Files:** `app/i18n/en.json` and `app/i18n/he.json` contain all UI strings
+- **Stripe Card Element:** Always displayed in English regardless of page language

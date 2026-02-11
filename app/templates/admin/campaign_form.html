@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit' if campaign else 'Create' }} Campaign - Admin{% endblock %}
+{% block title %}{{ t('admin.edit_campaign') if campaign else t('admin.create_campaign') }} - Admin{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -71,57 +71,52 @@
 <div class="container">
     <div class="form-card">
         <div class="card">
-            <h1>{{ 'Edit' if campaign else 'Create New' }} Campaign</h1>
+            <h1>{{ t('admin.edit_campaign') if campaign else t('admin.create_campaign') }}</h1>
 
             <form method="POST" style="margin-top: 20px;">
                 <div class="form-group">
-                    <label>Campaign Name *</label>
+                    <label>{{ t('admin.campaign_name') }} *</label>
                     <input type="text" name="name" required
                            value="{{ campaign.name if campaign else '' }}"
                            placeholder="e.g., Holiday Giving Campaign 2024">
                 </div>
 
                 <div class="form-group">
-                    <label>Description</label>
+                    <label>{{ t('admin.description') }}</label>
                     <textarea name="description" rows="3" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;"
-                              placeholder="Describe the campaign purpose...">{{ campaign.description if campaign else '' }}</textarea>
+                              placeholder="">{{ campaign.description if campaign else '' }}</textarea>
                 </div>
 
                 <div class="form-group">
-                    <label>Goal Amount ($)</label>
+                    <label>{{ t('admin.goal_amount') }} ($)</label>
                     <input type="number" step="0.01" name="goal_amount"
                            value="{{ '%.2f'|format(campaign.goal_amount / 100) if campaign and campaign.goal_amount else '' }}"
                            placeholder="e.g., 10000.00">
-                    <p class="help-text">Optional. Set a fundraising goal to track progress.</p>
                 </div>
 
                 {% if campaign %}
                 <div class="form-group">
                     <div class="checkbox-group">
                         <input type="checkbox" name="is_active" id="is_active" {{ 'checked' if campaign.is_active else '' }}>
-                        <label for="is_active" style="margin: 0;">Active</label>
+                        <label for="is_active" style="margin: 0;">{{ t('common.active') }}</label>
                     </div>
-                    <p class="help-text">Inactive campaigns will not accept new donations.</p>
                 </div>
                 {% endif %}
 
                 <div class="form-section">
-                    <h3>Commission Override</h3>
-                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-                        Set campaign-specific commission rates that override salesperson defaults.
-                    </p>
+                    <h3>{{ t('admin.commission_override') }}</h3>
 
                     <div class="form-group">
-                        <label>Commission Type</label>
+                        <label>{{ t('common.type') }}</label>
                         <select name="commission_override_type" id="commissionType" onchange="updatePreview()">
-                            <option value="">Use Default Rates</option>
-                            <option value="percentage" {{ 'selected' if campaign and campaign.commission_override_type == 'percentage' else '' }}>Percentage</option>
-                            <option value="flat" {{ 'selected' if campaign and campaign.commission_override_type == 'flat' else '' }}>Flat Amount</option>
+                            <option value="">-</option>
+                            <option value="percentage" {{ 'selected' if campaign and campaign.commission_override_type == 'percentage' else '' }}>{{ t('admin.percentage') }}</option>
+                            <option value="flat" {{ 'selected' if campaign and campaign.commission_override_type == 'flat' else '' }}>{{ t('admin.flat_amount') }}</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>Commission Rate</label>
+                        <label>{{ t('admin.commission_rate') }}</label>
                         <input type="number" step="0.01" name="commission_override_rate" id="commissionRate"
                                value="{{ campaign.commission_override_rate if campaign and campaign.commission_override_rate else '' }}"
                                placeholder="e.g., 10 for 10% or 5.00 for $5"
@@ -134,22 +129,22 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 25px;">
-                    <button type="submit" class="btn btn-success">{{ 'Update' if campaign else 'Create' }} Campaign</button>
-                    <a href="{{ url_for('admin.campaigns') }}" class="btn" style="background: #95a5a6;">Cancel</a>
+                    <button type="submit" class="btn btn-success">{{ t('common.save') }}</button>
+                    <a href="{{ url_for('admin.campaigns') }}" class="btn" style="background: #95a5a6;">{{ t('common.cancel') }}</a>
                 </div>
             </form>
 
             {% if campaign %}
             <div class="campaign-info">
-                <h4 style="margin: 0 0 10px 0;">Campaign Information</h4>
-                <p><strong>Affiliate Code:</strong> {{ campaign.aff_code }}</p>
-                <p><strong>Created:</strong> {{ campaign.created_at.strftime('%B %d, %Y') }}</p>
-                <p><strong>Total Raised:</strong> ${{ "%.2f"|format((campaign.current_amount or 0) / 100) }}</p>
-                <p><strong>Donation Count:</strong> {{ campaign.donation_count or 0 }}</p>
+                <h4 style="margin: 0 0 10px 0;">{{ t('common.information') }}</h4>
+                <p><strong>{{ t('admin.ref_code') }}:</strong> {{ campaign.aff_code }}</p>
+                <p><strong>{{ t('common.created') }}:</strong> {{ campaign.created_at.strftime('%B %d, %Y') }}</p>
+                <p><strong>{{ t('common.total') }}:</strong> ${{ "%.2f"|format((campaign.current_amount or 0) / 100) }}</p>
+                <p><strong>{{ t('nav.donations') }}:</strong> {{ campaign.donation_count or 0 }}</p>
 
-                <strong>Donation Link:</strong>
+                <strong>Link:</strong>
                 <code class="campaign-link" id="campaignLink">{{ request.host_url }}d/{{ campaign.aff_code }}</code>
-                <button class="btn" style="margin-top: 10px; font-size: 12px;" onclick="copyLink()">Copy Link</button>
+                <button class="btn" style="margin-top: 10px; font-size: 12px;" onclick="copyLink()">{{ t('common.copy') }}</button>
             </div>
             {% endif %}
         </div>

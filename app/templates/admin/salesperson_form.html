@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Edit' if salesperson else 'Create' }} Salesperson - Admin{% endblock %}
+{% block title %}{{ t('admin.edit_salesperson') if salesperson else t('admin.add_salesperson') }} - Admin{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -49,34 +49,34 @@
 <div class="container">
     <div class="form-card">
         <div class="card">
-            <h1>{{ 'Edit' if salesperson else 'Create New' }} Salesperson</h1>
+            <h1>{{ t('admin.edit_salesperson') if salesperson else t('admin.add_salesperson') }}</h1>
 
             <form method="POST" style="margin-top: 20px;">
                 {% if not salesperson %}
                 <div class="form-group">
-                    <label>Username *</label>
+                    <label>{{ t('admin.username') }} *</label>
                     <input type="text" name="username" required placeholder="e.g., jdoe">
                 </div>
                 {% endif %}
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>First Name</label>
+                        <label>{{ t('phone_entry.first_name') }}</label>
                         <input type="text" name="first_name" value="{{ salesperson.first_name if salesperson else '' }}">
                     </div>
                     <div class="form-group">
-                        <label>Last Name</label>
+                        <label>{{ t('phone_entry.last_name') }}</label>
                         <input type="text" name="last_name" value="{{ salesperson.last_name if salesperson else '' }}">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Email *</label>
+                    <label>{{ t('common.email') }} *</label>
                     <input type="email" name="email" required value="{{ salesperson.email if salesperson else '' }}">
                 </div>
 
                 <div class="form-group">
-                    <label>Phone</label>
+                    <label>{{ t('common.phone') }}</label>
                     <input type="tel" name="phone" value="{{ salesperson.phone if salesperson else '' }}" placeholder="+1234567890">
                 </div>
 
@@ -84,28 +84,25 @@
                 <div class="form-group">
                     <div class="checkbox-group">
                         <input type="checkbox" name="active" id="active" {{ 'checked' if salesperson.active else '' }}>
-                        <label for="active" style="margin: 0;">Active</label>
+                        <label for="active" style="margin: 0;">{{ t('common.active') }}</label>
                     </div>
                 </div>
                 {% endif %}
 
                 <div class="form-section">
-                    <h3>Commission Settings</h3>
-                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-                        Leave blank to use system default or campaign-level settings.
-                    </p>
+                    <h3>{{ t('admin.commission_rate') }}</h3>
 
                     <div class="form-group">
-                        <label>Commission Type</label>
+                        <label>{{ t('common.type') }}</label>
                         <select name="commission_type" id="commissionType" onchange="updatePreview()">
-                            <option value="">Use Default</option>
-                            <option value="percentage" {{ 'selected' if salesperson and salesperson.commission_type == 'percentage' else '' }}>Percentage</option>
-                            <option value="flat" {{ 'selected' if salesperson and salesperson.commission_type == 'flat' else '' }}>Flat Amount</option>
+                            <option value="">-</option>
+                            <option value="percentage" {{ 'selected' if salesperson and salesperson.commission_type == 'percentage' else '' }}>{{ t('admin.percentage') }}</option>
+                            <option value="flat" {{ 'selected' if salesperson and salesperson.commission_type == 'flat' else '' }}>{{ t('admin.flat_amount') }}</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>Commission Rate</label>
+                        <label>{{ t('admin.commission_rate') }}</label>
                         <input type="number" step="0.01" name="commission_rate" id="commissionRate"
                                value="{{ salesperson.commission_rate if salesperson and salesperson.commission_rate else '' }}"
                                placeholder="e.g., 10 for 10% or 5.00 for $5"
@@ -118,18 +115,18 @@
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 25px;">
-                    <button type="submit" class="btn">{{ 'Update' if salesperson else 'Create' }} Salesperson</button>
-                    <a href="{{ url_for('admin.salespersons') }}" class="btn" style="background: #95a5a6;">Cancel</a>
+                    <button type="submit" class="btn">{{ t('common.save') }}</button>
+                    <a href="{{ url_for('admin.salespersons') }}" class="btn" style="background: #95a5a6;">{{ t('common.cancel') }}</a>
                 </div>
             </form>
 
             {% if salesperson %}
             <div class="form-section">
-                <h3>Account Info</h3>
+                <h3>{{ t('common.information') }}</h3>
                 <p style="color: #666; font-size: 14px;">
-                    <strong>Ref Code:</strong> {{ salesperson.ref_code }}<br>
-                    <strong>Created:</strong> {{ salesperson.created_at.strftime('%m/%d/%Y') }}<br>
-                    <strong>Temp Password:</strong> {{ 'Yes' if salesperson.is_temp_password else 'No' }}
+                    <strong>{{ t('admin.ref_code') }}:</strong> {{ salesperson.ref_code }}<br>
+                    <strong>{{ t('common.created') }}:</strong> {{ salesperson.created_at.strftime('%m/%d/%Y') }}<br>
+                    <strong>{{ t('admin.temp_password') }}:</strong> {{ t('common.yes') if salesperson.is_temp_password else t('common.no') }}
                 </p>
             </div>
             {% endif %}

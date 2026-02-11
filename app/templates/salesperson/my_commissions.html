@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}My Commissions - Matat Mordechai{% endblock %}
+{% block title %}{{ t('my_commissions.title') }} - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -105,21 +105,21 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 25px;">My Commissions</h1>
+    <h1 style="margin-bottom: 25px;">{{ t('my_commissions.title') }}</h1>
 
     <!-- Summary Cards -->
     <div class="summary-cards">
         <div class="summary-card pending">
             <div class="summary-value">${{ "%.2f"|format(total_pending) }}</div>
-            <div class="summary-label">Pending</div>
+            <div class="summary-label">{{ t('common.pending') }}</div>
         </div>
         <div class="summary-card paid">
             <div class="summary-value">${{ "%.2f"|format(total_paid) }}</div>
-            <div class="summary-label">Paid</div>
+            <div class="summary-label">{{ t('my_commissions.paid') }}</div>
         </div>
         <div class="summary-card voided">
             <div class="summary-value">${{ "%.2f"|format(total_voided) }}</div>
-            <div class="summary-label">Voided</div>
+            <div class="summary-label">{{ t('my_commissions.voided') }}</div>
         </div>
     </div>
 
@@ -128,12 +128,12 @@
         <table class="commissions-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Donation</th>
-                    <th>Rate</th>
-                    <th>Commission</th>
-                    <th>Status</th>
-                    <th>Paid Date</th>
+                    <th>{{ t('common.date') }}</th>
+                    <th>{{ t('my_commissions.donation') }}</th>
+                    <th>{{ t('my_commissions.rate') }}</th>
+                    <th>{{ t('my_commissions.commission') }}</th>
+                    <th>{{ t('common.status') }}</th>
+                    <th>{{ t('my_commissions.paid_date') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -146,7 +146,7 @@
                             {% if commission.commission_type == 'percentage' %}
                             {{ commission.commission_rate }}%
                             {% else %}
-                            ${{ "%.2f"|format(commission.commission_rate) }} flat
+                            ${{ "%.2f"|format(commission.commission_rate) }} {{ t('my_commissions.flat') }}
                             {% endif %}
                         </span>
                     </td>
@@ -169,20 +169,20 @@
     </div>
     {% else %}
     <div class="card empty-state">
-        <h2>No Commissions Yet</h2>
-        <p>When donations are made through your links, commissions will appear here.</p>
+        <h2>{{ t('my_commissions.no_commissions_title') }}</h2>
+        <p>{{ t('my_commissions.no_commissions_desc') }}</p>
     </div>
     {% endif %}
 
     <div class="card" style="margin-top: 20px; background: #e8f4f8;">
-        <h3 style="margin-top: 0;">Commission Policy</h3>
+        <h3 style="margin-top: 0;">{{ t('my_commissions.policy_title') }}</h3>
         <p style="color: #666; margin-bottom: 10px;">
-            Commissions are calculated based on your assigned rate when a donation is successfully processed.
+            {{ t('my_commissions.policy_desc') }}
         </p>
         <ul style="color: #666; margin: 0; padding-left: 20px;">
-            <li>Pending commissions become payable after the donation is confirmed</li>
-            <li>Commissions are voided if a donation is refunded</li>
-            <li>Payment is typically processed monthly</li>
+            <li>{{ t('my_commissions.policy_item1') }}</li>
+            <li>{{ t('my_commissions.policy_item2') }}</li>
+            <li>{{ t('my_commissions.policy_item3') }}</li>
         </ul>
     </div>
 </div>

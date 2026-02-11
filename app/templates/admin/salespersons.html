@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Salespersons - Admin - Matat Mordechai{% endblock %}
+{% block title %}{{ t('nav.salespersons') }} - Admin - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -120,7 +120,7 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">Salesperson Management</h1>
+    <h1 style="margin-bottom: 20px;">{{ t('nav.salespersons') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
@@ -136,22 +136,22 @@
     </div>
 
     <div class="header-row">
-        <h2>All Salespersons ({{ salespersons|length }})</h2>
-        <a href="{{ url_for('admin.create_salesperson') }}" class="btn">+ Add Salesperson</a>
+        <h2>{{ t('common.all') }} {{ t('nav.salespersons') }} ({{ salespersons|length }})</h2>
+        <a href="{{ url_for('admin.create_salesperson') }}" class="btn">+ {{ t('admin.add_salesperson') }}</a>
     </div>
 
     {% if salespersons %}
     <table class="data-table">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Username</th>
-                <th>Ref Code</th>
-                <th>Commission</th>
+                <th>{{ t('common.name') }}</th>
+                <th>{{ t('admin.username') }}</th>
+                <th>{{ t('admin.ref_code') }}</th>
+                <th>{{ t('nav.commissions') }}</th>
                 <th>{{ t('nav.donations') }}</th>
-                <th>Total Raised</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{{ t('common.total') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('common.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -180,14 +180,14 @@
                 <td>${{ "%.2f"|format(stats[sp.id].total) }}</td>
                 <td>
                     <span class="status-badge {{ 'active' if sp.active else 'inactive' }}">
-                        {{ 'Active' if sp.active else 'Inactive' }}
+                        {{ t('common.active') if sp.active else t('common.inactive') }}
                     </span>
                 </td>
                 <td>
-                    <a href="{{ url_for('admin.edit_salesperson', id=sp.id) }}" class="action-btn edit">Edit</a>
-                    <button class="action-btn reset" onclick="resetPassword({{ sp.id }})">Reset PW</button>
+                    <a href="{{ url_for('admin.edit_salesperson', id=sp.id) }}" class="action-btn edit">{{ t('common.edit') }}</a>
+                    <button class="action-btn reset" onclick="resetPassword({{ sp.id }})">{{ t('admin.password') }}</button>
                     <form method="POST" action="{{ url_for('admin.delete_salesperson', id=sp.id) }}" style="display: inline;">
-                        <button type="submit" class="action-btn delete" onclick="return confirm('Delete this salesperson?')">Delete</button>
+                        <button type="submit" class="action-btn delete" onclick="return confirm('{{ t('common.delete') }}?')">{{ t('common.delete') }}</button>
                     </form>
                 </td>
             </tr>
@@ -196,8 +196,8 @@
     </table>
     {% else %}
     <div class="card" style="text-align: center; padding: 40px;">
-        <p style="color: #666;">No salespersons yet.</p>
-        <a href="{{ url_for('admin.create_salesperson') }}" class="btn" style="margin-top: 15px;">Add Your First Salesperson</a>
+        <p style="color: #666;">{{ t('common.no_data') }}</p>
+        <a href="{{ url_for('admin.create_salesperson') }}" class="btn" style="margin-top: 15px;">{{ t('admin.add_salesperson') }}</a>
     </div>
     {% endif %}
 </div>

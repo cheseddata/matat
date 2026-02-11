@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% set lang = request.args.get('lang', 'en') %}
-{% block title %}{% if lang == 'he' %}תודה{% else %}Thank You{% endif %} - Matat Mordechai{% endblock %}
+{% block title %}{{ t('donate.thank_you') }} - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -149,56 +149,44 @@
         <!-- Loading State -->
         <div id="loading-state">
             <div class="status-icon loading"></div>
-            <h1>{% if lang == 'he' %}מעבד את התרומה שלך...{% else %}Processing Your Donation...{% endif %}</h1>
+            <h1>{{ t('donate.processing_donation') }}</h1>
             <p class="message-text">
-                {% if lang == 'he' %}
-                אנא המתן בזמן שאנו מאשרים את התשלום שלך.
-                {% else %}
-                Please wait while we confirm your payment.
-                {% endif %}
+                {{ t('donate.please_wait') }}
             </p>
         </div>
 
         <!-- Success State -->
         <div id="success-state" class="hidden">
             <div class="status-icon success">✓</div>
-            <h1>{% if lang == 'he' %}תודה רבה!{% else %}Thank You!{% endif %}</h1>
+            <h1>{{ t('donate.thank_you') }}</h1>
             <p class="message-text">
-                {% if lang == 'he' %}
-                התרומה שלך התקבלה בהצלחה.
-                {% else %}
-                Your donation has been received successfully.
-                {% endif %}
+                {{ t('donate.donation_received') }}
             </p>
 
             <div class="receipt-box {% if lang == 'he' %}rtl{% endif %}">
                 <div class="receipt-row">
-                    <span class="receipt-label">{% if lang == 'he' %}סכום{% else %}Amount{% endif %}</span>
+                    <span class="receipt-label">{{ t('common.amount') }}</span>
                     <span class="receipt-value receipt-total">$<span id="amount-value">0.00</span></span>
                 </div>
                 <div class="receipt-row">
-                    <span class="receipt-label">{% if lang == 'he' %}מספר קבלה{% else %}Receipt #{% endif %}</span>
+                    <span class="receipt-label">{{ t('donate.receipt_number') }}</span>
                     <span class="receipt-value" id="receipt-number-value">-</span>
                 </div>
                 <div class="receipt-row">
-                    <span class="receipt-label">{% if lang == 'he' %}סטטוס{% else %}Status{% endif %}</span>
+                    <span class="receipt-label">{{ t('common.status') }}</span>
                     <span class="receipt-value" style="color: #27ae60;">
-                        {% if lang == 'he' %}הושלם{% else %}Completed{% endif %}
+                        {{ t('common.completed') }}
                     </span>
                 </div>
             </div>
 
             <p class="message-text">
-                {% if lang == 'he' %}
-                קבלה לצורכי מס תישלח לדוא"ל שלך בקרוב.
-                {% else %}
-                A tax-deductible receipt will be emailed to you shortly.
-                {% endif %}
+                {{ t('donate.tax_receipt_email') }}
             </p>
 
             <div class="share-section">
                 <p style="color: #666; font-size: 14px;">
-                    {% if lang == 'he' %}שתף את תמיכתך{% else %}Share your support{% endif %}
+                    {{ t('donate.share_support') }}
                 </p>
                 <div class="share-buttons">
                     <a href="#" class="share-btn facebook" onclick="shareOnFacebook()" title="Facebook">f</a>
@@ -211,30 +199,22 @@
         <!-- Pending State -->
         <div id="pending-state" class="hidden">
             <div class="status-icon pending">⏳</div>
-            <h1>{% if lang == 'he' %}התשלום בעיבוד{% else %}Payment Processing{% endif %}</h1>
+            <h1>{{ t('donate.payment_processing') }}</h1>
             <p class="message-text">
-                {% if lang == 'he' %}
-                התרומה שלך נמצאת בתהליך עיבוד. תקבל קבלה לדוא"ל ברגע שהתשלום יאושר.
-                {% else %}
-                Your donation is being processed. You will receive a tax-deductible receipt by email once the payment is confirmed.
-                {% endif %}
+                {{ t('donate.payment_processing_desc') }}
             </p>
             <p class="message-text" style="font-size: 14px;">
-                {% if lang == 'he' %}
-                זה עשוי לקחת מספר דקות לתשלומים מחשבון בנק.
-                {% else %}
-                This may take a few minutes for bank account payments.
-                {% endif %}
+                {{ t('donate.bank_payment_note') }}
             </p>
         </div>
 
         <!-- Action Buttons -->
         <div class="action-buttons">
             <a href="/donate" class="btn-secondary">
-                {% if lang == 'he' %}תרום שוב{% else %}Donate Again{% endif %}
+                {{ t('donate.donate_again') }}
             </a>
             <a href="/" class="btn-secondary">
-                {% if lang == 'he' %}חזרה לדף הבית{% else %}Return Home{% endif %}
+                {{ t('donate.return_home') }}
             </a>
         </div>
     </div>

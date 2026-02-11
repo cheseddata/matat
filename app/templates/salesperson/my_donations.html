@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}My Donations - Matat Mordechai{% endblock %}
+{% block title %}{{ t('my_donations.title') }} - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -120,25 +120,25 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 25px;">My Donations</h1>
+    <h1 style="margin-bottom: 25px;">{{ t('my_donations.title') }}</h1>
 
     <!-- Stats Bar -->
     <div class="stats-bar">
         <div class="stat-item">
             <div class="value">{{ donations|length }}</div>
-            <div class="label">Total Donations</div>
+            <div class="label">{{ t('my_donations.total_donations') }}</div>
         </div>
         <div class="stat-item">
             <div class="value">${{ "%.2f"|format(donations|selectattr('status', 'equalto', 'succeeded')|map(attribute='amount')|sum / 100) }}</div>
-            <div class="label">Total Amount</div>
+            <div class="label">{{ t('my_donations.total_amount') }}</div>
         </div>
         <div class="stat-item">
             <div class="value">{{ donations|selectattr('status', 'equalto', 'succeeded')|list|length }}</div>
-            <div class="label">Successful</div>
+            <div class="label">{{ t('my_donations.successful') }}</div>
         </div>
         <div class="stat-item">
             <div class="value">{{ donations|selectattr('donation_type', 'equalto', 'recurring')|list|length }}</div>
-            <div class="label">Recurring</div>
+            <div class="label">{{ t('my_donations.recurring') }}</div>
         </div>
     </div>
 
@@ -147,13 +147,13 @@
         <table class="donations-table">
             <thead>
                 <tr>
-                    <th>Date</th>
-                    <th>Donor</th>
-                    <th>Amount</th>
-                    <th>Type</th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th>Receipt</th>
+                    <th>{{ t('common.date') }}</th>
+                    <th>{{ t('my_donations.donor') }}</th>
+                    <th>{{ t('common.amount') }}</th>
+                    <th>{{ t('common.type') }}</th>
+                    <th>{{ t('common.source') }}</th>
+                    <th>{{ t('common.status') }}</th>
+                    <th>{{ t('my_donations.receipt') }}</th>
                 </tr>
             </thead>
             <tbody>
@@ -165,13 +165,13 @@
                         <strong>{{ donation.donor.full_name }}</strong>
                         <br><span style="font-size: 12px; color: #666;">{{ donation.donor.email }}</span>
                         {% else %}
-                        <span style="color: #999;">Unknown</span>
+                        <span style="color: #999;">{{ t('common.unknown') }}</span>
                         {% endif %}
                     </td>
                     <td>
                         <strong>${{ "%.2f"|format(donation.amount_dollars) }}</strong>
                         {% if donation.stripe_fee %}
-                        <br><span style="font-size: 11px; color: #999;">Fee: ${{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
+                        <br><span style="font-size: 11px; color: #999;">{{ t('common.fee') }}: ${{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
                         {% endif %}
                     </td>
                     <td>
@@ -181,7 +181,7 @@
                     </td>
                     <td>
                         <span class="source-badge">
-                            {{ donation.source or 'direct' }}
+                            {{ donation.source or t('common.direct') }}
                         </span>
                     </td>
                     <td>
@@ -190,7 +190,7 @@
                         </span>
                         {% if donation.status == 'refunded' and donation.refund_amount %}
                         <br><span style="font-size: 11px; color: #666;">
-                            Refunded: ${{ "%.2f"|format(donation.refund_amount / 100) }}
+                            {{ t('common.refunded') }}: ${{ "%.2f"|format(donation.refund_amount / 100) }}
                         </span>
                         {% endif %}
                     </td>
@@ -198,7 +198,7 @@
                         {% if donation.receipt_number %}
                         <span style="font-family: monospace; font-size: 11px;">{{ donation.receipt_number }}</span>
                         {% if donation.receipt_sent %}
-                        <br><span style="font-size: 10px; color: #27ae60;">Sent</span>
+                        <br><span style="font-size: 10px; color: #27ae60;">{{ t('receipt.sent') }}</span>
                         {% endif %}
                         {% else %}
                         <span style="color: #999; font-size: 12px;">—</span>
@@ -211,9 +211,9 @@
     </div>
     {% else %}
     <div class="card empty-state">
-        <h2>No Donations Yet</h2>
-        <p>When donors make donations through your links, they will appear here.</p>
-        <a href="{{ url_for('salesperson.send_link') }}" class="btn" style="margin-top: 20px;">Send Your First Link</a>
+        <h2>{{ t('my_donations.no_donations_title') }}</h2>
+        <p>{{ t('my_donations.no_donations_desc') }}</p>
+        <a href="{{ url_for('salesperson.send_link') }}" class="btn" style="margin-top: 20px;">{{ t('my_donations.send_first_link') }}</a>
     </div>
     {% endif %}
 </div>

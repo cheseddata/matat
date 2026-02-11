@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Receipt Lookup - Admin - Matat Mordechai{% endblock %}
+{% block title %}{{ t('nav.receipts') }} - Admin - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -147,7 +147,7 @@
 
 {% block content %}
 <div class="container">
-    <h1 style="margin-bottom: 20px;">Receipt Lookup</h1>
+    <h1 style="margin-bottom: 20px;">{{ t('nav.receipts') }}</h1>
 
     <!-- Admin Navigation -->
     <div class="admin-nav">
@@ -165,25 +165,22 @@
     <!-- Search Box -->
     <div class="search-box">
         <form method="GET" class="search-form">
-            <input type="text" name="q" placeholder="Search by receipt number, donor name, or email..."
+            <input type="text" name="q" placeholder="{{ t('common.search') }}..."
                    value="{{ search }}">
-            <button type="submit">Search</button>
+            <button type="submit">{{ t('common.search') }}</button>
         </form>
-        <p class="search-help">
-            Search by receipt number (e.g., MM-2024-00001), donor email, or donor name.
-        </p>
     </div>
 
     {% if receipts %}
     <table class="data-table">
         <thead>
             <tr>
-                <th>Receipt #</th>
-                <th>Date</th>
-                <th>Donor</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th>{{ t('receipt.receipt_number') }}</th>
+                <th>{{ t('common.date') }}</th>
+                <th>{{ t('nav.donors') }}</th>
+                <th>{{ t('common.amount') }}</th>
+                <th>{{ t('common.status') }}</th>
+                <th>{{ t('common.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -196,23 +193,23 @@
                     <strong>{{ receipt.donor.full_name }}</strong>
                     <br><span style="font-size: 12px; color: #666;">{{ receipt.donor.email }}</span>
                     {% else %}
-                    <span style="color: #999;">Unknown</span>
+                    <span style="color: #999;">{{ t('common.unknown') }}</span>
                     {% endif %}
                 </td>
                 <td><strong>${{ "%.2f"|format(receipt.amount / 100) }}</strong></td>
                 <td>
                     {% if receipt.email_sent %}
-                    <span class="status-sent">Email Sent</span>
+                    <span class="status-sent">{{ t('receipt.sent') }}</span>
                     {% else %}
-                    <span class="status-pending">Not Sent</span>
+                    <span class="status-pending">{{ t('common.pending') }}</span>
                     {% endif %}
                 </td>
                 <td>
                     <a href="{{ url_for('admin.download_receipt', id=receipt.id) }}" class="action-btn download">
-                        Download
+                        {{ t('common.download') }}
                     </a>
                     <button class="action-btn resend" onclick="resendReceipt({{ receipt.id }})">
-                        Resend
+                        {{ t('common.resend') }}
                     </button>
                 </td>
             </tr>
@@ -221,13 +218,13 @@
     </table>
     {% elif search %}
     <div class="card empty-state">
-        <h3>No Results</h3>
-        <p>No receipts found matching "{{ search }}"</p>
+        <h3>{{ t('common.no_data') }}</h3>
+        <p></p>
     </div>
     {% else %}
     <div class="card empty-state">
-        <h3>Recent Receipts</h3>
-        <p>No receipts have been generated yet.</p>
+        <h3>{{ t('nav.receipts') }}</h3>
+        <p>{{ t('admin.no_receipts') }}</p>
     </div>
     {% endif %}
 </div>

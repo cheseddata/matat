@@ -154,7 +154,7 @@
     <div class="ref-code-box">
         <div>
             <span style="color: #666;">{{ t('dashboard.your_ref_code') }}:</span>
-            <div class="ref-code-value" id="ref-code">{{ ref_code or 'Not assigned' }}</div>
+            <div class="ref-code-value" id="ref-code">{{ ref_code or t('dashboard.not_assigned') }}</div>
         </div>
         {% if ref_code %}
         <button class="copy-btn" onclick="copyRefCode()">{{ t('my_links.copy') }}</button>
@@ -223,7 +223,7 @@
                 {% for donation in recent_donations %}
                 <tr>
                     <td>{{ donation.created_at.strftime('%m/%d/%Y') }}</td>
-                    <td>{{ donation.donor.full_name if donation.donor else 'Unknown' }}</td>
+                    <td>{{ donation.donor.full_name if donation.donor else t('common.unknown') }}</td>
                     <td>${{ "%.2f"|format(donation.amount_dollars) }}</td>
                     <td><span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span></td>
                 </tr>
