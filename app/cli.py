@@ -1,10 +1,12 @@
 """CLI commands for the application."""
 import csv
 import click
+from datetime import datetime
 from flask import current_app
 from flask.cli import with_appcontext
 from .extensions import db
 from .models.donor import Donor
+from .models.donation import Donation
 
 
 @click.command('import-donors')
@@ -69,6 +71,117 @@ def import_donors_cmd(csv_file):
     click.echo(f"Import complete: {imported} imported, {skipped} skipped, {errors} errors")
 
 
+@click.command('import-donations')
+@click.argument('csv_file', type=click.Path(exists=True))
+@with_appcontext
+def import_donations_cmd(csv_file):
+    """Import donations from Stripe CSV export (unified_payments.csv)."""
+    imported = 0
+    skipped = 0
+    errors = 0
+
+    with open(csv_file, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            try:
+                email = row.get('Customer Email', '').strip()
+                status = row.get('Status', '').strip().lower()
+                payment_intent_id = row.get('PaymentIntent ID', '').strip()
+
+                if not email or status != 'paid':
+                    skipped += 1
+                    continue
+
+                # Skip if donation already exists (by payment intent ID)
+                if payment_intent_id:
+                    existing = Donation.query.filter_by(stripe_payment_intent_id=payment_intent_id).first()
+                    if existing:
+                        skipped += 1
+                        continue
+
+                # Find or create donor
+                donor = Donor.query.filter_by(email=email).first()
+                if not donor:
+                    # Create donor if doesn't exist
+                    card_name = row.get('Card Name', '').strip()
+                    if card_name:
+                        name_parts = card_name.split(' ', 1)
+                        first_name = name_parts[0]
+                        last_name = name_parts[1] if len(name_parts) > 1 else ''
+                    else:
+                        first_name = 'Unknown'
+                        last_name = ''
+
+                    donor = Donor(
+                        first_name=first_name,
+                        last_name=last_name,
+                        email=email,
+                        address_line1=row.get('Card Address Line1', '').strip() or None,
+                        address_line2=row.get('Card Address Line2', '').strip() or None,
+                        city=row.get('Card Address City', '').strip() or None,
+                        state=row.get('Card Address State', '').strip() or None,
+                        zip=row.get('Card Address Zip', '').strip() or None,
+                        country=row.get('Card Address Country', 'US').strip() or 'US',
+                        stripe_customer_id=row.get('Customer ID', '').strip() or None,
+                        test=False
+                    )
+                    db.session.add(donor)
+                    db.session.flush()
+
+                # Parse amount (in dollars, convert to cents)
+                amount_str = row.get('Amount', '0').replace(',', '')
+                amount_cents = int(float(amount_str) * 100)
+
+                # Parse fee (in dollars, convert to cents)
+                fee_str = row.get('Fee', '0').replace(',', '')
+                fee_cents = int(float(fee_str) * 100)
+
+                # Parse date
+                date_str = row.get('Created date (UTC)', '')
+                if date_str:
+                    try:
+                        created_at = datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S')
+                    except ValueError:
+                        created_at = datetime.utcnow()
+                else:
+                    created_at = datetime.utcnow()
+
+                # Get payment method info
+                card_brand = row.get('Card Brand', '').strip() or None
+                card_last4 = row.get('Card Last4', '').strip() or None
+                payment_source = row.get('Payment Source Type', '').strip().lower() or 'card'
+
+                # Create donation
+                donation = Donation(
+                    donor_id=donor.id,
+                    amount=amount_cents,
+                    stripe_fee=fee_cents,
+                    net_amount=amount_cents - fee_cents,
+                    currency=row.get('Currency', 'usd').strip().lower(),
+                    status='succeeded',
+                    donation_type='one_time',
+                    source='stripe_import',
+                    stripe_payment_intent_id=payment_intent_id or None,
+                    payment_method_type=payment_source,
+                    payment_method_brand=card_brand,
+                    payment_method_last4=card_last4,
+                    created_at=created_at
+                )
+
+                db.session.add(donation)
+                imported += 1
+
+            except Exception as e:
+                errors += 1
+                click.echo(f"Error processing row: {e}")
+
+        db.session.commit()
+
+    click.echo(f"Import complete: {imported} imported, {skipped} skipped, {errors} errors")
+
+
 def init_app(app):
     """Register CLI commands with the app."""
     app.cli.add_command(import_donors_cmd)
+    app.cli.add_command(import_donations_cmd)

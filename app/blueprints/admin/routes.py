@@ -491,9 +491,10 @@ def report_yearly():
     months_data = {int(m.month): {'total': m.total / 100, 'count': m.count} for m in monthly_totals}
 
     # Commission summary
+    from sqlalchemy import case
     commission_summary = db.session.query(
-        func.sum(Commission.commission_amount).filter(Commission.status == 'pending').label('pending'),
-        func.sum(Commission.commission_amount).filter(Commission.status == 'paid').label('paid'),
+        func.sum(case((Commission.status == 'pending', Commission.commission_amount), else_=0)).label('pending'),
+        func.sum(case((Commission.status == 'paid', Commission.commission_amount), else_=0)).label('paid'),
         func.sum(Commission.commission_amount).label('total')
     ).filter(
         extract('year', Commission.created_at) == year
