@@ -346,3 +346,204 @@ def create_payment_intent_api():
 
     data = request.get_json()
     return _create_phone_payment_intent(data)
+
+
+@salesperson_bp.route('/donations/<int:id>')
+@salesperson_required
+def donation_detail(id):
+    """View donation details - scoped to salesperson's own donations."""
+    donation = Donation.query.filter(
+        Donation.id == id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first_or_404()
+    return render_template('salesperson/donation_detail.html', donation=donation)
+
+
+@salesperson_bp.route('/donations/<int:id>/edit', methods=['GET', 'POST'])
+@salesperson_required
+def edit_donation(id):
+    """Edit donation details - scoped to salesperson's own donations."""
+    from ...models.campaign import Campaign
+
+    donation = Donation.query.filter(
+        Donation.id == id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first_or_404()
+
+    campaigns = Campaign.query.filter(
+        Campaign.is_active == True
+    ).order_by(Campaign.name).all()
+
+    donors = Donor.query.filter(
+        Donor.deleted_at.is_(None)
+    ).order_by(Donor.last_name, Donor.first_name).all()
+
+    if request.method == 'POST':
+        # Update donor info if provided
+        if donation.donor:
+            donor = donation.donor
+            first_name = request.form.get('donor_first_name', '').strip()
+            last_name = request.form.get('donor_last_name', '').strip()
+            email = request.form.get('donor_email', '').strip()
+            phone = request.form.get('donor_phone', '').strip()
+
+            if first_name:
+                donor.first_name = first_name
+            if last_name:
+                donor.last_name = last_name
+            if email:
+                donor.email = email
+            donor.phone = phone or donor.phone
+
+            # Update address fields
+            donor.address_line1 = request.form.get('donor_address_line1', '').strip() or donor.address_line1
+            donor.address_line2 = request.form.get('donor_address_line2', '').strip() or None
+            donor.city = request.form.get('donor_city', '').strip() or donor.city
+            donor.state = request.form.get('donor_state', '').strip() or donor.state
+            donor.zip = request.form.get('donor_zip', '').strip() or donor.zip
+            donor.country = request.form.get('donor_country', '').strip() or donor.country or 'US'
+
+        # Update campaign if changed
+        campaign_id = request.form.get('campaign_id', '').strip()
+        donation.campaign_id = int(campaign_id) if campaign_id else None
+
+        db.session.commit()
+        flash('Donation updated successfully.', 'success')
+        return redirect(url_for('salesperson.donation_detail', id=donation.id))
+
+    return render_template(
+        'salesperson/donation_edit.html',
+        donation=donation,
+        campaigns=campaigns,
+        donors=donors
+    )
+
+
+@salesperson_bp.route('/donations/<int:id>/receipt/print')
+@salesperson_required
+def print_receipt(id):
+    """Print receipt for a donation - scoped to salesperson's own donations."""
+    from ...services.receipt_service import create_receipt_atomic
+
+    donation = Donation.query.filter(
+        Donation.id == id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first_or_404()
+
+    donor = Donor.query.get(donation.donor_id)
+
+    if not donor or not donor.first_name or donor.first_name.strip().lower() == 'unknown':
+        flash('Donor name is required to create a receipt. Please edit the donation first.', 'error')
+        return redirect(url_for('salesperson.edit_donation', id=id))
+
+    # Get or create receipt
+    receipt = donation.receipt
+    if not receipt:
+        try:
+            receipt = create_receipt_atomic(donation, donor)
+            db.session.commit()
+        except Exception as e:
+            flash(f'Error creating receipt: {str(e)}', 'error')
+            return redirect(url_for('salesperson.donation_detail', id=id))
+
+    return render_template('salesperson/receipt_print.html', donation=donation, donor=donor, receipt=receipt)
+
+
+@salesperson_bp.route('/donations/<int:id>/receipt/pdf')
+@salesperson_required
+def donation_receipt_pdf(id):
+    """Download PDF receipt for a donation - scoped to salesperson's own donations."""
+    from flask import send_file
+    from ...services.receipt_service import create_receipt_atomic, regenerate_receipt_pdf
+    import os
+
+    donation = Donation.query.filter(
+        Donation.id == id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first_or_404()
+
+    donor = Donor.query.get(donation.donor_id)
+
+    if not donor or not donor.first_name or donor.first_name.strip().lower() == 'unknown':
+        flash('Donor name is required to create a receipt. Please edit the donation first.', 'error')
+        return redirect(url_for('salesperson.edit_donation', id=id))
+
+    # Get or create receipt
+    receipt = donation.receipt
+    if not receipt:
+        try:
+            receipt = create_receipt_atomic(donation, donor)
+            db.session.commit()
+        except Exception as e:
+            flash(f'Error creating receipt: {str(e)}', 'error')
+            return redirect(url_for('salesperson.donation_detail', id=id))
+
+    # Regenerate PDF if missing
+    if not receipt.pdf_path or not os.path.exists(receipt.pdf_path):
+        try:
+            regenerate_receipt_pdf(receipt)
+        except Exception as e:
+            flash(f'Error generating PDF: {str(e)}', 'error')
+            return redirect(url_for('salesperson.donation_detail', id=id))
+
+    return send_file(
+        receipt.pdf_path,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f'{receipt.receipt_number}.pdf'
+    )
+
+
+@salesperson_bp.route('/donations/<int:id>/resend-receipt', methods=['POST'])
+@salesperson_required
+def resend_receipt(id):
+    """Resend receipt email - scoped to salesperson's own donations."""
+    from ...services.receipt_service import create_receipt_atomic, regenerate_receipt_pdf
+    from ...services.email_service import send_receipt_email
+    import os
+
+    donation = Donation.query.filter(
+        Donation.id == id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first_or_404()
+
+    donor = Donor.query.get(donation.donor_id)
+
+    if not donor or not donor.email:
+        flash('Donor email is required to send receipt.', 'error')
+        return redirect(url_for('salesperson.donation_detail', id=id))
+
+    # Get or create receipt
+    receipt = donation.receipt
+    if not receipt:
+        try:
+            receipt = create_receipt_atomic(donation, donor)
+            db.session.commit()
+        except Exception as e:
+            flash(f'Error creating receipt: {str(e)}', 'error')
+            return redirect(url_for('salesperson.donation_detail', id=id))
+
+    # Regenerate PDF if missing
+    if not receipt.pdf_path or not os.path.exists(receipt.pdf_path):
+        try:
+            regenerate_receipt_pdf(receipt)
+        except Exception as e:
+            flash(f'Error generating PDF: {str(e)}', 'error')
+            return redirect(url_for('salesperson.donation_detail', id=id))
+
+    # Send email
+    success = send_receipt_email(donor, receipt)
+
+    if success:
+        receipt.sent_at = datetime.utcnow()
+        db.session.commit()
+        flash(f'Receipt sent successfully to {donor.email}', 'success')
+    else:
+        flash('Failed to send receipt email. Please try again.', 'error')
+
+    return redirect(url_for('salesperson.donation_detail', id=id))

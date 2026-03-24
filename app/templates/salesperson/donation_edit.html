@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% block title %}Edit Donation #{{ donation.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .edit-card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        max-width: 700px;
+    }
+
+    .edit-card h2 {
+        margin: 0 0 20px 0;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        font-size: 18px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        border-color: #3498db;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    @media (max-width: 500px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .btn-save {
+        background: #27ae60;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-save:hover {
+        background: #219a52;
+    }
+
+    .btn-cancel {
+        background: #95a5a6;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-cancel:hover {
+        background: #7f8c8d;
+    }
+
+    .donation-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 25px;
+    }
+
+    .donation-info .amount {
+        font-size: 24px;
+        font-weight: 700;
+        color: #27ae60;
+    }
+
+    .donation-info .status {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-left: 10px;
+    }
+
+    .donation-info .status.succeeded { background: #d4edda; color: #155724; }
+    .donation-info .status.pending { background: #fff3cd; color: #856404; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('salesperson.my_donations') }}" class="back-link">&larr; Back to Donations</a>
+
+    <h1 style="margin-bottom: 25px;">Edit Donation #{{ donation.id }}</h1>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="edit-card">
+            <!-- Donation Summary (read-only) -->
+            <div class="donation-info">
+                <span class="amount">${{ "%.2f"|format(donation.amount_dollars) }}</span>
+                <span class="status {{ donation.status }}">{{ donation.status|capitalize }}</span>
+                <br>
+                <span style="font-size: 13px; color: #666;">{{ donation.created_at.strftime('%B %d, %Y at %H:%M') }}</span>
+            </div>
+
+            <h2>Donor Information</h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                Update the donor's contact information below.
+            </p>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="donor_first_name">First Name *</label>
+                    <input type="text" name="donor_first_name" id="donor_first_name"
+                           value="{{ donation.donor.first_name if donation.donor else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="donor_last_name">Last Name *</label>
+                    <input type="text" name="donor_last_name" id="donor_last_name"
+                           value="{{ donation.donor.last_name if donation.donor else '' }}" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="donor_email">Email *</label>
+                    <input type="email" name="donor_email" id="donor_email"
+                           value="{{ donation.donor.email if donation.donor else '' }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="donor_phone">Phone</label>
+                    <input type="tel" name="donor_phone" id="donor_phone"
+                           value="{{ donation.donor.phone if donation.donor else '' }}">
+                </div>
+            </div>
+
+            <hr style="margin: 25px 0; border: none; border-top: 1px solid #eee;">
+
+            <h2>Address</h2>
+            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">
+                Address is optional but needed for mailed receipts.
+            </p>
+
+            <div class="form-group">
+                <label for="donor_address_line1">Address Line 1</label>
+                <input type="text" name="donor_address_line1" id="donor_address_line1"
+                       value="{{ donation.donor.address_line1 if donation.donor else '' }}"
+                       placeholder="Street address">
+            </div>
+
+            <div class="form-group">
+                <label for="donor_address_line2">Address Line 2</label>
+                <input type="text" name="donor_address_line2" id="donor_address_line2"
+                       value="{{ donation.donor.address_line2 if donation.donor else '' }}"
+                       placeholder="Apt, suite, unit, etc. (optional)">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="donor_city">City</label>
+                    <input type="text" name="donor_city" id="donor_city"
+                           value="{{ donation.donor.city if donation.donor else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="donor_state">State</label>
+                    <input type="text" name="donor_state" id="donor_state"
+                           value="{{ donation.donor.state if donation.donor else '' }}"
+                           placeholder="e.g., NY">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="donor_zip">ZIP Code</label>
+                    <input type="text" name="donor_zip" id="donor_zip"
+                           value="{{ donation.donor.zip if donation.donor else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="donor_country">Country</label>
+                    <input type="text" name="donor_country" id="donor_country"
+                           value="{{ donation.donor.country if donation.donor else 'US' }}"
+                           placeholder="US">
+                </div>
+            </div>
+
+            {% if campaigns %}
+            <hr style="margin: 25px 0; border: none; border-top: 1px solid #eee;">
+
+            <div class="form-group">
+                <label for="campaign_id">Campaign</label>
+                <select name="campaign_id" id="campaign_id">
+                    <option value="">-- None --</option>
+                    {% for campaign in campaigns %}
+                    <option value="{{ campaign.id }}" {{ 'selected' if donation.campaign_id == campaign.id else '' }}>
+                        {{ campaign.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="btn-row">
+                <button type="submit" class="btn-save">Save Changes</button>
+                <a href="{{ url_for('salesperson.donation_detail', id=donation.id) }}" class="btn-cancel">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Donation #{{ donation.id }} - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 25px;
+    }
+
+    @media (max-width: 800px) {
+        .detail-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .detail-card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .detail-card h2 {
+        margin: 0 0 20px 0;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .detail-row {
+        display: flex;
+        padding: 12px 0;
+        border-bottom: 1px solid #f5f5f5;
+    }
+
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+
+    .detail-label {
+        width: 140px;
+        color: #666;
+        font-size: 14px;
+    }
+
+    .detail-value {
+        flex: 1;
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.succeeded { background: #d4edda; color: #155724; }
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.failed { background: #f8d7da; color: #721c24; }
+    .status-badge.refunded { background: #cce5ff; color: #004085; }
+
+    .amount-large {
+        font-size: 32px;
+        font-weight: 700;
+        color: #27ae60;
+        margin-bottom: 10px;
+    }
+
+    .sidebar-section {
+        margin-bottom: 25px;
+    }
+
+    .sidebar-section h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #2c3e50;
+    }
+
+    .stripe-id {
+        font-family: monospace;
+        font-size: 12px;
+        background: #f8f9fa;
+        padding: 2px 6px;
+        border-radius: 3px;
+        word-break: break-all;
+    }
+
+    .action-btn {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 500;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        border: none;
+        cursor: pointer;
+    }
+
+    .action-btn.edit { background: #f39c12; color: white; }
+    .action-btn.print { background: #9b59b6; color: white; }
+    .action-btn.pdf { background: #e74c3c; color: white; }
+    .action-btn.send { background: #27ae60; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('salesperson.my_donations') }}" class="back-link">&larr; Back to Donations</a>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+        <h1 style="margin: 0;">Donation #{{ donation.id }}</h1>
+        <div>
+            <a href="{{ url_for('salesperson.edit_donation', id=donation.id) }}" class="action-btn edit">Edit</a>
+            <button onclick="printReceipt({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')" class="action-btn print">Print Receipt</button>
+            <button onclick="downloadPdf({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')" class="action-btn pdf">Download PDF</button>
+        </div>
+    </div>
+
+    <div class="detail-grid">
+        <!-- Main Details -->
+        <div class="detail-card">
+            <h2>Donation Details</h2>
+
+            <div class="amount-large">${{ "%.2f"|format(donation.amount_dollars) }}</div>
+            <span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span>
+
+            <div style="margin-top: 25px;">
+                <div class="detail-row">
+                    <div class="detail-label">Date</div>
+                    <div class="detail-value">{{ donation.created_at.strftime('%B %d, %Y at %H:%M') }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">Type</div>
+                    <div class="detail-value">{{ donation.donation_type|replace('_', ' ')|title }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">Source</div>
+                    <div class="detail-value">{{ donation.source or 'Direct' }}</div>
+                </div>
+
+                {% if donation.stripe_fee %}
+                <div class="detail-row">
+                    <div class="detail-label">Stripe Fee</div>
+                    <div class="detail-value">${{ "%.2f"|format(donation.stripe_fee_dollars) }}</div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-label">Net Amount</div>
+                    <div class="detail-value">${{ "%.2f"|format(donation.amount_dollars - donation.stripe_fee_dollars) }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Donor Info -->
+            <h3 style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">Donor Information</h3>
+            {% if donation.donor %}
+            <div class="detail-row">
+                <div class="detail-label">Name</div>
+                <div class="detail-value">{{ donation.donor.full_name }}</div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Email</div>
+                <div class="detail-value">{{ donation.donor.email }}</div>
+            </div>
+            {% if donation.donor.phone %}
+            <div class="detail-row">
+                <div class="detail-label">Phone</div>
+                <div class="detail-value">{{ donation.donor.phone }}</div>
+            </div>
+            {% endif %}
+            {% if donation.donor.address_line1 %}
+            <div class="detail-row">
+                <div class="detail-label">Address</div>
+                <div class="detail-value">
+                    {{ donation.donor.address_line1 }}<br>
+                    {% if donation.donor.address_line2 %}{{ donation.donor.address_line2 }}<br>{% endif %}
+                    {{ donation.donor.city }}, {{ donation.donor.state }} {{ donation.donor.zip }}<br>
+                    {{ donation.donor.country }}
+                </div>
+            </div>
+            {% endif %}
+            {% else %}
+            <p style="color: #999;">No donor information available</p>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div>
+            <!-- Receipt Info -->
+            <div class="detail-card sidebar-section">
+                <h3>Receipt</h3>
+                {% if donation.receipt %}
+                <div class="detail-row">
+                    <div class="detail-label">Receipt #</div>
+                    <div class="detail-value"><span class="stripe-id">{{ donation.receipt.receipt_number }}</span></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value">{{ 'Sent' if donation.receipt_sent else 'Pending' }}</div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <a href="{{ url_for('salesperson.donation_receipt_pdf', id=donation.id) }}" class="action-btn pdf">Download PDF</a>
+                    <form action="{{ url_for('salesperson.resend_receipt', id=donation.id) }}" method="POST" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="action-btn send">Resend Email</button>
+                    </form>
+                </div>
+                {% else %}
+                <p style="color: #999; font-size: 14px; margin-bottom: 15px;">No receipt generated yet</p>
+                {% if donation.status == 'succeeded' %}
+                <button onclick="printReceipt({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')" class="action-btn print">Generate Receipt</button>
+                {% endif %}
+                {% endif %}
+            </div>
+
+            <!-- Campaign Info -->
+            {% if donation.campaign %}
+            <div class="detail-card sidebar-section">
+                <h3>Campaign</h3>
+                <div class="detail-row">
+                    <div class="detail-label">Name</div>
+                    <div class="detail-value">{{ donation.campaign.name }}</div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function printReceipt(donationId, donorName) {
+    if (!donorName || donorName.trim() === '' || donorName.trim().toLowerCase() === 'unknown') {
+        alert('Donor name is required to create a receipt. Please edit the donation and add the donor\'s real name first.');
+        return;
+    }
+    window.open(`/salesperson/donations/${donationId}/receipt/print`, 'PrintReceipt', 'width=800,height=600');
+}
+
+function downloadPdf(donationId, donorName) {
+    if (!donorName || donorName.trim() === '' || donorName.trim().toLowerCase() === 'unknown') {
+        alert('Donor name is required to create a receipt. Please edit the donation and add the donor\'s real name first.');
+        return;
+    }
+    window.location.href = `/salesperson/donations/${donationId}/receipt/pdf`;
+}
+</script>
+{% endblock %}
