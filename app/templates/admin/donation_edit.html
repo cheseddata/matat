@@ -1,0 +1,385 @@
+{% extends "base.html" %}
+{% block title %}Edit Donation #{{ donation.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    .edit-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+    }
+
+    @media (max-width: 800px) {
+        .edit-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .edit-card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .edit-card h2 {
+        margin: 0 0 20px 0;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        font-size: 18px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        border-color: #3498db;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+    }
+
+    .form-group .help-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    @media (max-width: 500px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .current-value {
+        font-size: 12px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .btn-save {
+        background: #27ae60;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .btn-save:hover {
+        background: #219a52;
+    }
+
+    .btn-cancel {
+        background: #95a5a6;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-cancel:hover {
+        background: #7f8c8d;
+    }
+
+    .stripe-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        font-size: 13px;
+    }
+
+    .stripe-info code {
+        font-family: monospace;
+        background: #e9ecef;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 11px;
+        word-break: break-all;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('admin.donations') }}" class="back-link">&larr; Back to Donations</a>
+
+    <h1 style="margin-bottom: 25px;">Edit Donation #{{ donation.id }}</h1>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="edit-grid">
+            <!-- Donation Details -->
+            <div class="edit-card">
+                <h2>Donation Details</h2>
+
+                <div class="form-group">
+                    <label>Amount ($)</label>
+                    <input type="number" step="0.01" name="amount" value="{{ "%.2f"|format(donation.amount_dollars) }}" required>
+                    <p class="help-text">Enter amount in dollars (e.g., 100.00)</p>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status">
+                            <option value="pending" {{ 'selected' if donation.status == 'pending' else '' }}>Pending</option>
+                            <option value="succeeded" {{ 'selected' if donation.status == 'succeeded' else '' }}>Succeeded</option>
+                            <option value="failed" {{ 'selected' if donation.status == 'failed' else '' }}>Failed</option>
+                            <option value="refunded" {{ 'selected' if donation.status == 'refunded' else '' }}>Refunded</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="donation_type">
+                            <option value="one_time" {{ 'selected' if donation.donation_type == 'one_time' else '' }}>One Time</option>
+                            <option value="recurring" {{ 'selected' if donation.donation_type == 'recurring' else '' }}>Recurring</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Source</label>
+                    <select name="source">
+                        <option value="direct" {{ 'selected' if donation.source == 'direct' else '' }}>Direct</option>
+                        <option value="phone" {{ 'selected' if donation.source == 'phone' else '' }}>Phone</option>
+                        <option value="email_link" {{ 'selected' if donation.source == 'email_link' else '' }}>Email Link</option>
+                        <option value="campaign_page" {{ 'selected' if donation.source == 'campaign_page' else '' }}>Campaign Page</option>
+                        <option value="import" {{ 'selected' if donation.source == 'import' else '' }}>Import</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Salesperson</label>
+                    <select name="salesperson_id">
+                        <option value="">-- None --</option>
+                        {% for sp in salespersons %}
+                        <option value="{{ sp.id }}" {{ 'selected' if donation.salesperson_id == sp.id else '' }}>
+                            {{ sp.full_name }} ({{ sp.ref_code }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Campaign</label>
+                    <select name="campaign_id">
+                        <option value="">-- None --</option>
+                        {% for campaign in campaigns %}
+                        <option value="{{ campaign.id }}" {{ 'selected' if donation.campaign_id == campaign.id else '' }}>
+                            {{ campaign.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Stripe Info (read-only) -->
+                {% if donation.stripe_payment_intent_id %}
+                <div class="stripe-info" style="margin-top: 20px;">
+                    <strong>Stripe Info</strong> (read-only)<br>
+                    {% if donation.stripe_payment_intent_id %}
+                    <p style="margin: 8px 0 0 0;">Payment Intent: <code>{{ donation.stripe_payment_intent_id }}</code></p>
+                    {% endif %}
+                    {% if donation.stripe_charge_id %}
+                    <p style="margin: 4px 0 0 0;">Charge ID: <code>{{ donation.stripe_charge_id }}</code></p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Donor Details -->
+            <div class="edit-card">
+                <h2>Donor Information</h2>
+
+                <div class="form-group">
+                    <label>Select Donor</label>
+                    <select name="donor_id" id="donorSelect" onchange="updateDonorFields()">
+                        {% for donor in donors %}
+                        <option value="{{ donor.id }}"
+                                data-first="{{ donor.first_name }}"
+                                data-last="{{ donor.last_name }}"
+                                data-email="{{ donor.email }}"
+                                data-phone="{{ donor.phone or '' }}"
+                                data-address1="{{ donor.address_line1 or '' }}"
+                                data-address2="{{ donor.address_line2 or '' }}"
+                                data-city="{{ donor.city or '' }}"
+                                data-state="{{ donor.state or '' }}"
+                                data-zip="{{ donor.zip or '' }}"
+                                data-country="{{ donor.country or 'US' }}"
+                                {{ 'selected' if donation.donor_id == donor.id else '' }}>
+                            {{ donor.full_name }} ({{ donor.email }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <p class="help-text">Select a different donor or edit the fields below</p>
+                </div>
+
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                    <strong>Edit donor details:</strong> Changes below will update the selected donor's record.
+                </p>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" name="donor_first_name" id="donorFirstName"
+                               value="{{ donation.donor.first_name if donation.donor else '' }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" name="donor_last_name" id="donorLastName"
+                               value="{{ donation.donor.last_name if donation.donor else '' }}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="donor_email" id="donorEmail"
+                           value="{{ donation.donor.email if donation.donor else '' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="tel" name="donor_phone" id="donorPhone"
+                           value="{{ donation.donor.phone if donation.donor else '' }}">
+                </div>
+
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                    <strong>Address</strong> (optional - for mailed receipts)
+                </p>
+
+                <div class="form-group">
+                    <label>Address Line 1</label>
+                    <input type="text" name="donor_address_line1" id="donorAddress1"
+                           value="{{ donation.donor.address_line1 if donation.donor else '' }}"
+                           placeholder="Street address">
+                </div>
+
+                <div class="form-group">
+                    <label>Address Line 2</label>
+                    <input type="text" name="donor_address_line2" id="donorAddress2"
+                           value="{{ donation.donor.address_line2 if donation.donor else '' }}"
+                           placeholder="Apt, suite, unit, etc. (optional)">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" name="donor_city" id="donorCity"
+                               value="{{ donation.donor.city if donation.donor else '' }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>State</label>
+                        <input type="text" name="donor_state" id="donorState"
+                               value="{{ donation.donor.state if donation.donor else '' }}"
+                               placeholder="e.g., NY">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>ZIP Code</label>
+                        <input type="text" name="donor_zip" id="donorZip"
+                               value="{{ donation.donor.zip if donation.donor else '' }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Country</label>
+                        <input type="text" name="donor_country" id="donorCountry"
+                               value="{{ donation.donor.country if donation.donor else 'US' }}"
+                               placeholder="US">
+                    </div>
+                </div>
+
+                {% if donation.donor %}
+                <p style="margin-top: 15px;">
+                    <a href="{{ url_for('admin.donor_detail', id=donation.donor.id) }}" style="color: #3498db; font-size: 13px;">
+                        View full donor profile &rarr;
+                    </a>
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="btn-row" style="max-width: 600px;">
+            <button type="submit" class="btn-save">Save Changes</button>
+            <a href="{{ url_for('admin.donation_detail', id=donation.id) }}" class="btn-cancel">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updateDonorFields() {
+    const select = document.getElementById('donorSelect');
+    const option = select.options[select.selectedIndex];
+
+    document.getElementById('donorFirstName').value = option.dataset.first || '';
+    document.getElementById('donorLastName').value = option.dataset.last || '';
+    document.getElementById('donorEmail').value = option.dataset.email || '';
+    document.getElementById('donorPhone').value = option.dataset.phone || '';
+    document.getElementById('donorAddress1').value = option.dataset.address1 || '';
+    document.getElementById('donorAddress2').value = option.dataset.address2 || '';
+    document.getElementById('donorCity').value = option.dataset.city || '';
+    document.getElementById('donorState').value = option.dataset.state || '';
+    document.getElementById('donorZip').value = option.dataset.zip || '';
+    document.getElementById('donorCountry').value = option.dataset.country || 'US';
+}
+</script>
+{% endblock %}

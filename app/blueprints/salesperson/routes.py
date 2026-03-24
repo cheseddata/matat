@@ -17,6 +17,13 @@ from ...services.stripe_service import get_stripe_keys, create_payment_intent, g
 @salesperson_bp.route('/dashboard')
 @salesperson_required
 def dashboard():
+    """Salesperson dashboard - redirects to donations."""
+    return redirect(url_for('salesperson.my_donations'))
+
+
+@salesperson_bp.route('/dashboard-stats')
+@salesperson_required
+def dashboard_stats():
     """Salesperson dashboard with stats."""
     # All queries strictly scoped to current_user.id
     salesperson_id = current_user.id

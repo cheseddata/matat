@@ -42,6 +42,105 @@
         .text-left { text-align: right; }
         .text-right { text-align: left; }
         {% endif %}
+
+        /* Help Button & Clock System */
+        .help-clock-container {
+            position: fixed;
+            bottom: 20px;
+            {% if is_rtl %}left: 20px;{% else %}right: 20px;{% endif %}
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: {% if is_rtl %}flex-start{% else %}flex-end{% endif %};
+        }
+
+        .clock-widget {
+            background: #1e3a5f;
+            padding: 12px 16px;
+            border-radius: 10px;
+            color: white;
+            font-family: sans-serif;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            min-width: 200px;
+        }
+
+        .clock-widget select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            border: 1px solid #1a4a7a;
+            background: #0f3460;
+            color: white;
+        }
+
+        .clock-display {
+            font-size: 24px;
+            font-family: monospace;
+            text-align: center;
+            color: #4ade80;
+            padding: 8px;
+            background: #0a1929;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .clock-display.active {
+            color: #f87171;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .clock-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .clock-buttons button {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .btn-clock-in { background: #4ade80; color: #000; }
+        .btn-clock-out { background: #f87171; color: #000; }
+        .btn-clock-in:disabled, .btn-clock-out:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-help {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+            animation: pulse-help 2s infinite;
+        }
+
+        @keyframes pulse-help {
+            0%, 100% { box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4); }
+            50% { box-shadow: 0 4px 25px rgba(139, 92, 246, 0.8); }
+        }
+
+        .btn-help:hover { transform: scale(1.05); }
+        .btn-help:disabled { opacity: 0.6; cursor: not-allowed; animation: none; }
+
+        .clock-status {
+            font-size: 11px;
+            color: #9ca3af;
+            text-align: center;
+            margin-top: 5px;
+        }
     </style>
     {% if is_rtl %}
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -51,7 +150,7 @@
 <body>
     {% if current_user.is_authenticated %}
     <nav class="nav">
-        <a href="/" class="brand">מתת מרדכי | Matat</a>
+        <a href="/" class="brand"><img src="{{ url_for('static', filename='logo.png') }}" alt="Matat Mordechai" style="height: 32px; vertical-align: middle; margin-{% if is_rtl %}left{% else %}right{% endif %}: 8px;">מתת מרדכי | Matat</a>
         <span class="nav-divider"></span>
         {% if current_user.role == 'admin' %}
         <a href="{{ url_for('admin.dashboard') }}">{{ t('nav.dashboard') }}</a>
@@ -64,11 +163,10 @@
         <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
         <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
         {% else %}
-        <a href="{{ url_for('salesperson.dashboard') }}">{{ t('nav.dashboard') }}</a>
+        <a href="{{ url_for('salesperson.my_donations') }}">{{ t('nav.donations') }}</a>
         <a href="{{ url_for('salesperson.send_link') }}">{{ t('nav.send_link') }}</a>
         <a href="{{ url_for('salesperson.phone_entry') }}">{{ t('nav.phone_entry') }}</a>
         <a href="{{ url_for('salesperson.my_links') }}">{{ t('nav.my_links') }}</a>
-        <a href="{{ url_for('salesperson.my_commissions') }}">{{ t('nav.my_commissions') }}</a>
         {% endif %}
         <div class="nav-right">
             <button class="lang-toggle" onclick="toggleLanguage()">
@@ -100,5 +198,172 @@
         location.reload();
     }
     </script>
+
+    {% if current_user.is_authenticated %}
+    <!-- Help & Clock System -->
+    <div class="help-clock-container">
+        <div class="clock-widget" id="clockWidget">
+            <select id="employeeSelect">
+                <option value="">-- Clock In First --</option>
+                <option value="James">James</option>
+                <option value="Blimi">Blimi</option>
+                <option value="Tatty">Tatty</option>
+            </select>
+            <div class="clock-display" id="clockDisplay">00:00:00</div>
+            <div class="clock-buttons">
+                <button class="btn-clock-in" id="clockInBtn" onclick="clockIn()">Clock In</button>
+                <button class="btn-clock-out" id="clockOutBtn" onclick="clockOut()" disabled>Clock Out</button>
+            </div>
+            <div class="clock-status" id="clockStatus"></div>
+        </div>
+        <button class="btn-help" id="helpBtn" onclick="openHelp()" disabled>Get Help</button>
+    </div>
+
+    <script>
+    // ============== HELP & CLOCK SYSTEM ==============
+    const PROJECT_NAME = 'matat';
+    const EMPLOYEES = ['James', 'Blimi', 'Tatty'];
+
+    let clockInterval = null;
+    let clockStartTime = null;
+    let currentEmployee = null;
+
+    // Load saved state on page load
+    document.addEventListener('DOMContentLoaded', () => {
+        loadClockState();
+        updateHelpButton();
+    });
+
+    function loadClockState() {
+        const saved = localStorage.getItem(`clock_${PROJECT_NAME}`);
+        if (saved) {
+            const state = JSON.parse(saved);
+            if (state.active && state.employee && state.startTime) {
+                currentEmployee = state.employee;
+                clockStartTime = state.startTime;
+                document.getElementById('employeeSelect').value = state.employee;
+                document.getElementById('employeeSelect').disabled = true;
+                document.getElementById('clockInBtn').disabled = true;
+                document.getElementById('clockOutBtn').disabled = false;
+                document.getElementById('clockDisplay').classList.add('active');
+                startClockDisplay();
+                updateClockStatus();
+                updateHelpButton();
+            }
+        }
+    }
+
+    function clockIn() {
+        const employee = document.getElementById('employeeSelect').value;
+        if (!employee) {
+            alert('Please select your name first');
+            return;
+        }
+        currentEmployee = employee;
+        clockStartTime = Date.now();
+
+        localStorage.setItem(`clock_${PROJECT_NAME}`, JSON.stringify({
+            active: true,
+            employee: employee,
+            startTime: clockStartTime
+        }));
+
+        document.getElementById('employeeSelect').disabled = true;
+        document.getElementById('clockInBtn').disabled = true;
+        document.getElementById('clockOutBtn').disabled = false;
+        document.getElementById('clockDisplay').classList.add('active');
+
+        startClockDisplay();
+        updateClockStatus();
+        updateHelpButton();
+    }
+
+    function clockOut() {
+        if (!currentEmployee) return;
+
+        const duration = Date.now() - clockStartTime;
+        localStorage.removeItem(`clock_${PROJECT_NAME}`);
+
+        clearInterval(clockInterval);
+        document.getElementById('employeeSelect').disabled = false;
+        document.getElementById('clockInBtn').disabled = false;
+        document.getElementById('clockOutBtn').disabled = true;
+        document.getElementById('clockDisplay').classList.remove('active');
+        document.getElementById('clockDisplay').textContent = '00:00:00';
+        document.getElementById('clockStatus').textContent =
+            `${currentEmployee} clocked out. Session: ${formatDuration(duration)}`;
+
+        currentEmployee = null;
+        clockStartTime = null;
+        updateHelpButton();
+    }
+
+    function startClockDisplay() {
+        if (clockInterval) clearInterval(clockInterval);
+        clockInterval = setInterval(() => {
+            if (clockStartTime) {
+                document.getElementById('clockDisplay').textContent =
+                    formatDuration(Date.now() - clockStartTime);
+            }
+        }, 1000);
+    }
+
+    function formatDuration(ms) {
+        const s = Math.floor(ms / 1000);
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+    }
+
+    function updateClockStatus() {
+        if (currentEmployee && clockStartTime) {
+            document.getElementById('clockStatus').textContent =
+                `${currentEmployee} working since ${new Date(clockStartTime).toLocaleTimeString()}`;
+        }
+    }
+
+    function updateHelpButton() {
+        const btn = document.getElementById('helpBtn');
+        if (currentEmployee) {
+            btn.disabled = false;
+            btn.textContent = `Get Help (${currentEmployee})`;
+        } else {
+            btn.disabled = true;
+            btn.textContent = 'Clock In First';
+        }
+    }
+
+    function openHelp() {
+        if (!currentEmployee) {
+            alert('Please clock in first so we know who is requesting help');
+            return;
+        }
+
+        // Build context for Claude
+        const context = `
+========================================
+HELP REQUEST - MATAT MORDECHAI
+========================================
+User: ${currentEmployee}
+Time: ${new Date().toLocaleString()}
+Page: ${window.location.pathname}
+URL: ${window.location.href}
+========================================
+
+Hi Claude, this is ${currentEmployee} working on Matat Mordechai.
+I need help with:
+
+`;
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(context).catch(() => {});
+
+        // Open help window
+        const helpUrl = window.location.origin + '/help/';
+        window.open(helpUrl, 'HelpChat', 'width=1000,height=700,scrollbars=yes,resizable=yes');
+    }
+    </script>
+    {% endif %}
 </body>
 </html>

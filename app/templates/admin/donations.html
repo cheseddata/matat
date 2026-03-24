@@ -98,7 +98,7 @@
         color: #2c3e50;
     }
 
-    .view-btn {
+    .view-btn, .edit-btn {
         padding: 4px 12px;
         background: #3498db;
         color: white;
@@ -106,10 +106,61 @@
         border-radius: 4px;
         text-decoration: none;
         font-size: 12px;
+        display: inline-block;
     }
 
     .view-btn:hover {
         background: #2980b9;
+    }
+
+    .edit-btn {
+        background: #f39c12;
+    }
+
+    .edit-btn:hover {
+        background: #d68910;
+    }
+
+    .print-btn {
+        background: #9b59b6;
+    }
+
+    .print-btn:hover {
+        background: #8e44ad;
+    }
+
+    .pdf-btn {
+        background: #e74c3c;
+    }
+
+    .pdf-btn:hover {
+        background: #c0392b;
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+
+    .sp-dropdown {
+        padding: 4px 8px;
+        font-size: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        min-width: 120px;
+        cursor: pointer;
+    }
+
+    .sp-dropdown:focus {
+        border-color: #3498db;
+        outline: none;
+    }
+
+    .sp-dropdown.updated {
+        border-color: #27ae60;
+        background: #d4edda;
     }
 
     .pagination {
@@ -223,18 +274,24 @@
                     <span class="type-badge">{{ donation.donation_type|replace('_', ' ')|title }}</span>
                 </td>
                 <td>
-                    {% if donation.salesperson %}
-                    {{ donation.salesperson.full_name }}
-                    {% else %}
-                    <span style="color: #999;">—</span>
-                    {% endif %}
+                    <select class="sp-dropdown" onchange="updateSalesperson({{ donation.id }}, this.value, this)" data-original="{{ donation.salesperson_id or '' }}">
+                        <option value="">— None —</option>
+                        {% for sp in salespersons %}
+                        <option value="{{ sp.id }}" {{ 'selected' if donation.salesperson_id == sp.id else '' }}>{{ sp.full_name }}</option>
+                        {% endfor %}
+                    </select>
                 </td>
                 <td>{{ donation.source or 'direct' }}</td>
                 <td>
                     <span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span>
                 </td>
                 <td>
-                    <a href="{{ url_for('admin.donation_detail', id=donation.id) }}" class="view-btn">{{ t('common.view') }}</a>
+                    <div class="action-buttons">
+                        <a href="{{ url_for('admin.donation_detail', id=donation.id) }}" class="view-btn">{{ t('common.view') }}</a>
+                        <a href="{{ url_for('admin.edit_donation', id=donation.id) }}" class="edit-btn">{{ t('common.edit') }}</a>
+                        <button class="view-btn print-btn" onclick="printReceipt({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">Print</button>
+                        <button class="view-btn pdf-btn" onclick="downloadPdf({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">PDF</button>
+                    </div>
                 </td>
             </tr>
             {% endfor %}
@@ -277,4 +334,49 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function printReceipt(donationId, donorName) {
+    if (!donorName || donorName.trim() === '' || donorName.trim().toLowerCase() === 'unknown') {
+        alert('Donor name is required to create a receipt. Please edit the donation and add the donor\'s real name first.');
+        return;
+    }
+    window.open(`/admin/donations/${donationId}/receipt/print`, 'PrintReceipt', 'width=800,height=600');
+}
+
+function downloadPdf(donationId, donorName) {
+    if (!donorName || donorName.trim() === '' || donorName.trim().toLowerCase() === 'unknown') {
+        alert('Donor name is required to create a receipt. Please edit the donation and add the donor\'s real name first.');
+        return;
+    }
+    window.location.href = `/admin/donations/${donationId}/receipt/pdf`;
+}
+
+function updateSalesperson(donationId, salespersonId, selectEl) {
+    fetch(`/admin/donations/${donationId}/update-salesperson`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ salesperson_id: salespersonId })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            selectEl.classList.add('updated');
+            setTimeout(() => selectEl.classList.remove('updated'), 2000);
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            selectEl.value = selectEl.dataset.original;
+        }
+    })
+    .catch(err => {
+        alert('Error updating salesperson');
+        selectEl.value = selectEl.dataset.original;
+    });
+}
+</script>
 {% endblock %}

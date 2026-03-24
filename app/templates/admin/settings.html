@@ -129,6 +129,7 @@
     </div>
 
     <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="settings-grid">
             <!-- Organization Settings -->
             <div class="settings-card">
@@ -153,6 +154,53 @@
                     <input type="text" name="tax_id" value="{{ config.tax_id or '' }}"
                            placeholder="e.g., 12-3456789">
                     <p class="help-text">Displayed on tax receipts for donors.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" name="org_phone" value="{{ config.org_phone or '' }}"
+                           placeholder="e.g., (718) 555-1234">
+                </div>
+
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input type="url" name="logo_url" value="{{ config.logo_url or '' }}"
+                           placeholder="https://example.com/logo.png">
+                    <p class="help-text">URL to your organization's logo for receipts.</p>
+                </div>
+            </div>
+
+            <!-- Organization Address -->
+            <div class="settings-card">
+                <h2>Organization Address</h2>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    Address displayed on receipts and official documents.
+                </p>
+
+                <div class="form-group">
+                    <label>Street Address</label>
+                    <input type="text" name="org_address" value="{{ config.org_address or '' }}"
+                           placeholder="e.g., 123 Main Street">
+                </div>
+
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" name="org_city" value="{{ config.org_city or '' }}"
+                           placeholder="e.g., Brooklyn">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label>State</label>
+                        <input type="text" name="org_state" value="{{ config.org_state or '' }}"
+                               placeholder="e.g., NY">
+                    </div>
+
+                    <div class="form-group">
+                        <label>ZIP Code</label>
+                        <input type="text" name="org_zip" value="{{ config.org_zip or '' }}"
+                               placeholder="e.g., 11210">
+                    </div>
                 </div>
             </div>
 
@@ -343,6 +391,36 @@
                 </div>
             </div>
 
+            <!-- Test Data Management -->
+            <div class="settings-card" style="border: 2px solid #e74c3c;">
+                <h2 style="color: #e74c3c;">Test Data Management</h2>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    Clear all test mode data from the system. This will delete:
+                </p>
+                <ul style="color: #666; font-size: 14px; margin-bottom: 20px;">
+                    <li>Test donations</li>
+                    <li>Test receipts</li>
+                    <li>Test commissions</li>
+                    <li>Test donors (optional)</li>
+                </ul>
+
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="delete-test-donors" style="width: auto;">
+                        <span>Also delete test donors</span>
+                    </label>
+                </div>
+
+                <button type="button" class="btn btn-danger" onclick="clearTestData()"
+                        style="background: #e74c3c; width: 100%;">
+                    Clear All Test Data
+                </button>
+
+                <p style="margin-top: 10px; font-size: 12px; color: #999;">
+                    This action cannot be undone. Only test mode data will be affected.
+                </p>
+            </div>
+
             <!-- Save Button -->
             <div class="save-section">
                 <button type="submit" class="btn btn-success" style="padding: 15px 50px; font-size: 16px;">
@@ -375,6 +453,46 @@ function updatePreview() {
     } else {
         preview.style.display = 'none';
     }
+}
+
+function clearTestData() {
+    const deleteDonors = document.getElementById('delete-test-donors').checked;
+    const msg = deleteDonors
+        ? 'This will DELETE all test donations, receipts, commissions, AND donors. Are you sure?'
+        : 'This will DELETE all test donations, receipts, and commissions. Are you sure?';
+
+    if (!confirm(msg)) return;
+    if (!confirm('This action CANNOT be undone. Continue?')) return;
+
+    const btn = event.target;
+    btn.disabled = true;
+    btn.textContent = 'Clearing...';
+
+    fetch('/admin/settings/clear-test-data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ delete_donors: deleteDonors })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Cleared: ${data.donations} donations, ${data.receipts} receipts, ${data.commissions} commissions` +
+                  (data.donors ? `, ${data.donors} donors` : ''));
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            btn.disabled = false;
+            btn.textContent = 'Clear All Test Data';
+        }
+    })
+    .catch(err => {
+        alert('Error clearing test data');
+        btn.disabled = false;
+        btn.textContent = 'Clear All Test Data';
+    });
 }
 
 updatePreview();

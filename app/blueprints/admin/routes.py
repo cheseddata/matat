@@ -24,6 +24,13 @@ from ...models.config_settings import ConfigSettings
 @admin_bp.route('/dashboard')
 @admin_required
 def dashboard():
+    """Admin dashboard - redirects to donations."""
+    return redirect(url_for('admin.donations'))
+
+
+@admin_bp.route('/dashboard-stats')
+@admin_required
+def dashboard_stats():
     """Admin dashboard with global stats."""
     # Total income (all succeeded donations)
     total_income = db.session.query(func.sum(Donation.amount)).filter(
@@ -665,10 +672,17 @@ def donations():
         page=page, per_page=per_page, error_out=False
     )
 
+    # Get salespersons for dropdown
+    salespersons = User.query.filter(
+        User.role == 'salesperson',
+        User.deleted_at.is_(None)
+    ).order_by(User.first_name).all()
+
     return render_template(
         'admin/donations.html',
         donations=donations,
-        status_filter=status
+        status_filter=status,
+        salespersons=salespersons
     )
 
 
@@ -678,6 +692,170 @@ def donation_detail(id):
     """View donation details."""
     donation = Donation.query.get_or_404(id)
     return render_template('admin/donation_detail.html', donation=donation)
+
+
+@admin_bp.route('/donations/<int:id>/update-salesperson', methods=['POST'])
+@admin_required
+def update_donation_salesperson(id):
+    """Quick update salesperson for a donation."""
+    donation = Donation.query.get_or_404(id)
+    data = request.get_json() or {}
+
+    salesperson_id = data.get('salesperson_id', '').strip() if data.get('salesperson_id') else None
+
+    if salesperson_id:
+        donation.salesperson_id = int(salesperson_id)
+    else:
+        donation.salesperson_id = None
+
+    db.session.commit()
+
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/donations/<int:id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_donation(id):
+    """Edit donation details."""
+    donation = Donation.query.get_or_404(id)
+
+    # Get lists for dropdowns
+    salespersons = User.query.filter(
+        User.role == 'salesperson',
+        User.deleted_at.is_(None)
+    ).order_by(User.first_name).all()
+
+    campaigns = Campaign.query.filter(
+        Campaign.is_active == True
+    ).order_by(Campaign.name).all()
+
+    donors = Donor.query.filter(
+        Donor.deleted_at.is_(None)
+    ).order_by(Donor.last_name, Donor.first_name).all()
+
+    if request.method == 'POST':
+        # Update donation fields
+        amount_dollars = request.form.get('amount', '').strip()
+        if amount_dollars:
+            donation.amount = int(float(amount_dollars) * 100)
+
+        donation.status = request.form.get('status', donation.status)
+        donation.donation_type = request.form.get('donation_type', donation.donation_type)
+        donation.source = request.form.get('source', '').strip() or None
+
+        # Update relationships
+        salesperson_id = request.form.get('salesperson_id', '').strip()
+        donation.salesperson_id = int(salesperson_id) if salesperson_id else None
+
+        campaign_id = request.form.get('campaign_id', '').strip()
+        donation.campaign_id = int(campaign_id) if campaign_id else None
+
+        donor_id = request.form.get('donor_id', '').strip()
+        if donor_id:
+            donation.donor_id = int(donor_id)
+
+        # Update donor info if provided
+        if donation.donor:
+            donor = donation.donor
+            first_name = request.form.get('donor_first_name', '').strip()
+            last_name = request.form.get('donor_last_name', '').strip()
+            email = request.form.get('donor_email', '').strip()
+            phone = request.form.get('donor_phone', '').strip()
+
+            if first_name:
+                donor.first_name = first_name
+            if last_name:
+                donor.last_name = last_name
+            if email:
+                donor.email = email
+            donor.phone = phone or donor.phone
+
+            # Update address fields
+            donor.address_line1 = request.form.get('donor_address_line1', '').strip() or donor.address_line1
+            donor.address_line2 = request.form.get('donor_address_line2', '').strip() or None
+            donor.city = request.form.get('donor_city', '').strip() or donor.city
+            donor.state = request.form.get('donor_state', '').strip() or donor.state
+            donor.zip = request.form.get('donor_zip', '').strip() or donor.zip
+            donor.country = request.form.get('donor_country', '').strip() or donor.country or 'US'
+
+        db.session.commit()
+        flash('Donation updated successfully.', 'success')
+        return redirect(url_for('admin.donation_detail', id=donation.id))
+
+    return render_template(
+        'admin/donation_edit.html',
+        donation=donation,
+        salespersons=salespersons,
+        campaigns=campaigns,
+        donors=donors
+    )
+
+
+@admin_bp.route('/donations/<int:id>/receipt/print')
+@admin_required
+def print_receipt(id):
+    """Print receipt for a donation."""
+    from ...services.receipt_service import create_receipt_atomic
+
+    donation = Donation.query.get_or_404(id)
+    donor = Donor.query.get(donation.donor_id)
+
+    if not donor or not donor.first_name or donor.first_name.strip().lower() == 'unknown':
+        flash('Donor name is required to create a receipt. Please edit the donation and add the donor\'s real name first.', 'error')
+        return redirect(url_for('admin.edit_donation', id=id))
+
+    # Get or create receipt
+    receipt = donation.receipt
+    if not receipt:
+        try:
+            receipt = create_receipt_atomic(donation, donor)
+            db.session.commit()
+        except Exception as e:
+            flash(f'Error creating receipt: {str(e)}', 'error')
+            return redirect(url_for('admin.donation_detail', id=id))
+
+    return render_template('admin/receipt_print.html', donation=donation, donor=donor, receipt=receipt)
+
+
+@admin_bp.route('/donations/<int:id>/receipt/pdf')
+@admin_required
+def donation_receipt_pdf(id):
+    """Download PDF receipt for a donation."""
+    from flask import send_file
+    from ...services.receipt_service import create_receipt_atomic, regenerate_receipt_pdf
+    import os
+
+    donation = Donation.query.get_or_404(id)
+    donor = Donor.query.get(donation.donor_id)
+
+    if not donor or not donor.first_name or donor.first_name.strip().lower() == 'unknown':
+        flash('Donor name is required to create a receipt. Please edit the donation and add the donor\'s real name first.', 'error')
+        return redirect(url_for('admin.edit_donation', id=id))
+
+    # Get or create receipt
+    receipt = donation.receipt
+    if not receipt:
+        try:
+            receipt = create_receipt_atomic(donation, donor)
+            db.session.commit()
+        except Exception as e:
+            flash(f'Error creating receipt: {str(e)}', 'error')
+            return redirect(url_for('admin.donation_detail', id=id))
+
+    # Regenerate PDF if missing
+    if not receipt.pdf_path or not os.path.exists(receipt.pdf_path):
+        try:
+            regenerate_receipt_pdf(receipt)
+        except Exception as e:
+            flash(f'Error generating PDF: {str(e)}', 'error')
+            return redirect(url_for('admin.donation_detail', id=id))
+
+    return send_file(
+        receipt.pdf_path,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=f'{receipt.receipt_number}.pdf'
+    )
 
 
 # =============================================================================
@@ -887,6 +1065,12 @@ def settings():
         config.org_name = request.form.get('org_name', '').strip()
         config.org_prefix = request.form.get('org_prefix', '').strip()
         config.tax_id = request.form.get('tax_id', '').strip()
+        config.org_phone = request.form.get('org_phone', '').strip() or None
+        config.logo_url = request.form.get('logo_url', '').strip() or None
+        config.org_address = request.form.get('org_address', '').strip() or None
+        config.org_city = request.form.get('org_city', '').strip() or None
+        config.org_state = request.form.get('org_state', '').strip() or None
+        config.org_zip = request.form.get('org_zip', '').strip() or None
 
         default_commission_type = request.form.get('default_commission_type')
         default_commission_rate = request.form.get('default_commission_rate', '').strip()
@@ -923,3 +1107,78 @@ def settings():
         return redirect(url_for('admin.settings'))
 
     return render_template('admin/settings.html', config=config)
+
+
+@admin_bp.route('/settings/clear-test-data', methods=['POST'])
+@admin_required
+def clear_test_data():
+    """Clear all test mode data from the system."""
+    import traceback
+
+    try:
+        data = request.get_json() or {}
+        delete_donors = data.get('delete_donors', False)
+
+        # Find all test donors
+        test_donors = Donor.query.filter(Donor.test == True).all()
+        test_donor_ids = [d.id for d in test_donors]
+
+        if not test_donor_ids:
+            return jsonify({
+                'success': True,
+                'donations': 0,
+                'receipts': 0,
+                'commissions': 0,
+                'donors': 0 if delete_donors else None
+            })
+
+        # Get all donations from test donors
+        test_donations = Donation.query.filter(
+            Donation.donor_id.in_(test_donor_ids)
+        ).all()
+        test_donation_ids = [d.id for d in test_donations]
+
+        # Count items to delete
+        donations_count = len(test_donations)
+        receipts_count = 0
+        commissions_count = 0
+
+        # Delete commissions first (foreign key constraint)
+        if test_donation_ids:
+            commissions_count = Commission.query.filter(
+                Commission.donation_id.in_(test_donation_ids)
+            ).delete(synchronize_session=False)
+
+        # Delete receipts
+        receipts_count = Receipt.query.filter(
+            Receipt.donor_id.in_(test_donor_ids)
+        ).delete(synchronize_session=False)
+
+        # Delete donations
+        if test_donation_ids:
+            Donation.query.filter(
+                Donation.id.in_(test_donation_ids)
+            ).delete(synchronize_session=False)
+
+        # Optionally delete test donors
+        donors_count = 0
+        if delete_donors:
+            donors_count = Donor.query.filter(
+                Donor.id.in_(test_donor_ids)
+            ).delete(synchronize_session=False)
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'donations': donations_count,
+            'receipts': receipts_count,
+            'commissions': commissions_count,
+            'donors': donors_count if delete_donors else None
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error clearing test data: {e}")
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt {{ receipt.receipt_number }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            font-size: 12pt;
+            line-height: 1.5;
+            color: #333;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        @media print {
+            body {
+                padding: 20px;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        .print-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .print-controls button {
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .btn-print {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-close {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #2c3e50;
+        }
+
+        .org-name {
+            font-size: 28pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .org-tagline {
+            font-size: 11pt;
+            color: #666;
+            font-style: italic;
+        }
+
+        .receipt-title {
+            font-size: 18pt;
+            color: #666;
+            margin-top: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .receipt-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .meta-item {
+            text-align: center;
+        }
+
+        .meta-label {
+            font-size: 10pt;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .meta-value {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 14pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 8px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .info-value {
+            color: #333;
+        }
+
+        .amount-box {
+            text-align: center;
+            padding: 25px;
+            background: linear-gradient(135deg, #e8f4f8 0%, #d4edda 100%);
+            border-radius: 12px;
+            margin: 30px 0;
+        }
+
+        .amount-label {
+            font-size: 12pt;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .amount-value {
+            font-size: 42pt;
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .tax-notice {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 25px 0;
+        }
+
+        .tax-notice p {
+            margin-bottom: 5px;
+            font-size: 11pt;
+        }
+
+        .tax-notice p:last-child {
+            margin-bottom: 0;
+        }
+
+        .thank-you {
+            text-align: center;
+            font-size: 18pt;
+            font-weight: bold;
+            color: #27ae60;
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px dashed #27ae60;
+            border-radius: 10px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+        }
+
+        .footer p {
+            margin-bottom: 5px;
+        }
+
+        .address-block {
+            white-space: pre-line;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-controls no-print">
+        <button class="btn-print" onclick="window.print()">Print Receipt</button>
+        <button class="btn-close" onclick="window.close()">Close</button>
+    </div>
+
+    <div class="header">
+        <div class="org-name">Matat Mordechai</div>
+        <div class="org-tagline">Supporting Those in Need</div>
+        <div class="receipt-title">Donation Receipt</div>
+    </div>
+
+    <div class="receipt-meta">
+        <div class="meta-item">
+            <div class="meta-label">Receipt Number</div>
+            <div class="meta-value">{{ receipt.receipt_number }}</div>
+        </div>
+        <div class="meta-item">
+            <div class="meta-label">Date</div>
+            <div class="meta-value">{{ donation.created_at.strftime('%B %d, %Y') }}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Donor Information</div>
+        <div class="info-grid">
+            <div class="info-label">Name:</div>
+            <div class="info-value">{{ donor.full_name }}</div>
+
+            {% if donor.email %}
+            <div class="info-label">Email:</div>
+            <div class="info-value">{{ donor.email }}</div>
+            {% endif %}
+
+            {% if donor.phone %}
+            <div class="info-label">Phone:</div>
+            <div class="info-value">{{ donor.phone }}</div>
+            {% endif %}
+
+            {% if donor.address_line1 %}
+            <div class="info-label">Address:</div>
+            <div class="info-value address-block">{{ donor.address_line1 }}{% if donor.address_line2 %}
+{{ donor.address_line2 }}{% endif %}
+{{ donor.city }}{% if donor.state %}, {{ donor.state }}{% endif %} {{ donor.zip or '' }}
+{{ donor.country if donor.country and donor.country != 'US' else '' }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="amount-box">
+        <div class="amount-label">Donation Amount</div>
+        <div class="amount-value">${{ "%.2f"|format(donation.amount_dollars) }}</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Payment Details</div>
+        <div class="info-grid">
+            {% if donation.payment_method_type == 'card' %}
+            <div class="info-label">Payment Method:</div>
+            <div class="info-value">{{ donation.payment_method_brand | capitalize if donation.payment_method_brand else 'Card' }} ending in {{ donation.payment_method_last4 or '****' }}</div>
+            {% elif donation.payment_method_type == 'us_bank_account' %}
+            <div class="info-label">Payment Method:</div>
+            <div class="info-value">{{ donation.bank_name or 'Bank Account' }} ending in {{ donation.payment_method_last4 or '****' }}</div>
+            {% else %}
+            <div class="info-label">Payment Method:</div>
+            <div class="info-value">{{ donation.payment_method_type or 'Card' }}</div>
+            {% endif %}
+
+            {% if donation.stripe_payment_intent_id %}
+            <div class="info-label">Transaction ID:</div>
+            <div class="info-value" style="font-family: monospace; font-size: 10pt;">{{ donation.stripe_payment_intent_id }}</div>
+            {% endif %}
+
+            <div class="info-label">Donation Type:</div>
+            <div class="info-value">{{ donation.donation_type | replace('_', ' ') | title }}</div>
+        </div>
+    </div>
+
+    <div class="tax-notice">
+        <p><strong>Tax ID (EIN):</strong> 87-3345706</p>
+        <p>This donation is tax-deductible to the extent allowed by law.</p>
+        <p>No goods or services were provided in exchange for this contribution.</p>
+    </div>
+
+    <div class="thank-you">
+        Thank you for your generous donation!
+    </div>
+
+    <div class="footer">
+        <p><strong>Matat Mordechai Foundation</strong> is a registered 501(c)(3) nonprofit organization.</p>
+        <p>Please retain this receipt for your tax records.</p>
+        <p style="margin-top: 10px;">matatmordechai.org | support@matatmordechai.org</p>
+    </div>
+
+    <script>
+        // Auto-print when page loads (optional - can be removed if you want manual print)
+        // window.onload = function() { window.print(); }
+    </script>
+</body>
+</html>
