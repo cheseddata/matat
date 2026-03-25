@@ -18,10 +18,21 @@ logger = logging.getLogger(__name__)
 @webhook_bp.route('/stripe/webhook', methods=['POST'])
 @csrf.exempt
 def stripe_webhook():
-    logger.info('Stripe webhook received')
+    logger.info('=' * 50)
+    logger.info('STRIPE WEBHOOK RECEIVED')
+    logger.info('=' * 50)
+
+    # Log all headers for debugging
+    logger.info(f'Request headers: {dict(request.headers)}')
+
     payload = request.get_data(as_text=True)
+    logger.info(f'Payload length: {len(payload)} chars')
+    logger.info(f'Payload preview: {payload[:200]}...' if len(payload) > 200 else f'Payload: {payload}')
+
     sig_header = request.headers.get('Stripe-Signature')
     logger.info(f'Webhook signature present: {bool(sig_header)}')
+    if sig_header:
+        logger.info(f'Signature header: {sig_header[:50]}...')
 
     # Get webhook secret from database (falls back to env var)
     _, _, mode, webhook_secret = get_stripe_keys()
@@ -67,11 +78,17 @@ def stripe_webhook():
 
 def handle_payment_intent_succeeded(pi):
     """Handle successful payment intent."""
+    logger.info(f'[payment_intent.succeeded] Processing PI: {pi["id"]}')
+    logger.info(f'[payment_intent.succeeded] Amount: {pi.get("amount")} {pi.get("currency")}')
+    logger.info(f'[payment_intent.succeeded] Customer: {pi.get("customer")}')
+    logger.info(f'[payment_intent.succeeded] Metadata: {pi.get("metadata")}')
+
     # Check for duplicate (idempotency)
     existing = Donation.query.filter_by(stripe_payment_intent_id=pi['id']).first()
     if existing:
+        logger.info(f'[payment_intent.succeeded] Duplicate - donation {existing.id} already exists')
         return  # Already processed
-    
+
     metadata = pi.get('metadata', {})
     
     # Get or create donor
@@ -140,13 +157,23 @@ def handle_payment_intent_succeeded(pi):
 
 def handle_charge_succeeded(charge):
     """Handle successful charge - capture fee data and generate receipt."""
+    logger.info(f'[charge.succeeded] Processing charge: {charge.get("id")}')
+    logger.info(f'[charge.succeeded] Amount: {charge.get("amount")} {charge.get("currency")}')
+    logger.info(f'[charge.succeeded] Balance transaction: {charge.get("balance_transaction")}')
+
     pi_id = charge.get('payment_intent')
+    logger.info(f'[charge.succeeded] Payment Intent ID: {pi_id}')
+
     if not pi_id:
+        logger.warning('[charge.succeeded] No payment_intent in charge, skipping')
         return
 
     donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
     if not donation:
+        logger.warning(f'[charge.succeeded] No donation found for PI {pi_id}')
         return
+
+    logger.info(f'[charge.succeeded] Found donation {donation.id}')
 
     # Update with charge details
     donation.stripe_charge_id = charge['id']
@@ -168,7 +195,21 @@ def handle_charge_succeeded(charge):
     donation.stripe_receipt_url = charge.get('receipt_url')
 
     # Retrieve balance transaction for fee data
+    # Note: balance_transaction may be null in webhook - fetch from charge if needed
     bt_id = charge.get('balance_transaction')
+    if not bt_id:
+        # Balance transaction not in webhook payload yet - fetch the charge to get it
+        logger.info(f'[charge.succeeded] Balance transaction not in payload, fetching charge...')
+        try:
+            import stripe
+            from ...services.stripe_service import init_stripe
+            s = init_stripe()
+            full_charge = s.Charge.retrieve(charge['id'])
+            bt_id = full_charge.get('balance_transaction')
+            logger.info(f'[charge.succeeded] Fetched balance transaction: {bt_id}')
+        except Exception as e:
+            logger.warning(f'[charge.succeeded] Could not fetch charge: {e}')
+
     if bt_id:
         try:
             bt_data = retrieve_balance_transaction(bt_id)
@@ -176,8 +217,11 @@ def handle_charge_succeeded(charge):
             donation.stripe_fee = bt_data['fee']
             donation.stripe_fee_details = bt_data['fee_details']
             donation.net_amount = bt_data['net']
+            logger.info(f'[charge.succeeded] Fee captured: {bt_data["fee"]} cents')
         except Exception as e:
             logger.warning(f"Fee capture failed for charge {charge['id']}: {e}")
+    else:
+        logger.warning(f'[charge.succeeded] No balance transaction available for charge {charge["id"]}')
 
     # Generate receipt atomically (within this transaction)
     # Only generate if not already generated
