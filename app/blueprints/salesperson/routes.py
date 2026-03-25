@@ -1,3 +1,4 @@
+import logging
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import current_user
 from sqlalchemy import func
@@ -12,6 +13,8 @@ from ...models.donor import Donor
 from ...services.link_service import create_donation_link
 from ...services.email_service import send_donation_link_email, send_donation_link_sms
 from ...services.stripe_service import get_stripe_keys, create_payment_intent, get_or_create_customer, is_test_mode
+
+logger = logging.getLogger(__name__)
 
 
 @salesperson_bp.route('/dashboard')
@@ -200,9 +203,14 @@ def phone_entry():
 
 def _create_phone_payment_intent(data):
     """Create payment intent for phone donations."""
+    logger.info(f'_create_phone_payment_intent called with data: {data}')
+
     try:
         amount_dollars = float(data.get('amount', 0))
+        logger.info(f'Amount: ${amount_dollars}')
+
         if amount_dollars <= 0:
+            logger.warning('Invalid amount: amount must be greater than 0')
             return jsonify({'error': 'Invalid amount'}), 400
 
         amount_cents = int(amount_dollars * 100)
@@ -210,11 +218,15 @@ def _create_phone_payment_intent(data):
         # Validate email
         email = data.get('email', '').strip()
         if not email:
+            logger.warning('Email is required but not provided')
             return jsonify({'error': 'Email is required'}), 400
+
+        logger.info(f'Processing donation for email: {email}')
 
         # Get or create donor
         donor = Donor.query.filter_by(email=email).first()
         if not donor:
+            logger.info(f'Creating new donor for email: {email}')
             donor = Donor(
                 first_name=data.get('first_name', ''),
                 last_name=data.get('last_name', ''),
@@ -229,11 +241,16 @@ def _create_phone_payment_intent(data):
             )
             db.session.add(donor)
             db.session.flush()
+            logger.info(f'New donor created with id: {donor.id}')
+        else:
+            logger.info(f'Found existing donor with id: {donor.id}')
 
         db.session.commit()
 
         # Get Stripe customer
+        logger.info(f'Getting/creating Stripe customer for donor {donor.id}')
         customer_id = get_or_create_customer(donor)
+        logger.info(f'Stripe customer ID: {customer_id}')
 
         # Build metadata - scoped to current salesperson
         metadata = {
@@ -246,13 +263,16 @@ def _create_phone_payment_intent(data):
             'salesperson_id': str(current_user.id),
             'ref_code': current_user.ref_code or ''
         }
+        logger.info(f'Payment metadata: {metadata}')
 
+        logger.info(f'Creating PaymentIntent for {amount_cents} cents')
         intent = create_payment_intent(
             amount_cents=amount_cents,
             currency='usd',
             customer_id=customer_id,
             metadata=metadata
         )
+        logger.info(f'PaymentIntent created: {intent.id}')
 
         return jsonify({
             'clientSecret': intent.client_secret,
@@ -260,7 +280,9 @@ def _create_phone_payment_intent(data):
         })
     except Exception as e:
         import traceback
-        traceback.print_exc()
+        error_traceback = traceback.format_exc()
+        logger.error(f'Error in _create_phone_payment_intent: {str(e)}')
+        logger.error(f'Traceback: {error_traceback}')
         return jsonify({'error': str(e)}), 400
 
 

@@ -1,3 +1,5 @@
+import logging
+import sys
 from flask import Flask
 from .config import config
 from .extensions import db, bcrypt, login_manager, csrf, migrate
@@ -9,6 +11,19 @@ def create_app(config_name='default'):
     """Application factory."""
     app = Flask(__name__)
     app.config.from_object(config[config_name])
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+    # Set up app logger
+    app.logger.setLevel(logging.INFO)
+    app.logger.info('Matat application starting...')
 
     # Initialize extensions
     db.init_app(app)
