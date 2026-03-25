@@ -641,7 +641,7 @@ def resend_receipt(id):
             return redirect(url_for('salesperson.donation_detail', id=id))
 
     # Send email
-    success = send_receipt_email(donor, receipt)
+    success = send_receipt_email(donor, donation, receipt)
 
     if success:
         receipt.sent_at = datetime.utcnow()
