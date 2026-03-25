@@ -1,4 +1,5 @@
 import os
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -7,6 +8,8 @@ from datetime import datetime
 from ..extensions import db
 from ..models.message import MessageQueue
 from ..models.config_settings import ConfigSettings
+
+logger = logging.getLogger(__name__)
 
 # BCC address for all outgoing emails
 BCC_EMAIL = 'support@matatmordechai.org'
@@ -48,8 +51,11 @@ def get_email_config():
 def send_email(to, subject, html_body, text_body=None, attachments=None,
                message_type='general', related_donation_id=None, related_link_id=None):
     """Send email and log to message queue."""
+    logger.info(f'send_email: to={to}, subject={subject[:50]}..., type={message_type}')
+
     email_config = get_email_config()
     provider = email_config.get('provider', 'sendgrid')
+    logger.info(f'Email provider: {provider}')
 
     # Log to message queue
     message = MessageQueue(
@@ -152,7 +158,10 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
     import requests
     import base64
 
+    logger.info(f'_send_mailtrap: sending to {to}')
+
     if not config or not config.get('token'):
+        logger.error('Mailtrap: No token configured')
         return False
 
     try:
@@ -190,11 +199,19 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
                     "disposition": "attachment"
                 })
 
+        logger.info(f'Mailtrap: Sending request to API...')
         response = requests.post(url, json=payload, headers=headers)
-        return response.status_code in [200, 201, 202]
+        logger.info(f'Mailtrap: Response status={response.status_code}')
+
+        if response.status_code not in [200, 201, 202]:
+            logger.error(f'Mailtrap: Failed with status {response.status_code}, response: {response.text}')
+            return False
+
+        logger.info(f'Mailtrap: Email sent successfully to {to}')
+        return True
 
     except Exception as e:
-        print(f"Mailtrap error: {e}")
+        logger.error(f'Mailtrap error: {str(e)}')
         return False
 
 
