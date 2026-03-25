@@ -336,9 +336,17 @@ def my_links():
         DonationLink.salesperson_id == current_user.id
     ).order_by(DonationLink.created_at.desc()).all()
 
+    # Pending links - sent but not used (times_used == 0 or None)
+    pending_links = DonationLink.query.filter(
+        DonationLink.salesperson_id == current_user.id,
+        (DonationLink.times_used == 0) | (DonationLink.times_used.is_(None))
+    ).order_by(DonationLink.created_at.desc()).all()
+
     return render_template(
         'salesperson/my_links.html',
-        links=links
+        links=links,
+        pending_links=pending_links,
+        now=datetime.utcnow()
     )
 
 

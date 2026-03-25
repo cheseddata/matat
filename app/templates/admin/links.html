@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}{{ t('my_links.title') }} - Matat Mordechai{% endblock %}
+{% block title %}Donation Links - Admin{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -8,20 +8,6 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 25px;
-    }
-
-    .btn-primary {
-        display: inline-block;
-        padding: 12px 24px;
-        background: #3498db;
-        color: white;
-        text-decoration: none;
-        border-radius: 6px;
-        font-weight: 500;
-    }
-
-    .btn-primary:hover {
-        background: #2980b9;
     }
 
     .links-table {
@@ -35,7 +21,7 @@
 
     .links-table th,
     .links-table td {
-        padding: 15px;
+        padding: 12px 15px;
         text-align: left;
         border-bottom: 1px solid #eee;
     }
@@ -44,6 +30,7 @@
         background: #f8f9fa;
         font-weight: 600;
         color: #666;
+        font-size: 13px;
     }
 
     .links-table tr:hover {
@@ -56,10 +43,11 @@
         padding: 4px 8px;
         border-radius: 4px;
         font-weight: 600;
+        font-size: 12px;
     }
 
     .copy-btn {
-        padding: 6px 12px;
+        padding: 5px 10px;
         background: #ecf0f1;
         border: none;
         border-radius: 4px;
@@ -69,26 +57,6 @@
 
     .copy-btn:hover {
         background: #dfe6e9;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: #666;
-    }
-
-    .empty-state h2 {
-        color: #2c3e50;
-        margin-bottom: 10px;
-    }
-
-    .usage-badge {
-        display: inline-block;
-        padding: 4px 10px;
-        background: #e8f4f8;
-        border-radius: 12px;
-        font-size: 12px;
-        color: #2c3e50;
     }
 
     .tabs {
@@ -138,11 +106,6 @@
         display: block;
     }
 
-    .pending-card {
-        background: #fff3cd;
-        border-left: 4px solid #ffc107;
-    }
-
     .donor-info {
         font-size: 13px;
         color: #666;
@@ -150,6 +113,29 @@
 
     .donor-info strong {
         color: #333;
+    }
+
+    .salesperson-badge {
+        display: inline-block;
+        background: #e8f4f8;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .usage-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        background: #e8f4f8;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #2c3e50;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
     }
 
     @media (max-width: 768px) {
@@ -164,12 +150,11 @@
 {% block content %}
 <div class="container">
     <div class="page-header">
-        <h1>{{ t('my_links.title') }}</h1>
-        <a href="{{ url_for('salesperson.send_link') }}" class="btn-primary">+ {{ t('my_links.create_new') }}</a>
+        <h1>Donation Links</h1>
     </div>
 
     <div class="tabs">
-        <button class="tab-btn active" data-tab="all">All Links</button>
+        <button class="tab-btn active" data-tab="all">All Links ({{ links|length }})</button>
         <button class="tab-btn" data-tab="pending">
             Pending Response
             {% if pending_links|length > 0 %}<span class="badge">{{ pending_links|length }}</span>{% endif %}
@@ -183,13 +168,13 @@
             <table class="links-table">
                 <thead>
                     <tr>
-                        <th>{{ t('my_links.short_code') }}</th>
-                        <th>{{ t('my_links.donor') }}</th>
-                        <th>{{ t('my_links.amount') }}</th>
-                        <th>{{ t('common.type') }}</th>
-                        <th>{{ t('my_links.created') }}</th>
-                        <th>{{ t('my_links.usage') }}</th>
-                        <th>{{ t('common.actions') }}</th>
+                        <th>Code</th>
+                        <th>Salesperson</th>
+                        <th>Donor</th>
+                        <th>Amount</th>
+                        <th>Created</th>
+                        <th>Usage</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -197,10 +182,17 @@
                     <tr>
                         <td><span class="short-code">{{ link.short_code }}</span></td>
                         <td>
+                            {% if link.salesperson_id and salespersons.get(link.salesperson_id) %}
+                            <span class="salesperson-badge">{{ salespersons[link.salesperson_id].full_name }}</span>
+                            {% else %}
+                            <span style="color: #999;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if link.donor_email %}
                             {{ link.donor_name or link.donor_email }}
                             {% else %}
-                            <span style="color: #999;">{{ t('my_links.generic_link') }}</span>
+                            <span style="color: #999;">Generic</span>
                             {% endif %}
                         </td>
                         <td>
@@ -210,13 +202,12 @@
                             <span style="color: #999;">—</span>
                             {% endif %}
                         </td>
-                        <td>{{ link.preset_type or 'onetime' | capitalize }}</td>
                         <td>{{ link.created_at.strftime('%m/%d/%Y') }}</td>
                         <td>
-                            <span class="usage-badge">{{ link.times_used or 0 }} {{ t('my_links.visits') }}</span>
+                            <span class="usage-badge">{{ link.times_used or 0 }}</span>
                         </td>
                         <td>
-                            <button class="copy-btn" onclick="copyLink('{{ link.full_url }}', this)">{{ t('my_links.copy_link') }}</button>
+                            <button class="copy-btn" onclick="copyLink('{{ link.full_url }}', this)">Copy</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -225,9 +216,8 @@
         </div>
         {% else %}
         <div class="card empty-state">
-            <h2>{{ t('my_links.no_links_title') }}</h2>
-            <p>{{ t('my_links.no_links_desc') }}</p>
-            <a href="{{ url_for('salesperson.send_link') }}" class="btn-primary" style="margin-top: 20px;">{{ t('my_links.create_link') }}</a>
+            <h2>No Links</h2>
+            <p>No donation links have been created yet.</p>
         </div>
         {% endif %}
     </div>
@@ -240,16 +230,24 @@
             <table class="links-table">
                 <thead>
                     <tr>
+                        <th>Salesperson</th>
                         <th>Donor Info</th>
-                        <th>{{ t('my_links.amount') }}</th>
+                        <th>Amount</th>
                         <th>Sent</th>
                         <th>Days Ago</th>
-                        <th>{{ t('common.actions') }}</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for link in pending_links %}
                     <tr>
+                        <td>
+                            {% if link.salesperson_id and salespersons.get(link.salesperson_id) %}
+                            <span class="salesperson-badge">{{ salespersons[link.salesperson_id].full_name }}</span>
+                            {% else %}
+                            <span style="color: #999;">—</span>
+                            {% endif %}
+                        </td>
                         <td>
                             <div class="donor-info">
                                 {% if link.donor_name %}<strong>{{ link.donor_name }}</strong><br>{% endif %}
@@ -282,9 +280,6 @@
                         </td>
                         <td>
                             <button class="copy-btn" onclick="copyLink('{{ link.full_url }}', this)">Copy Link</button>
-                            {% if link.donor_email %}
-                            <a href="{{ url_for('salesperson.send_link') }}?email={{ link.donor_email }}&name={{ link.donor_name or '' }}&amount={{ link.preset_amount_dollars or '' }}" class="copy-btn" style="margin-left: 5px; text-decoration: none;">Resend</a>
-                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -294,7 +289,7 @@
         {% else %}
         <div class="card empty-state">
             <h2>No Pending Links</h2>
-            <p>All your sent links have been responded to, or you haven't sent any yet.</p>
+            <p>All sent links have been responded to.</p>
         </div>
         {% endif %}
     </div>
@@ -314,7 +309,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 function copyLink(url, btn) {
     navigator.clipboard.writeText(url).then(() => {
         const originalText = btn.textContent;
-        btn.textContent = '{{ t('my_links.copied') }}';
+        btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = originalText, 2000);
     });
 }

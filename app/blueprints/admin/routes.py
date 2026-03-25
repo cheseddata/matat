@@ -1182,3 +1182,31 @@ def clear_test_data():
         print(f"Error clearing test data: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# DONATION LINKS
+# =============================================================================
+
+@admin_bp.route('/links')
+@admin_required
+def links():
+    """View all donation links with pending tab."""
+    # All links
+    all_links = DonationLink.query.order_by(DonationLink.created_at.desc()).all()
+
+    # Pending links - sent but not used (times_used == 0 or None)
+    pending_links = DonationLink.query.filter(
+        (DonationLink.times_used == 0) | (DonationLink.times_used.is_(None))
+    ).order_by(DonationLink.created_at.desc()).all()
+
+    # Get salespersons for reference
+    salespersons = {u.id: u for u in User.query.filter(User.role == 'salesperson').all()}
+
+    return render_template(
+        'admin/links.html',
+        links=all_links,
+        pending_links=pending_links,
+        salespersons=salespersons,
+        now=datetime.utcnow()
+    )
