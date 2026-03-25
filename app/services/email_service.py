@@ -319,6 +319,86 @@ def send_donation_link_email(donor_email, donor_name, link, salesperson=None, la
     )
 
 
+def send_custom_donation_link_email(donor_email, subject, body_text, link, language='en'):
+    """Send donation link email with custom content."""
+    # Convert plain text body to HTML with proper formatting
+    # Escape HTML and convert newlines to <br>
+    import html
+    escaped_body = html.escape(body_text)
+    formatted_body = escaped_body.replace('\n', '<br>')
+
+    # Determine button text based on language
+    if language == 'he':
+        button_text = "לתרום עכשיו"
+        link_fallback = "אם הכפתור לא עובד, העתק והדבק את הקישור הבא בדפדפן שלך:"
+        tax_notice = "תרומתך מוכרת לצורכי מס בהתאם לחוק. תקבל קבלה רשמית לאחר עיבוד התרומה."
+        thanks = "תודה על נדיבותך!"
+    else:
+        button_text = "Donate Now"
+        link_fallback = "If the button above doesn't work, copy and paste this link into your browser:"
+        tax_notice = "Your donation is tax-deductible to the extent allowed by law. You will receive an official receipt via email after your donation is processed."
+        thanks = "Thank you for your generosity!"
+
+    html_body = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+    <div style="background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #2c3e50; margin: 0;">Matat Mordechai</h1>
+            <p style="color: #666; margin: 5px 0 0 0;">מתת מרדכי</p>
+        </div>
+
+        <div style="font-size: 16px; color: #333; line-height: 1.6;">
+            {formatted_body}
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="{link.full_url}"
+               style="display: inline-block; padding: 15px 40px; background: #27ae60; color: white; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: 600;">
+                {button_text}
+            </a>
+        </div>
+
+        <p style="font-size: 14px; color: #666; line-height: 1.6;">
+            {link_fallback}
+        </p>
+        <p style="font-size: 14px; color: #3498db; word-break: break-all;">
+            {link.full_url}
+        </p>
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+
+        <p style="font-size: 14px; color: #666; line-height: 1.6;">
+            {tax_notice}
+        </p>
+
+        <p style="font-size: 14px; color: #666; margin-top: 20px;">
+            {thanks}
+        </p>
+
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; text-align: center;">
+            <p style="font-size: 12px; color: #999; margin: 0;">
+                Matat Mordechai is a registered 501(c)(3) nonprofit organization.
+            </p>
+        </div>
+    </div>
+</body>
+</html>'''
+
+    return send_email(
+        to=donor_email,
+        subject=subject,
+        html_body=html_body,
+        text_body=body_text,
+        message_type='donation_link',
+        related_link_id=link.id
+    )
+
+
 def send_sms(to, message, message_type='general', related_link_id=None):
     """Send SMS message (placeholder for Twilio integration)."""
     provider = os.environ.get('SMS_PROVIDER', 'twilio')

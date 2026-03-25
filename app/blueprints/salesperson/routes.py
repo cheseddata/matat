@@ -98,6 +98,8 @@ def dashboard_stats():
 @salesperson_required
 def send_link():
     """Send donation link form."""
+    from ...services.email_service import send_custom_donation_link_email
+
     if request.method == 'POST':
         donor_email = request.form.get('donor_email', '').strip()
         donor_name = request.form.get('donor_name', '').strip()
@@ -106,6 +108,12 @@ def send_link():
         preset_type = request.form.get('preset_type', 'onetime')
         language = request.form.get('language', 'en')
         campaign_id = request.form.get('campaign_id')
+
+        # Custom email content
+        email_subject = request.form.get('email_subject', '').strip()
+        email_body = request.form.get('email_body', '').strip()
+
+        logger.info(f'send_link: email={donor_email}, subject={email_subject[:50] if email_subject else "default"}')
 
         if not donor_email:
             flash('Email address is required.', 'error')
@@ -122,14 +130,26 @@ def send_link():
             preset_type=preset_type
         )
 
-        # Send the email
-        success = send_donation_link_email(
-            donor_email=donor_email,
-            donor_name=donor_name,
-            link=link,
-            salesperson=current_user,
-            language=language
-        )
+        logger.info(f'Donation link created: {link.short_code}, URL: {link.full_url}')
+
+        # Send the email with custom content
+        if email_subject and email_body:
+            success = send_custom_donation_link_email(
+                donor_email=donor_email,
+                subject=email_subject,
+                body_text=email_body,
+                link=link,
+                language=language
+            )
+        else:
+            # Fallback to default email
+            success = send_donation_link_email(
+                donor_email=donor_email,
+                donor_name=donor_name,
+                link=link,
+                salesperson=current_user,
+                language=language
+            )
 
         if success:
             flash(f'Donation link sent successfully to {donor_email}!', 'success')

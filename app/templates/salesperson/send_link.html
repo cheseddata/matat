@@ -103,6 +103,14 @@
         background: #219a52;
     }
 
+    .preview-btn {
+        background: #3498db;
+    }
+
+    .preview-btn:hover {
+        background: #2980b9;
+    }
+
     .back-link {
         display: inline-block;
         margin-bottom: 20px;
@@ -112,6 +120,149 @@
 
     .back-link:hover {
         text-decoration: underline;
+    }
+
+    /* Modal styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal {
+        background: white;
+        border-radius: 12px;
+        max-width: 700px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+        padding: 20px 25px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 20px;
+        color: #2c3e50;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .modal-close:hover {
+        color: #333;
+    }
+
+    .modal-body {
+        padding: 25px;
+    }
+
+    .modal-footer {
+        padding: 20px 25px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .modal-btn {
+        padding: 12px 25px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .modal-btn.cancel {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .modal-btn.send {
+        background: #27ae60;
+        color: white;
+    }
+
+    .modal-btn:hover {
+        opacity: 0.9;
+    }
+
+    .email-preview-info {
+        background: #f8f9fa;
+        padding: 12px 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #666;
+    }
+
+    .email-preview-info strong {
+        color: #333;
+    }
+
+    .email-field {
+        margin-bottom: 20px;
+    }
+
+    .email-field label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .email-field input,
+    .email-field textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+
+    .email-field textarea {
+        min-height: 200px;
+        font-family: inherit;
+        line-height: 1.6;
+    }
+
+    .email-field input:focus,
+    .email-field textarea:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+
+    .char-count {
+        font-size: 12px;
+        color: #999;
+        text-align: right;
+        margin-top: 5px;
     }
 </style>
 {% endblock %}
@@ -123,7 +274,7 @@
     <h1>{{ t('send_link.title') }}</h1>
     <p style="color: #666; margin-bottom: 25px;">{{ t('send_link.subtitle') }}</p>
 
-    <form method="POST" action="{{ url_for('salesperson.send_link') }}">
+    <form id="linkForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <div class="form-section">
@@ -191,11 +342,62 @@
             {% endif %}
         </div>
 
-        <button type="submit" class="submit-btn">{{ t('send_link.send_link_btn') }}</button>
+        <button type="button" class="submit-btn preview-btn" onclick="showEmailPreview()">Preview & Send Email</button>
     </form>
 </div>
 
+<!-- Email Preview Modal -->
+<div class="modal-overlay" id="emailModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Preview & Edit Email</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="email-preview-info">
+                <strong>To:</strong> <span id="previewTo"></span>
+            </div>
+
+            <div class="email-field">
+                <label for="email_subject">Subject</label>
+                <input type="text" id="email_subject" name="email_subject">
+            </div>
+
+            <div class="email-field">
+                <label for="email_body">Email Message</label>
+                <textarea id="email_body" name="email_body"></textarea>
+                <div class="char-count"><span id="charCount">0</span> characters</div>
+            </div>
+
+            <p style="font-size: 13px; color: #666; margin-top: 15px;">
+                <strong>Note:</strong> The donation link button will be automatically added below your message.
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-btn send" onclick="sendEmail()">Send Email</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden form for actual submission -->
+<form id="submitForm" method="POST" action="{{ url_for('salesperson.send_link') }}" style="display: none;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="donor_name" id="submit_donor_name">
+    <input type="hidden" name="donor_email" id="submit_donor_email">
+    <input type="hidden" name="donor_address" id="submit_donor_address">
+    <input type="hidden" name="preset_amount" id="submit_preset_amount">
+    <input type="hidden" name="preset_type" id="submit_preset_type">
+    <input type="hidden" name="language" id="submit_language">
+    <input type="hidden" name="campaign_id" id="submit_campaign_id">
+    <input type="hidden" name="email_subject" id="submit_email_subject">
+    <input type="hidden" name="email_body" id="submit_email_body">
+</form>
+{% endblock %}
+
+{% block extra_js %}
 <script>
+// Amount preset buttons
 document.querySelectorAll('.amount-preset').forEach(btn => {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -207,6 +409,133 @@ document.querySelectorAll('.amount-preset').forEach(btn => {
 
 document.getElementById('preset_amount').addEventListener('input', function() {
     document.querySelectorAll('.amount-preset').forEach(b => b.classList.remove('selected'));
+});
+
+// Character count for email body
+document.getElementById('email_body').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length;
+});
+
+// Get default email content based on language and form values
+function getDefaultEmailContent() {
+    const donorName = document.getElementById('donor_name').value || 'Friend';
+    const amount = document.getElementById('preset_amount').value;
+    const language = document.getElementById('language').value;
+    const salesperson = '{{ current_user.full_name }}';
+
+    let subject, body;
+
+    if (language === 'he') {
+        subject = 'קישור לתרומה - מתת מרדכי';
+        body = `שלום ${donorName},
+
+${salesperson} שולח/ת לך קישור לתרומה עבור מתת מרדכי.
+
+${amount ? 'סכום מוצע: $' + parseFloat(amount).toFixed(2) + '\n\n' : ''}תרומתך משנה חיים ומסייעת למשפחות נזקקות.
+
+תודה רבה על נדיבותך!
+
+בברכה,
+${salesperson}
+מתת מרדכי`;
+    } else {
+        subject = 'Donation Link - Matat Mordechai';
+        body = `Dear ${donorName},
+
+${salesperson} is sharing a donation link with you to support Matat Mordechai.
+
+${amount ? 'Suggested donation amount: $' + parseFloat(amount).toFixed(2) + '\n\n' : ''}Your donation makes a real difference in the lives of families in need.
+
+Thank you for your generosity!
+
+Best regards,
+${salesperson}
+Matat Mordechai`;
+    }
+
+    return { subject, body };
+}
+
+// Show email preview modal
+function showEmailPreview() {
+    const email = document.getElementById('donor_email').value;
+    if (!email) {
+        alert('Please enter the donor\'s email address first.');
+        return;
+    }
+
+    // Set recipient
+    document.getElementById('previewTo').textContent = email;
+
+    // Get default content
+    const { subject, body } = getDefaultEmailContent();
+    document.getElementById('email_subject').value = subject;
+    document.getElementById('email_body').value = body;
+    document.getElementById('charCount').textContent = body.length;
+
+    // Show modal
+    document.getElementById('emailModal').classList.add('active');
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('emailModal').classList.remove('active');
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Close modal on overlay click
+document.getElementById('emailModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+// Send email
+function sendEmail() {
+    const email = document.getElementById('donor_email').value;
+    const subject = document.getElementById('email_subject').value;
+    const body = document.getElementById('email_body').value;
+
+    if (!subject.trim()) {
+        alert('Please enter an email subject.');
+        return;
+    }
+
+    if (!body.trim()) {
+        alert('Please enter an email message.');
+        return;
+    }
+
+    // Copy values to hidden form
+    document.getElementById('submit_donor_name').value = document.getElementById('donor_name').value;
+    document.getElementById('submit_donor_email').value = email;
+    document.getElementById('submit_donor_address').value = document.getElementById('donor_address').value;
+    document.getElementById('submit_preset_amount').value = document.getElementById('preset_amount').value;
+    document.getElementById('submit_preset_type').value = document.getElementById('preset_type').value;
+    document.getElementById('submit_language').value = document.getElementById('language').value;
+    document.getElementById('submit_campaign_id').value = document.getElementById('campaign_id') ? document.getElementById('campaign_id').value : '';
+    document.getElementById('submit_email_subject').value = subject;
+    document.getElementById('submit_email_body').value = body;
+
+    // Submit the hidden form
+    document.getElementById('submitForm').submit();
+}
+
+// Update preview when language changes
+document.getElementById('language').addEventListener('change', function() {
+    // If modal is open, update the content
+    if (document.getElementById('emailModal').classList.contains('active')) {
+        const { subject, body } = getDefaultEmailContent();
+        document.getElementById('email_subject').value = subject;
+        document.getElementById('email_body').value = body;
+        document.getElementById('charCount').textContent = body.length;
+    }
 });
 </script>
 {% endblock %}
