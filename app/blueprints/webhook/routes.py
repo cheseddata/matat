@@ -404,22 +404,23 @@ def mailtrap_webhook():
 
             if message:
                 timestamp = datetime.utcnow()
+                event_lower = event_type.lower() if event_type else ''
 
-                if event_type == 'delivery':
+                if event_lower in ['delivery', 'delivered']:
                     message.status = 'delivered'
                     message.delivered_at = timestamp
                     logger.info(f'Message {message.id} marked as delivered')
-                elif event_type == 'open':
+                elif event_lower == 'open':
                     message.opened_at = timestamp
                     logger.info(f'Message {message.id} opened')
-                elif event_type == 'click':
+                elif event_lower == 'click':
                     message.clicked_at = timestamp
                     logger.info(f'Message {message.id} clicked')
-                elif event_type == 'bounce' or event_type == 'soft_bounce':
+                elif event_lower in ['bounce', 'soft_bounce', 'reject']:
                     message.status = 'bounced'
-                    message.error_message = event.get('reason', 'Bounced')
-                    logger.info(f'Message {message.id} bounced')
-                elif event_type == 'spam':
+                    message.error_message = event.get('reason', event_type)
+                    logger.info(f'Message {message.id} bounced/rejected')
+                elif event_lower in ['spam', 'spam_complaint', 'spam complaint']:
                     message.status = 'spam'
                     logger.info(f'Message {message.id} marked as spam')
 
