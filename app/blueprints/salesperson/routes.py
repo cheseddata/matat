@@ -119,6 +119,13 @@ def send_link():
             flash('Email address is required.', 'error')
             return redirect(url_for('salesperson.send_link'))
 
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, donor_email):
+            flash('Please enter a valid email address (e.g., name@example.com).', 'error')
+            return redirect(url_for('salesperson.send_link'))
+
         # Create donation link scoped to current salesperson
         link = create_donation_link(
             salesperson_id=current_user.id,
