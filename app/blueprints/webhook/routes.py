@@ -18,35 +18,50 @@ logger = logging.getLogger(__name__)
 @webhook_bp.route('/stripe/webhook', methods=['POST'])
 @csrf.exempt
 def stripe_webhook():
+    logger.info('Stripe webhook received')
     payload = request.get_data(as_text=True)
     sig_header = request.headers.get('Stripe-Signature')
+    logger.info(f'Webhook signature present: {bool(sig_header)}')
 
     # Get webhook secret from database (falls back to env var)
-    _, _, _, webhook_secret = get_stripe_keys()
+    _, _, mode, webhook_secret = get_stripe_keys()
+    logger.info(f'Webhook mode: {mode}, secret configured: {bool(webhook_secret and webhook_secret != "whsec_placeholder")}')
 
     if not webhook_secret or webhook_secret == 'whsec_placeholder':
         # In dev mode without webhook secret, just acknowledge
+        logger.warning('Webhook received but no secret configured (dev mode)')
         return jsonify({'status': 'received (dev mode)'}), 200
 
     try:
         event = construct_webhook_event(payload, sig_header, webhook_secret)
+        logger.info(f'Webhook event verified: {event["type"]}')
     except Exception as e:
+        logger.error(f'Webhook signature verification failed: {str(e)}')
         return jsonify({'error': str(e)}), 400
-    
+
     event_type = event['type']
     data = event['data']['object']
-    
+    logger.info(f'Processing webhook event: {event_type}')
+
     if event_type == 'payment_intent.succeeded':
+        logger.info(f'Handling payment_intent.succeeded: {data.get("id")}')
         handle_payment_intent_succeeded(data)
     elif event_type == 'charge.succeeded':
+        logger.info(f'Handling charge.succeeded: {data.get("id")}')
         handle_charge_succeeded(data)
     elif event_type == 'charge.refunded':
+        logger.info(f'Handling charge.refunded: {data.get("id")}')
         handle_charge_refunded(data)
     elif event_type == 'charge.failed':
+        logger.info(f'Handling charge.failed: {data.get("id")}')
         handle_charge_failed(data)
     elif event_type == 'invoice.paid':
+        logger.info(f'Handling invoice.paid: {data.get("id")}')
         handle_invoice_paid(data)
-    
+    else:
+        logger.info(f'Unhandled webhook event type: {event_type}')
+
+    logger.info(f'Webhook {event_type} processed successfully')
     return jsonify({'status': 'received'}), 200
 
 
