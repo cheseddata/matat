@@ -548,7 +548,6 @@ function getTemplates() {
     const greeting = getGreeting(document.getElementById('language').value);
     const amount = document.getElementById('preset_amount').value;
     const language = document.getElementById('language').value;
-    const salesperson = '{{ current_user.full_name }}';
     const amountText = amount ? (language === 'he' ? 'סכום מוצע: $' + parseFloat(amount).toFixed(2) : 'Suggested amount: $' + parseFloat(amount).toFixed(2)) : '';
 
     const templates = {
@@ -557,28 +556,26 @@ function getTemplates() {
                 subject: 'Donation Link - Matat Mordechai',
                 body: `Dear ${greeting},
 
-${salesperson} is sharing a donation link with you to support Matat Mordechai.
+We are sharing a donation link with you to support Matat Mordechai.
 
 ${amountText ? amountText + '\n\n' : ''}Your donation makes a real difference in the lives of families in need.
 
 Thank you for your generosity!
 
 Best regards,
-${salesperson}
 Matat Mordechai`
             },
             he: {
                 subject: 'קישור לתרומה - מתת מרדכי',
                 body: `${greeting},
 
-${salesperson} שולח/ת לך קישור לתרומה עבור מתת מרדכי.
+אנו שולחים לך קישור לתרומה עבור מתת מרדכי.
 
 ${amountText ? amountText + '\n\n' : ''}תרומתך משנה חיים ומסייעת למשפחות נזקקות.
 
 תודה רבה על נדיבותך!
 
 בברכה,
-${salesperson}
 מתת מרדכי`
             }
         },
@@ -591,7 +588,7 @@ Here's your personal donation link for Matat Mordechai.
 
 ${amountText ? amountText + '\n\n' : ''}Thank you!
 
-${salesperson}`
+Matat Mordechai`
             },
             he: {
                 subject: 'הקישור לתרומה שלך',
@@ -601,7 +598,7 @@ ${salesperson}`
 
 ${amountText ? amountText + '\n\n' : ''}תודה!
 
-${salesperson}`
+מתת מרדכי`
             }
         },
         personal: {
@@ -609,28 +606,26 @@ ${salesperson}`
                 subject: 'A Personal Invitation to Give - Matat Mordechai',
                 body: `Dear ${greeting},
 
-I hope this message finds you well.
+We hope this message finds you well.
 
-I wanted to personally reach out and share an opportunity to make a meaningful impact. Matat Mordechai supports families going through difficult times, and every donation truly matters.
+We wanted to reach out and share an opportunity to make a meaningful impact. Matat Mordechai supports families going through difficult times, and every donation truly matters.
 
-${amountText ? amountText + '\n\n' : ''}I know you have a generous heart, and I believe this cause will resonate with you.
+${amountText ? amountText + '\n\n' : ''}We know you have a generous heart, and we believe this cause will resonate with you.
 
 With gratitude,
-${salesperson}
 Matat Mordechai`
             },
             he: {
                 subject: 'הזמנה אישית לתרום - מתת מרדכי',
                 body: `${greeting},
 
-מקווה שהמכתב הזה מוצא אותך בשלום.
+מקווים שהמכתב הזה מוצא אותך בשלום.
 
-רציתי לפנות אליך באופן אישי ולשתף אותך בהזדמנות לעשות שינוי משמעותי. מתת מרדכי תומכת במשפחות שעוברות זמנים קשים, וכל תרומה באמת חשובה.
+רצינו לפנות אליך ולשתף אותך בהזדמנות לעשות שינוי משמעותי. מתת מרדכי תומכת במשפחות שעוברות זמנים קשים, וכל תרומה באמת חשובה.
 
-${amountText ? amountText + '\n\n' : ''}אני יודע/ת שיש לך לב נדיב, ואני מאמין/ה שהמטרה הזו תהדהד אצלך.
+${amountText ? amountText + '\n\n' : ''}אנחנו יודעים שיש לך לב נדיב, ואנחנו מאמינים שהמטרה הזו תהדהד אצלך.
 
 בהוקרה,
-${salesperson}
 מתת מרדכי`
             }
         },
@@ -648,7 +643,6 @@ ${amountText ? amountText + '\n\n' : ''}Every dollar counts. Every moment matter
 Please consider donating today.
 
 Urgently,
-${salesperson}
 Matat Mordechai`
             },
             he: {
@@ -664,7 +658,6 @@ ${amountText ? amountText + '\n\n' : ''}כל שקל חשוב. כל רגע קרי
 אנא שקול/י לתרום היום.
 
 בדחיפות,
-${salesperson}
 מתת מרדכי`
             }
         }
