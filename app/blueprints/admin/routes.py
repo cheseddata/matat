@@ -1192,6 +1192,8 @@ def clear_test_data():
 @admin_required
 def links():
     """View all donation links with pending tab."""
+    from ...models.message import MessageQueue
+
     # All links
     all_links = DonationLink.query.order_by(DonationLink.created_at.desc()).all()
 
@@ -1203,10 +1205,28 @@ def links():
     # Get salespersons for reference
     salespersons = {u.id: u for u in User.query.filter(User.role == 'salesperson').all()}
 
+    # Get email tracking data for pending links
+    link_ids = [link.id for link in pending_links]
+    email_status = {}
+    if link_ids:
+        messages = MessageQueue.query.filter(
+            MessageQueue.related_link_id.in_(link_ids),
+            MessageQueue.message_type == 'donation_link'
+        ).all()
+        for msg in messages:
+            email_status[msg.related_link_id] = {
+                'status': msg.status,
+                'sent_at': msg.sent_at,
+                'delivered_at': msg.delivered_at,
+                'opened_at': msg.opened_at,
+                'clicked_at': msg.clicked_at
+            }
+
     return render_template(
         'admin/links.html',
         links=all_links,
         pending_links=pending_links,
         salespersons=salespersons,
+        email_status=email_status,
         now=datetime.utcnow()
     )

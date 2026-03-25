@@ -152,6 +152,44 @@
         color: #333;
     }
 
+    .email-status {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .email-status.clicked {
+        background: #27ae60;
+        color: white;
+    }
+
+    .email-status.opened {
+        background: #3498db;
+        color: white;
+    }
+
+    .email-status.delivered {
+        background: #9b59b6;
+        color: white;
+    }
+
+    .email-status.sent {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .email-status.pending {
+        background: #f1c40f;
+        color: #333;
+    }
+
+    .email-status.bounced, .email-status.failed {
+        background: #e74c3c;
+        color: white;
+    }
+
     @media (max-width: 768px) {
         .links-table {
             display: block;
@@ -243,12 +281,14 @@
                         <th>Donor Info</th>
                         <th>{{ t('my_links.amount') }}</th>
                         <th>Sent</th>
+                        <th>Email Status</th>
                         <th>Days Ago</th>
                         <th>{{ t('common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for link in pending_links %}
+                    {% set status = email_status.get(link.id, {}) %}
                     <tr>
                         <td>
                             <div class="donor-info">
@@ -268,6 +308,27 @@
                             {% endif %}
                         </td>
                         <td>{{ link.created_at.strftime('%m/%d/%Y') }}</td>
+                        <td>
+                            {% if status %}
+                                {% if status.clicked_at %}
+                                <span class="email-status clicked" title="Clicked {{ status.clicked_at.strftime('%m/%d %H:%M') }}">Clicked</span>
+                                {% elif status.opened_at %}
+                                <span class="email-status opened" title="Opened {{ status.opened_at.strftime('%m/%d %H:%M') }}">Opened</span>
+                                {% elif status.delivered_at %}
+                                <span class="email-status delivered" title="Delivered {{ status.delivered_at.strftime('%m/%d %H:%M') }}">Delivered</span>
+                                {% elif status.status == 'sent' %}
+                                <span class="email-status sent">Sent</span>
+                                {% elif status.status == 'bounced' %}
+                                <span class="email-status bounced">Bounced</span>
+                                {% elif status.status == 'failed' %}
+                                <span class="email-status failed">Failed</span>
+                                {% else %}
+                                <span class="email-status pending">Pending</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #999;">—</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% set days = ((now - link.created_at).days) %}
                             {% if days == 0 %}

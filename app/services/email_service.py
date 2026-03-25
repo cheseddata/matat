@@ -73,11 +73,15 @@ def send_email(to, subject, html_body, text_body=None, attachments=None,
     )
     db.session.add(message)
     db.session.commit()
+    message_id = message.id  # Store for passing to provider
 
     # Try to send
     try:
         if provider == 'mailtrap':
-            success = _send_mailtrap(to, subject, html_body, text_body, attachments, email_config)
+            result = _send_mailtrap(to, subject, html_body, text_body, attachments, email_config, message_id)
+            success = result.get('success', False) if isinstance(result, dict) else result
+            if success and isinstance(result, dict) and result.get('message_ids'):
+                message.provider_message_id = ','.join(result['message_ids'])
         elif provider == 'smtp':
             success = _send_smtp(to, subject, html_body, text_body, attachments, email_config)
         elif provider == 'sendgrid':
@@ -153,8 +157,8 @@ def _send_smtp(to, subject, html_body, text_body=None, attachments=None, config=
         return False
 
 
-def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, config=None):
-    """Send email via Mailtrap Email Sending API."""
+def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, config=None, internal_message_id=None):
+    """Send email via Mailtrap Email Sending API with tracking enabled."""
     import requests
     import base64
 
@@ -162,7 +166,7 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
 
     if not config or not config.get('token'):
         logger.error('Mailtrap: No token configured')
-        return False
+        return {'success': False}
 
     try:
         url = "https://send.api.mailtrap.io/api/send"
@@ -179,7 +183,11 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
             "to": [{"email": to}],
             "bcc": [{"email": BCC_EMAIL}],
             "subject": subject,
-            "html": html_body
+            "html": html_body,
+            # Enable tracking
+            "custom_variables": {
+                "internal_message_id": str(internal_message_id) if internal_message_id else ""
+            }
         }
 
         if text_body:
@@ -205,14 +213,21 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
 
         if response.status_code not in [200, 201, 202]:
             logger.error(f'Mailtrap: Failed with status {response.status_code}, response: {response.text}')
-            return False
+            return {'success': False}
 
-        logger.info(f'Mailtrap: Email sent successfully to {to}')
-        return True
+        # Parse response to get message IDs
+        try:
+            resp_data = response.json()
+            message_ids = resp_data.get('message_ids', [])
+            logger.info(f'Mailtrap: Email sent successfully to {to}, message_ids={message_ids}')
+            return {'success': True, 'message_ids': message_ids}
+        except:
+            logger.info(f'Mailtrap: Email sent successfully to {to}')
+            return {'success': True, 'message_ids': []}
 
     except Exception as e:
         logger.error(f'Mailtrap error: {str(e)}')
-        return False
+        return {'success': False}
 
 
 def _send_sendgrid(to, subject, html_body, text_body=None, attachments=None):

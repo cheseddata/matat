@@ -361,3 +361,74 @@ def handle_invoice_paid(invoice):
             logger.info(f"Receipt email sent to {donor.email} for recurring donation {donation.id}")
         except Exception as e:
             logger.error(f"Receipt email failed for recurring donation {donation.id}: {e}")
+
+
+# =============================================================================
+# MAILTRAP EMAIL TRACKING WEBHOOK
+# =============================================================================
+
+@webhook_bp.route('/mailtrap/webhook', methods=['POST'])
+@csrf.exempt
+def mailtrap_webhook():
+    """Handle Mailtrap email tracking events (delivery, open, click, bounce)."""
+    from datetime import datetime
+    from ...models.message import MessageQueue
+
+    logger.info('Mailtrap webhook received')
+
+    try:
+        events = request.get_json()
+        if not events:
+            return jsonify({'status': 'no data'}), 200
+
+        # Mailtrap sends events as an array
+        if not isinstance(events, list):
+            events = [events]
+
+        for event in events:
+            event_type = event.get('event')
+            message_id = event.get('message_id')
+            custom_vars = event.get('custom_variables', {})
+            internal_id = custom_vars.get('internal_message_id')
+
+            logger.info(f'Mailtrap event: {event_type}, message_id={message_id}, internal_id={internal_id}')
+
+            # Find message by provider_message_id or internal_id
+            message = None
+            if internal_id:
+                message = MessageQueue.query.get(int(internal_id))
+            if not message and message_id:
+                message = MessageQueue.query.filter(
+                    MessageQueue.provider_message_id.contains(message_id)
+                ).first()
+
+            if message:
+                timestamp = datetime.utcnow()
+
+                if event_type == 'delivery':
+                    message.status = 'delivered'
+                    message.delivered_at = timestamp
+                    logger.info(f'Message {message.id} marked as delivered')
+                elif event_type == 'open':
+                    message.opened_at = timestamp
+                    logger.info(f'Message {message.id} opened')
+                elif event_type == 'click':
+                    message.clicked_at = timestamp
+                    logger.info(f'Message {message.id} clicked')
+                elif event_type == 'bounce' or event_type == 'soft_bounce':
+                    message.status = 'bounced'
+                    message.error_message = event.get('reason', 'Bounced')
+                    logger.info(f'Message {message.id} bounced')
+                elif event_type == 'spam':
+                    message.status = 'spam'
+                    logger.info(f'Message {message.id} marked as spam')
+
+                db.session.commit()
+            else:
+                logger.warning(f'No message found for Mailtrap event: message_id={message_id}, internal_id={internal_id}')
+
+        return jsonify({'status': 'received'}), 200
+
+    except Exception as e:
+        logger.error(f'Mailtrap webhook error: {str(e)}')
+        return jsonify({'error': str(e)}), 500

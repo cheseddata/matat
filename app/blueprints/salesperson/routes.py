@@ -331,6 +331,8 @@ def _create_phone_payment_intent(data):
 @salesperson_required
 def my_links():
     """View all links created by this salesperson."""
+    from ...models.message import MessageQueue
+
     # Strictly scoped to current user
     links = DonationLink.query.filter(
         DonationLink.salesperson_id == current_user.id
@@ -342,10 +344,28 @@ def my_links():
         (DonationLink.times_used == 0) | (DonationLink.times_used.is_(None))
     ).order_by(DonationLink.created_at.desc()).all()
 
+    # Get email tracking data for pending links
+    link_ids = [link.id for link in pending_links]
+    email_status = {}
+    if link_ids:
+        messages = MessageQueue.query.filter(
+            MessageQueue.related_link_id.in_(link_ids),
+            MessageQueue.message_type == 'donation_link'
+        ).all()
+        for msg in messages:
+            email_status[msg.related_link_id] = {
+                'status': msg.status,
+                'sent_at': msg.sent_at,
+                'delivered_at': msg.delivered_at,
+                'opened_at': msg.opened_at,
+                'clicked_at': msg.clicked_at
+            }
+
     return render_template(
         'salesperson/my_links.html',
         links=links,
         pending_links=pending_links,
+        email_status=email_status,
         now=datetime.utcnow()
     )
 
