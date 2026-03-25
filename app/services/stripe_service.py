@@ -76,18 +76,22 @@ def get_or_create_customer(donor):
         logger.error(f'Error creating Stripe customer: {str(e)}')
         raise
 
-def create_payment_intent(amount_cents, currency, customer_id, metadata=None):
+def create_payment_intent(amount_cents, currency, customer_id=None, metadata=None):
     """Create a Stripe PaymentIntent."""
     logger.info(f'Creating PaymentIntent: amount={amount_cents}, currency={currency}, customer={customer_id}')
     try:
         s = init_stripe()
-        intent = s.PaymentIntent.create(
-            amount=amount_cents,
-            currency=currency,
-            customer=customer_id,
-            metadata=metadata or {},
-            automatic_payment_methods={'enabled': True}
-        )
+        # Build params - customer is optional
+        params = {
+            'amount': amount_cents,
+            'currency': currency,
+            'metadata': metadata or {},
+            'automatic_payment_methods': {'enabled': True}
+        }
+        if customer_id:
+            params['customer'] = customer_id
+
+        intent = s.PaymentIntent.create(**params)
         logger.info(f'PaymentIntent created successfully: {intent.id}')
         return intent
     except stripe.error.StripeError as e:

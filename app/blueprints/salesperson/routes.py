@@ -242,61 +242,75 @@ def _create_phone_payment_intent(data):
 
         amount_cents = int(amount_dollars * 100)
 
-        # Validate email
+        # Email is optional for phone donations
         email = data.get('email', '').strip()
-        if not email:
-            logger.warning('Email is required but not provided')
-            return jsonify({'error': 'Email is required'}), 400
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
 
-        logger.info(f'Processing donation for email: {email}')
+        donor = None
+        customer_id = None
 
-        # Get or create donor
-        donor = Donor.query.filter_by(email=email).first()
-        if not donor:
-            logger.info(f'Creating new donor for email: {email}')
-            donor = Donor(
-                first_name=data.get('first_name', ''),
-                last_name=data.get('last_name', ''),
-                email=email,
-                phone=data.get('phone'),
-                address_line1=data.get('address_line1'),
-                city=data.get('city'),
-                state=data.get('state'),
-                zip=data.get('zip'),
-                country=data.get('country', 'US'),
-                test=is_test_mode()
-            )
-            db.session.add(donor)
-            db.session.flush()
-            logger.info(f'New donor created with id: {donor.id}')
+        # Only create/lookup donor if we have an email
+        if email:
+            logger.info(f'Processing donation for email: {email}')
+            donor = Donor.query.filter_by(email=email).first()
+            if not donor:
+                logger.info(f'Creating new donor for email: {email}')
+                donor = Donor(
+                    first_name=first_name or 'Anonymous',
+                    last_name=last_name or 'Donor',
+                    email=email,
+                    phone=data.get('phone'),
+                    address_line1=data.get('address_line1'),
+                    city=data.get('city'),
+                    state=data.get('state'),
+                    zip=data.get('zip'),
+                    country=data.get('country', 'US'),
+                    test=is_test_mode()
+                )
+                db.session.add(donor)
+                db.session.flush()
+                logger.info(f'New donor created with id: {donor.id}')
+            else:
+                logger.info(f'Found existing donor with id: {donor.id}')
+
+            db.session.commit()
+
+            # Get Stripe customer
+            logger.info(f'Getting/creating Stripe customer for donor {donor.id}')
+            customer_id = get_or_create_customer(donor)
+            logger.info(f'Stripe customer ID: {customer_id}')
         else:
-            logger.info(f'Found existing donor with id: {donor.id}')
-
-        db.session.commit()
-
-        # Get Stripe customer
-        logger.info(f'Getting/creating Stripe customer for donor {donor.id}')
-        customer_id = get_or_create_customer(donor)
-        logger.info(f'Stripe customer ID: {customer_id}')
+            logger.info('Processing anonymous phone donation (no email provided)')
 
         # Build metadata - scoped to current salesperson
         metadata = {
-            'donor_id': str(donor.id),
-            'donor_email': donor.email,
-            'donor_first_name': donor.first_name,
-            'donor_last_name': donor.last_name,
             'donation_type': 'one_time',
             'source': 'phone',
             'salesperson_id': str(current_user.id),
             'ref_code': current_user.ref_code or ''
         }
+
+        # Add donor info if available
+        if donor:
+            metadata['donor_id'] = str(donor.id)
+            metadata['donor_email'] = donor.email or ''
+            metadata['donor_first_name'] = donor.first_name or ''
+            metadata['donor_last_name'] = donor.last_name or ''
+        else:
+            # Anonymous donation - store whatever info we have
+            metadata['donor_first_name'] = first_name or 'Anonymous'
+            metadata['donor_last_name'] = last_name or 'Donor'
+            if email:
+                metadata['donor_email'] = email
+
         logger.info(f'Payment metadata: {metadata}')
 
         logger.info(f'Creating PaymentIntent for {amount_cents} cents')
         intent = create_payment_intent(
             amount_cents=amount_cents,
             currency='usd',
-            customer_id=customer_id,
+            customer_id=customer_id,  # Can be None for anonymous donations
             metadata=metadata
         )
         logger.info(f'PaymentIntent created: {intent.id}')
