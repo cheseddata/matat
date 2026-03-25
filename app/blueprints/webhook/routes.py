@@ -195,20 +195,29 @@ def handle_charge_succeeded(charge):
     donation.stripe_receipt_url = charge.get('receipt_url')
 
     # Retrieve balance transaction for fee data
-    # Note: balance_transaction may be null in webhook - fetch from charge if needed
+    # Note: balance_transaction may be null in webhook - fetch from charge with retry
     bt_id = charge.get('balance_transaction')
     if not bt_id:
-        # Balance transaction not in webhook payload yet - fetch the charge to get it
-        logger.info(f'[charge.succeeded] Balance transaction not in payload, fetching charge...')
-        try:
-            import stripe
-            from ...services.stripe_service import init_stripe
-            s = init_stripe()
-            full_charge = s.Charge.retrieve(charge['id'])
-            bt_id = full_charge.get('balance_transaction')
-            logger.info(f'[charge.succeeded] Fetched balance transaction: {bt_id}')
-        except Exception as e:
-            logger.warning(f'[charge.succeeded] Could not fetch charge: {e}')
+        # Balance transaction not in webhook payload yet - fetch with retry
+        logger.info(f'[charge.succeeded] Balance transaction not in payload, fetching with retry...')
+        import time
+        import stripe
+        from ...services.stripe_service import init_stripe
+        s = init_stripe()
+
+        # Retry up to 3 times with 1 second delay
+        for attempt in range(3):
+            try:
+                if attempt > 0:
+                    time.sleep(1)  # Wait 1 second before retry
+                full_charge = s.Charge.retrieve(charge['id'])
+                bt_id = full_charge.get('balance_transaction')
+                if bt_id:
+                    logger.info(f'[charge.succeeded] Got balance transaction on attempt {attempt + 1}: {bt_id}')
+                    break
+                logger.info(f'[charge.succeeded] Attempt {attempt + 1}: balance transaction still null')
+            except Exception as e:
+                logger.warning(f'[charge.succeeded] Attempt {attempt + 1} failed: {e}')
 
     if bt_id:
         try:
@@ -221,7 +230,7 @@ def handle_charge_succeeded(charge):
         except Exception as e:
             logger.warning(f"Fee capture failed for charge {charge['id']}: {e}")
     else:
-        logger.warning(f'[charge.succeeded] No balance transaction available for charge {charge["id"]}')
+        logger.warning(f'[charge.succeeded] No balance transaction after retries for charge {charge["id"]}')
 
     # Generate receipt atomically (within this transaction)
     # Only generate if not already generated

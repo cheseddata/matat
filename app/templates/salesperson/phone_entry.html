@@ -497,6 +497,7 @@ document.getElementById('payment-form').addEventListener('submit', async functio
         // Success
         document.getElementById('success-message').style.display = 'block';
         form.reset();
+        window.cardElement.clear();  // Clear the Stripe card element
         document.getElementById('amount-display').style.display = 'none';
         submitBtn.textContent = '{{ t('phone_entry.process_donation') }}';
         submitBtn.disabled = false;
