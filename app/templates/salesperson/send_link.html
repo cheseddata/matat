@@ -238,6 +238,7 @@
     }
 
     .email-field input,
+    .email-field select,
     .email-field textarea {
         width: 100%;
         padding: 12px;
@@ -253,6 +254,7 @@
     }
 
     .email-field input:focus,
+    .email-field select:focus,
     .email-field textarea:focus {
         outline: none;
         border-color: #3498db;
@@ -263,6 +265,41 @@
         color: #999;
         text-align: right;
         margin-top: 5px;
+    }
+
+    .template-selector {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+
+    .template-btn {
+        padding: 10px 16px;
+        border: 2px solid #ddd;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .template-btn:hover {
+        border-color: #3498db;
+        background: #f8f9fa;
+    }
+
+    .template-btn.active {
+        border-color: #3498db;
+        background: #e8f4fc;
+        color: #2980b9;
+    }
+
+    .template-hint {
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 15px;
     }
 </style>
 {% endblock %}
@@ -280,14 +317,20 @@
         <div class="form-section">
             <h3>{{ t('phone_entry.donor_info') }}</h3>
 
+            <div class="form-group">
+                <label for="donor_email">{{ t('send_link.donor_email') }} *</label>
+                <input type="email" id="donor_email" name="donor_email" required placeholder="john@example.com">
+                <div id="donor_lookup_status" style="font-size: 12px; margin-top: 5px; display: none;"></div>
+            </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label for="donor_name">{{ t('send_link.donor_name') }}</label>
                     <input type="text" id="donor_name" name="donor_name" placeholder="John Doe">
                 </div>
                 <div class="form-group">
-                    <label for="donor_email">{{ t('send_link.donor_email') }} *</label>
-                    <input type="email" id="donor_email" name="donor_email" required placeholder="john@example.com">
+                    <label for="donor_phone">Phone</label>
+                    <input type="tel" id="donor_phone" name="donor_phone" placeholder="+1 555 123 4567">
                 </div>
             </div>
 
@@ -359,6 +402,17 @@
             </div>
 
             <div class="email-field">
+                <label>Choose Template</label>
+                <p class="template-hint">Select a template or customize the message below</p>
+                <div class="template-selector">
+                    <button type="button" class="template-btn active" data-template="standard" onclick="selectTemplate('standard')">Standard</button>
+                    <button type="button" class="template-btn" data-template="short" onclick="selectTemplate('short')">Short & Simple</button>
+                    <button type="button" class="template-btn" data-template="personal" onclick="selectTemplate('personal')">Personal Touch</button>
+                    <button type="button" class="template-btn" data-template="urgent" onclick="selectTemplate('urgent')">Urgent Appeal</button>
+                </div>
+            </div>
+
+            <div class="email-field">
                 <label for="email_subject">Subject</label>
                 <input type="text" id="email_subject" name="email_subject">
             </div>
@@ -397,6 +451,64 @@
 
 {% block extra_js %}
 <script>
+// Donor lookup by email
+let lookupTimeout = null;
+document.getElementById('donor_email').addEventListener('input', function() {
+    const email = this.value.trim();
+    const statusEl = document.getElementById('donor_lookup_status');
+
+    // Clear previous timeout
+    if (lookupTimeout) {
+        clearTimeout(lookupTimeout);
+    }
+
+    // Hide status if email is too short
+    if (!email || !email.includes('@')) {
+        statusEl.style.display = 'none';
+        return;
+    }
+
+    // Debounce the lookup
+    lookupTimeout = setTimeout(() => {
+        statusEl.style.display = 'block';
+        statusEl.style.color = '#666';
+        statusEl.textContent = 'Looking up donor...';
+
+        fetch('{{ url_for("salesperson.lookup_donor") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ email: email })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.found) {
+                statusEl.style.color = '#27ae60';
+                statusEl.innerHTML = '<strong>Found!</strong> ' + data.donor.full_name + ' - Auto-filled details below';
+
+                // Auto-fill fields
+                if (data.donor.full_name) {
+                    document.getElementById('donor_name').value = data.donor.full_name;
+                }
+                if (data.donor.phone) {
+                    document.getElementById('donor_phone').value = data.donor.phone;
+                }
+                if (data.donor.address) {
+                    document.getElementById('donor_address').value = data.donor.address;
+                }
+            } else {
+                statusEl.style.color = '#3498db';
+                statusEl.textContent = 'New donor - fill in details below';
+            }
+        })
+        .catch(err => {
+            statusEl.style.display = 'none';
+        });
+    }, 500);
+});
+
 // Amount preset buttons
 document.querySelectorAll('.amount-preset').forEach(btn => {
     btn.addEventListener('click', function(e) {
@@ -416,44 +528,171 @@ document.getElementById('email_body').addEventListener('input', function() {
     document.getElementById('charCount').textContent = this.value.length;
 });
 
-// Get default email content based on language and form values
-function getDefaultEmailContent() {
-    const donorName = document.getElementById('donor_name').value || 'Friend';
+// Current template
+let currentTemplate = 'standard';
+
+// Get greeting based on donor name
+function getGreeting(language) {
+    const donorName = document.getElementById('donor_name').value.trim();
+
+    if (donorName) {
+        return language === 'he' ? donorName : donorName;
+    } else {
+        // No name provided - use Shalom Uvracha
+        return language === 'he' ? 'שלום וברכה' : 'Shalom Uvracha';
+    }
+}
+
+// Email templates
+function getTemplates() {
+    const greeting = getGreeting(document.getElementById('language').value);
     const amount = document.getElementById('preset_amount').value;
     const language = document.getElementById('language').value;
     const salesperson = '{{ current_user.full_name }}';
+    const amountText = amount ? (language === 'he' ? 'סכום מוצע: $' + parseFloat(amount).toFixed(2) : 'Suggested amount: $' + parseFloat(amount).toFixed(2)) : '';
 
-    let subject, body;
-
-    if (language === 'he') {
-        subject = 'קישור לתרומה - מתת מרדכי';
-        body = `שלום ${donorName},
-
-${salesperson} שולח/ת לך קישור לתרומה עבור מתת מרדכי.
-
-${amount ? 'סכום מוצע: $' + parseFloat(amount).toFixed(2) + '\n\n' : ''}תרומתך משנה חיים ומסייעת למשפחות נזקקות.
-
-תודה רבה על נדיבותך!
-
-בברכה,
-${salesperson}
-מתת מרדכי`;
-    } else {
-        subject = 'Donation Link - Matat Mordechai';
-        body = `Dear ${donorName},
+    const templates = {
+        standard: {
+            en: {
+                subject: 'Donation Link - Matat Mordechai',
+                body: `Dear ${greeting},
 
 ${salesperson} is sharing a donation link with you to support Matat Mordechai.
 
-${amount ? 'Suggested donation amount: $' + parseFloat(amount).toFixed(2) + '\n\n' : ''}Your donation makes a real difference in the lives of families in need.
+${amountText ? amountText + '\n\n' : ''}Your donation makes a real difference in the lives of families in need.
 
 Thank you for your generosity!
 
 Best regards,
 ${salesperson}
-Matat Mordechai`;
-    }
+Matat Mordechai`
+            },
+            he: {
+                subject: 'קישור לתרומה - מתת מרדכי',
+                body: `${greeting},
 
-    return { subject, body };
+${salesperson} שולח/ת לך קישור לתרומה עבור מתת מרדכי.
+
+${amountText ? amountText + '\n\n' : ''}תרומתך משנה חיים ומסייעת למשפחות נזקקות.
+
+תודה רבה על נדיבותך!
+
+בברכה,
+${salesperson}
+מתת מרדכי`
+            }
+        },
+        short: {
+            en: {
+                subject: 'Your Donation Link',
+                body: `Dear ${greeting},
+
+Here's your personal donation link for Matat Mordechai.
+
+${amountText ? amountText + '\n\n' : ''}Thank you!
+
+${salesperson}`
+            },
+            he: {
+                subject: 'הקישור לתרומה שלך',
+                body: `${greeting},
+
+הנה הקישור האישי שלך לתרומה למתת מרדכי.
+
+${amountText ? amountText + '\n\n' : ''}תודה!
+
+${salesperson}`
+            }
+        },
+        personal: {
+            en: {
+                subject: 'A Personal Invitation to Give - Matat Mordechai',
+                body: `Dear ${greeting},
+
+I hope this message finds you well.
+
+I wanted to personally reach out and share an opportunity to make a meaningful impact. Matat Mordechai supports families going through difficult times, and every donation truly matters.
+
+${amountText ? amountText + '\n\n' : ''}I know you have a generous heart, and I believe this cause will resonate with you.
+
+With gratitude,
+${salesperson}
+Matat Mordechai`
+            },
+            he: {
+                subject: 'הזמנה אישית לתרום - מתת מרדכי',
+                body: `${greeting},
+
+מקווה שהמכתב הזה מוצא אותך בשלום.
+
+רציתי לפנות אליך באופן אישי ולשתף אותך בהזדמנות לעשות שינוי משמעותי. מתת מרדכי תומכת במשפחות שעוברות זמנים קשים, וכל תרומה באמת חשובה.
+
+${amountText ? amountText + '\n\n' : ''}אני יודע/ת שיש לך לב נדיב, ואני מאמין/ה שהמטרה הזו תהדהד אצלך.
+
+בהוקרה,
+${salesperson}
+מתת מרדכי`
+            }
+        },
+        urgent: {
+            en: {
+                subject: 'Urgent: Families Need Your Help Today',
+                body: `Dear ${greeting},
+
+Families in our community need immediate help.
+
+Matat Mordechai is working around the clock to provide essential support, but we can't do it without you. Your donation today will directly help families who are struggling.
+
+${amountText ? amountText + '\n\n' : ''}Every dollar counts. Every moment matters.
+
+Please consider donating today.
+
+Urgently,
+${salesperson}
+Matat Mordechai`
+            },
+            he: {
+                subject: 'דחוף: משפחות זקוקות לעזרתך היום',
+                body: `${greeting},
+
+משפחות בקהילה שלנו זקוקות לעזרה מיידית.
+
+מתת מרדכי עובדת ללא הפסקה כדי לספק תמיכה חיונית, אבל אנחנו לא יכולים לעשות זאת בלעדיך. התרומה שלך היום תעזור ישירות למשפחות שנמצאות במצוקה.
+
+${amountText ? amountText + '\n\n' : ''}כל שקל חשוב. כל רגע קריטי.
+
+אנא שקול/י לתרום היום.
+
+בדחיפות,
+${salesperson}
+מתת מרדכי`
+            }
+        }
+    };
+
+    return templates;
+}
+
+// Select template
+function selectTemplate(templateName) {
+    currentTemplate = templateName;
+
+    // Update button states
+    document.querySelectorAll('.template-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.template === templateName) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Update content
+    const templates = getTemplates();
+    const language = document.getElementById('language').value;
+    const template = templates[templateName][language];
+
+    document.getElementById('email_subject').value = template.subject;
+    document.getElementById('email_body').value = template.body;
+    document.getElementById('charCount').textContent = template.body.length;
 }
 
 // Show email preview modal
@@ -467,11 +706,8 @@ function showEmailPreview() {
     // Set recipient
     document.getElementById('previewTo').textContent = email;
 
-    // Get default content
-    const { subject, body } = getDefaultEmailContent();
-    document.getElementById('email_subject').value = subject;
-    document.getElementById('email_body').value = body;
-    document.getElementById('charCount').textContent = body.length;
+    // Load default template
+    selectTemplate('standard');
 
     // Show modal
     document.getElementById('emailModal').classList.add('active');
@@ -527,14 +763,27 @@ function sendEmail() {
     document.getElementById('submitForm').submit();
 }
 
-// Update preview when language changes
+// Update templates when language changes
 document.getElementById('language').addEventListener('change', function() {
-    // If modal is open, update the content
+    // If modal is open, update the template
     if (document.getElementById('emailModal').classList.contains('active')) {
-        const { subject, body } = getDefaultEmailContent();
-        document.getElementById('email_subject').value = subject;
-        document.getElementById('email_body').value = body;
-        document.getElementById('charCount').textContent = body.length;
+        selectTemplate(currentTemplate);
+    }
+});
+
+// Update templates when donor name changes
+document.getElementById('donor_name').addEventListener('input', function() {
+    // If modal is open, update the template
+    if (document.getElementById('emailModal').classList.contains('active')) {
+        selectTemplate(currentTemplate);
+    }
+});
+
+// Update templates when amount changes
+document.getElementById('preset_amount').addEventListener('input', function() {
+    // If modal is open, update the template
+    if (document.getElementById('emailModal').classList.contains('active')) {
+        selectTemplate(currentTemplate);
     }
 });
 </script>

@@ -360,6 +360,47 @@ def my_donations():
     )
 
 
+@salesperson_bp.route('/api/lookup-donor', methods=['POST'])
+@salesperson_required
+def lookup_donor():
+    """Lookup donor by email address."""
+    data = request.get_json() or {}
+    email = data.get('email', '').strip().lower()
+
+    if not email:
+        return jsonify({'found': False})
+
+    donor = Donor.query.filter(
+        Donor.email.ilike(email),
+        Donor.deleted_at.is_(None)
+    ).first()
+
+    if donor:
+        # Build address string
+        address_parts = []
+        if donor.address_line1:
+            address_parts.append(donor.address_line1)
+        if donor.address_line2:
+            address_parts.append(donor.address_line2)
+        if donor.city or donor.state or donor.zip:
+            city_state_zip = ', '.join(filter(None, [donor.city, donor.state, donor.zip]))
+            address_parts.append(city_state_zip)
+
+        return jsonify({
+            'found': True,
+            'donor': {
+                'id': donor.id,
+                'first_name': donor.first_name or '',
+                'last_name': donor.last_name or '',
+                'full_name': donor.full_name or '',
+                'phone': donor.phone or '',
+                'address': '\n'.join(address_parts)
+            }
+        })
+
+    return jsonify({'found': False})
+
+
 @salesperson_bp.route('/api/quick-link', methods=['POST'])
 @salesperson_required
 def quick_link():
