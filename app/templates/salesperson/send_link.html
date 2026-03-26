@@ -319,14 +319,14 @@
 
             <div class="form-group">
                 <label for="donor_email">{{ t('send_link.donor_email') }} *</label>
-                <input type="email" id="donor_email" name="donor_email" required placeholder="john@example.com">
+                <input type="email" id="donor_email" name="donor_email" required placeholder="john@example.com" value="{{ prefill.email or '' }}">
                 <div id="donor_lookup_status" style="font-size: 12px; margin-top: 5px; display: none;"></div>
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label for="donor_name">{{ t('send_link.donor_name') }}</label>
-                    <input type="text" id="donor_name" name="donor_name" placeholder="John Doe">
+                    <input type="text" id="donor_name" name="donor_name" placeholder="John Doe" value="{{ prefill.name or '' }}">
                 </div>
                 <div class="form-group">
                     <label for="donor_phone">Phone</label>
@@ -336,7 +336,7 @@
 
             <div class="form-group">
                 <label for="donor_address">{{ t('send_link.donor_address') }}</label>
-                <textarea id="donor_address" name="donor_address" rows="2" placeholder="123 Main St, City, State ZIP"></textarea>
+                <textarea id="donor_address" name="donor_address" rows="2" placeholder="123 Main St, City, State ZIP">{{ prefill.address or '' }}</textarea>
             </div>
         </div>
 
@@ -352,7 +352,7 @@
                     <button type="button" class="amount-preset" data-amount="360">$360</button>
                     <button type="button" class="amount-preset" data-amount="500">$500</button>
                 </div>
-                <input type="number" id="preset_amount" name="preset_amount" min="1" step="0.01" placeholder="{{ t('send_link.custom_amount') }}">
+                <input type="number" id="preset_amount" name="preset_amount" min="1" step="0.01" placeholder="{{ t('send_link.custom_amount') }}" value="{{ prefill.amount or '' }}">
             </div>
 
             <div class="form-row">
@@ -409,6 +409,9 @@
                     <button type="button" class="template-btn" data-template="short" onclick="selectTemplate('short')">Short & Simple</button>
                     <button type="button" class="template-btn" data-template="personal" onclick="selectTemplate('personal')">Personal Touch</button>
                     <button type="button" class="template-btn" data-template="urgent" onclick="selectTemplate('urgent')">Urgent Appeal</button>
+                </div>
+                <div id="customTemplates" class="template-selector" style="margin-top: 10px; display: none;">
+                    <!-- Custom templates will be loaded here -->
                 </div>
             </div>
 
@@ -548,7 +551,7 @@ function getTemplates() {
     const greeting = getGreeting(document.getElementById('language').value);
     const amount = document.getElementById('preset_amount').value;
     const language = document.getElementById('language').value;
-    const amountText = amount ? (language === 'he' ? 'סכום מוצע: $' + parseFloat(amount).toFixed(2) : 'Suggested amount: $' + parseFloat(amount).toFixed(2)) : '';
+    const amountText = amount ? (language === 'he' ? 'סכום שהתחייבת: $' + parseFloat(amount).toFixed(2) : 'Pledged amount: $' + parseFloat(amount).toFixed(2)) : '';
 
     const templates = {
         standard: {
@@ -638,9 +641,7 @@ Families in our community need immediate help.
 
 Matat Mordechai is working around the clock to provide essential support, but we can't do it without you. Your donation today will directly help families who are struggling.
 
-${amountText ? amountText + '\n\n' : ''}Every dollar counts. Every moment matters.
-
-Please consider donating today.
+${amountText ? amountText + '\n\n' : ''}Please consider donating today.
 
 Urgently,
 Matat Mordechai`
@@ -653,7 +654,7 @@ Matat Mordechai`
 
 מתת מרדכי עובדת ללא הפסקה כדי לספק תמיכה חיונית, אבל אנחנו לא יכולים לעשות זאת בלעדיך. התרומה שלך היום תעזור ישירות למשפחות שנמצאות במצוקה.
 
-${amountText ? amountText + '\n\n' : ''}כל שקל חשוב. כל רגע קריטי.
+${amountText ? amountText + '\n\n' : ''}
 
 אנא שקול/י לתרום היום.
 
@@ -664,6 +665,73 @@ ${amountText ? amountText + '\n\n' : ''}כל שקל חשוב. כל רגע קרי
     };
 
     return templates;
+}
+
+// Custom templates storage
+let customTemplates = [];
+
+// Load custom templates from API
+async function loadCustomTemplates() {
+    try {
+        const response = await fetch('/salesperson/api/email-templates');
+        if (response.ok) {
+            customTemplates = await response.json();
+            displayCustomTemplates();
+        }
+    } catch (e) {
+        console.log('Could not load custom templates:', e);
+    }
+}
+
+// Display custom template buttons
+function displayCustomTemplates() {
+    const container = document.getElementById('customTemplates');
+    const language = document.getElementById('language').value;
+
+    // Filter templates by current language
+    const langTemplates = customTemplates.filter(t => t.language === language);
+
+    if (langTemplates.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.innerHTML = langTemplates.map(t =>
+        `<button type="button" class="template-btn" data-template="custom_${t.id}" onclick="selectCustomTemplate(${t.id})">${t.name}</button>`
+    ).join('');
+    container.style.display = 'flex';
+}
+
+// Select a custom template
+function selectCustomTemplate(id) {
+    const template = customTemplates.find(t => t.id === id);
+    if (!template) return;
+
+    currentTemplate = 'custom_' + id;
+
+    // Update button states
+    document.querySelectorAll('.template-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.template === 'custom_' + id) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Process placeholders
+    const greeting = getGreeting(document.getElementById('language').value);
+    const amount = document.getElementById('preset_amount').value;
+    const amountText = amount ? 'Pledged amount: $' + parseFloat(amount).toFixed(2) : '';
+
+    let body = template.body;
+    body = body.replace('{greeting}', greeting);
+    body = body.replace('{amount}', amountText ? amountText + '\n\n' : '');
+
+    let subject = template.subject;
+    subject = subject.replace('{greeting}', greeting);
+
+    document.getElementById('email_subject').value = subject;
+    document.getElementById('email_body').value = body;
+    document.getElementById('charCount').textContent = body.length;
 }
 
 // Select template
@@ -779,5 +847,13 @@ document.getElementById('preset_amount').addEventListener('input', function() {
         selectTemplate(currentTemplate);
     }
 });
+
+// Update custom templates when language changes
+document.getElementById('language').addEventListener('change', function() {
+    displayCustomTemplates();
+});
+
+// Load custom templates on page load
+loadCustomTemplates();
 </script>
 {% endblock %}

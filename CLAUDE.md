@@ -15,8 +15,10 @@ app/
 ├── blueprints/
 │   ├── admin/       # Admin dashboard, salespersons, donations, donors, campaigns, receipts, settings
 │   ├── auth/        # Login, logout, password management
+│   ├── claude/      # Claude session tracking, screenshot uploads, ttyd terminal
 │   ├── donate/      # Public donation pages
 │   ├── salesperson/ # Salesperson dashboard, phone entry, links, commissions
+│   ├── upload/      # File upload tool for migrations
 │   └── webhook/     # Stripe webhook handlers
 ├── models/          # SQLAlchemy models
 ├── services/        # Business logic (stripe, email, pdf, receipts)
@@ -36,11 +38,15 @@ app/
 ## Key Features
 - **Admin Dashboard:** Overview stats, salesperson management, commission processing
 - **Donor Management:** List/search donors, view donation history, toggle test/real status
+- **Donor Linking:** Link existing donors to donation links via external_id field
 - **Donation Tracking:** All donations linked to salesperson referral codes
 - **Receipt System:** Auto-generated PDF receipts with sequential numbering, email delivery
 - **Commission System:** Automatic calculation based on salesperson tier, bulk payment
+- **Email Templates:** Custom email templates for donation links (EN/HE, global or personal)
 - **Language Toggle:** Cookie-based EN/HE switching on all pages
 - **Email BCC:** All outgoing emails BCC'd to support@matatmordechai.org
+- **Claude Session Tracking:** Track Claude coding sessions with screenshots and notes
+- **File Upload Tool:** Token-protected upload page for migration files
 
 ## Critical Commands
 - **Start Server:** `sudo systemctl start matat`
@@ -82,3 +88,60 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 - **Language Toggle:** Cookie-based, accessible on all authenticated pages
 - **Translation Files:** `app/i18n/en.json` and `app/i18n/he.json` contain all UI strings
 - **Stripe Card Element:** Always displayed in English regardless of page language
+
+## Claude Session Tracking (`/claude`)
+Web interface for managing Claude coding sessions with embedded terminal.
+
+**Routes:**
+- `/claude` - Main chat interface with embedded ttyd terminal
+- `/claude/sessions` - List all sessions
+- `/claude/session/<id>` - View session details
+- `/claude/config` - Admin config (tmux session selection)
+- `/claude/screenshot/upload` - Upload/paste screenshots
+
+**Models:**
+- `ClaudeSession` - Tracks sessions (user, start/end time, purpose, notes)
+- `ClaudeScreenshot` - Screenshots uploaded during sessions
+- `ClaudeConfig` - Key-value config storage
+
+**Service:**
+- `ttyd-matat.service` - Systemd service running ttyd on port 7681, attaching to tmux session 4
+
+## File Upload Tool (`/upload`)
+Token-protected file upload page for migration files (Access databases, spreadsheets, etc.).
+
+**Access:** Token required (`matat2026`)
+**Location:** Files saved to `/root/matat/uploads/`
+**Allowed types:** .accdb, .mdb, .xlsx, .csv, .sql, .zip, .pdf, .py, etc. (max 500MB)
+
+## Email Templates
+Custom email templates for donation link emails.
+
+**Model:** `EmailTemplate`
+- `name` - Template name
+- `language` - 'en' or 'he'
+- `subject` - Email subject line
+- `body` - Email body (supports placeholders)
+- `is_global` - Available to all salespersons if true
+- `created_by` - User who created the template
+
+## Donor Linking
+Link existing donors to donation links using external_id.
+
+**Donor Model Extensions:**
+- `external_id` - External reference ID for linking
+- `find_by_external_id()` - Class method to find donors by external ID
+- `merge_with()` - Method to merge duplicate donor records
+
+---
+
+## Changelog
+
+### 2026-03-26
+- **Claude Session Tracking:** Added `/claude` blueprint with session management, embedded ttyd terminal, screenshot paste/upload
+- **File Upload Tool:** Added `/upload` blueprint for token-protected file uploads
+- **Email Templates:** Added `EmailTemplate` model for custom donation link emails
+- **Donor Linking:** Added `external_id` field and donor merging capabilities
+- **Donor Detail Page:** Added comprehensive donor detail view with donation history
+- **Link Management:** Enhanced donation links with donor selection and pending links tab
+- **Email Tracking:** Added delivery, open, and click tracking via Mailtrap webhooks

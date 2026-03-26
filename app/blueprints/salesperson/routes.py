@@ -169,9 +169,18 @@ def send_link():
     from ...models.campaign import Campaign
     campaigns = Campaign.query.filter_by(is_active=True).all()
 
+    # Pre-fill from query params (for resend)
+    prefill = {
+        'email': request.args.get('email', ''),
+        'name': request.args.get('name', ''),
+        'amount': request.args.get('amount', ''),
+        'address': request.args.get('address', '')
+    }
+
     return render_template(
         'salesperson/send_link.html',
-        campaigns=campaigns
+        campaigns=campaigns,
+        prefill=prefill
     )
 
 
@@ -448,6 +457,93 @@ def lookup_donor():
         })
 
     return jsonify({'found': False})
+
+
+@salesperson_bp.route('/links/<int:id>/delete', methods=['POST'])
+@salesperson_required
+def delete_link(id):
+    """Delete a pending donation link."""
+    from ...models.message import MessageQueue
+
+    logger.info(f'[delete_link] Attempting to delete link {id} by user {current_user.id}')
+
+    link = DonationLink.query.filter(
+        DonationLink.id == id,
+        DonationLink.salesperson_id == current_user.id
+    ).first_or_404()
+
+    logger.info(f'[delete_link] Found link: {link.short_code}, times_used={link.times_used}')
+
+    # Only allow deleting unused links
+    if link.times_used and link.times_used > 0:
+        logger.warning(f'[delete_link] Cannot delete link {id} - has been used {link.times_used} times')
+        flash('Cannot delete a link that has been used.', 'error')
+        return redirect(url_for('salesperson.my_links'))
+
+    try:
+        # Clear related messages first (set link reference to NULL)
+        related_messages = MessageQueue.query.filter_by(related_link_id=id).all()
+        logger.info(f'[delete_link] Found {len(related_messages)} related messages')
+        for msg in related_messages:
+            msg.related_link_id = None
+
+        db.session.delete(link)
+        db.session.commit()
+        logger.info(f'[delete_link] Link {id} deleted successfully')
+        flash('Link deleted successfully.', 'success')
+    except Exception as e:
+        logger.error(f'[delete_link] Error deleting link {id}: {str(e)}')
+        db.session.rollback()
+        flash('Error deleting link. Please try again.', 'error')
+
+    return redirect(url_for('salesperson.my_links'))
+
+
+@salesperson_bp.route('/links/<int:id>/edit', methods=['POST'])
+@salesperson_required
+def edit_link(id):
+    """Edit a pending donation link."""
+    link = DonationLink.query.filter(
+        DonationLink.id == id,
+        DonationLink.salesperson_id == current_user.id
+    ).first_or_404()
+
+    # Only allow editing unused links
+    if link.times_used and link.times_used > 0:
+        flash('Cannot edit a link that has been used.', 'error')
+        return redirect(url_for('salesperson.my_links'))
+
+    link.donor_name = request.form.get('donor_name', '').strip() or None
+    link.donor_email = request.form.get('donor_email', '').strip() or None
+    link.donor_address = request.form.get('donor_address', '').strip() or None
+
+
+@salesperson_bp.route('/api/email-templates')
+@salesperson_required
+def api_email_templates():
+    """API to get email templates for the send_link page."""
+    from ...models.email_template import EmailTemplate
+
+    templates = EmailTemplate.query.filter(
+        EmailTemplate.deleted_at.is_(None),
+        EmailTemplate.is_global == True
+    ).order_by(EmailTemplate.name).all()
+
+    result = []
+    for t in templates:
+        result.append({
+            'id': t.id,
+            'name': t.name,
+            'language': t.language,
+            'subject': t.subject,
+            'body': t.body
+        })
+
+    return jsonify(result)
+
+    db.session.commit()
+    flash('Link updated successfully.', 'success')
+    return redirect(url_for('salesperson.my_links'))
 
 
 @salesperson_bp.route('/api/quick-link', methods=['POST'])

@@ -253,6 +253,22 @@
                 <div class="info-label">{{ t('common.created') }}:</div>
                 <div class="info-value">{{ donor.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
             </div>
+
+            {% if donor.external_id %}
+            <div class="info-row">
+                <div class="info-label">External ID:</div>
+                <div class="info-value"><code>{{ donor.external_id }}</code> {% if donor.external_source %}({{ donor.external_source }}){% endif %}</div>
+            </div>
+            {% endif %}
+
+            {% if donor.primary_donor_id %}
+            <div class="info-row">
+                <div class="info-label">Linked to:</div>
+                <div class="info-value">
+                    <a href="{{ url_for('admin.donor_detail', id=donor.primary_donor_id) }}">{{ donor.primary_donor.full_name }} ({{ donor.primary_donor.email }})</a>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <div class="donor-stats">
@@ -265,6 +281,72 @@
                 <div class="label">{{ t('nav.donations') }}</div>
             </div>
         </div>
+    </div>
+
+    <!-- Linked Donors Section -->
+    {% set linked = donor.get_all_linked_donors() %}
+    {% if linked|length > 1 or not donor.is_primary %}
+    <div class="card" style="margin-bottom: 25px; padding: 20px;">
+        <h3 style="margin-top: 0;">Linked Donor Records</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+            This person has multiple records. Combined total: <strong>${{ "%.2f"|format(donor.get_total_donated() / 100) }}</strong>
+        </p>
+        <table class="data-table" style="margin-bottom: 15px;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Donations</th>
+                    <th>Primary</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in linked %}
+                <tr {% if d.id == donor.id %}style="background: #e8f4f8;"{% endif %}>
+                    <td>{{ d.full_name }}</td>
+                    <td>{{ d.email }}</td>
+                    <td>{{ d.donations.count() }}</td>
+                    <td>{% if d.is_primary %}<span style="color: #27ae60;">Primary</span>{% else %}<span style="color: #999;">Linked</span>{% endif %}</td>
+                    <td>
+                        {% if d.id != donor.id %}
+                        <a href="{{ url_for('admin.donor_detail', id=d.id) }}" class="action-btn primary">View</a>
+                        {% endif %}
+                        {% if not d.is_primary %}
+                        <form method="POST" action="{{ url_for('admin.unlink_donor', id=d.id) }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="action-btn secondary">Unlink</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Link Donor Form -->
+    <div class="card" style="margin-bottom: 25px; padding: 20px;">
+        <h3 style="margin-top: 0;">Link Another Record</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Link another donor record to this person (same person, different email/entry).</p>
+        <form method="POST" action="{{ url_for('admin.link_donor', id=donor.id) }}" style="display: flex; gap: 10px; align-items: center;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="search" placeholder="Search by email or name..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+            <button type="submit" class="action-btn primary">Search & Link</button>
+        </form>
+    </div>
+
+    <!-- External ID Form -->
+    <div class="card" style="margin-bottom: 25px; padding: 20px;">
+        <h3 style="margin-top: 0;">External System ID</h3>
+        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Store the ID from your previous/external CRM system for easy lookup.</p>
+        <form method="POST" action="{{ url_for('admin.set_external_id', id=donor.id) }}" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="external_id" value="{{ donor.external_id or '' }}" placeholder="External ID" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+            <input type="text" name="external_source" value="{{ donor.external_source or '' }}" placeholder="Source (e.g., salesforce)" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+            <button type="submit" class="action-btn primary">Save</button>
+        </form>
     </div>
 
     <!-- Donations History -->

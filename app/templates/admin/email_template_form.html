@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if template else 'Create' }} Email Template - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 25px;
+    }
+
+    .page-header h1 {
+        margin-bottom: 5px;
+    }
+
+    .back-link {
+        color: #666;
+        text-decoration: none;
+        font-size: 14px;
+    }
+
+    .back-link:hover {
+        color: #3498db;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 30px;
+        max-width: 800px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #333;
+    }
+
+    .form-group input[type="text"],
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .form-group textarea {
+        min-height: 200px;
+        font-family: inherit;
+        line-height: 1.5;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+        outline: none;
+        border-color: #3498db;
+        box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    }
+
+    .form-row {
+        display: flex;
+        gap: 20px;
+    }
+
+    .form-row .form-group {
+        flex: 1;
+    }
+
+    .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+    }
+
+    .checkbox-group label {
+        margin-bottom: 0;
+        font-weight: normal;
+    }
+
+    .help-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .placeholders-info {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+
+    .placeholders-info h4 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #333;
+    }
+
+    .placeholders-info code {
+        background: #e8f4f8;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 13px;
+    }
+
+    .placeholders-list {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .placeholder-item {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .btn-primary {
+        padding: 12px 24px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+
+    .btn-secondary {
+        padding: 12px 24px;
+        background: #ecf0f1;
+        color: #333;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+    }
+
+    .btn-secondary:hover {
+        background: #dfe6e9;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 15px;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-header">
+        <a href="{{ url_for('admin.email_templates') }}" class="back-link">&larr; Back to Templates</a>
+        <h1>{{ 'Edit' if template else 'Create' }} Email Template</h1>
+    </div>
+
+    <div class="form-card">
+        <div class="placeholders-info">
+            <h4>Available Placeholders</h4>
+            <div class="placeholders-list">
+                <span class="placeholder-item"><code>{greeting}</code> - Personalized greeting (Dear John / Shalom Uvracha)</span>
+                <span class="placeholder-item"><code>{amount}</code> - Pledged amount line (if set)</span>
+            </div>
+        </div>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="name">Template Name *</label>
+                    <input type="text" id="name" name="name" required value="{{ template.name if template else '' }}" placeholder="e.g., Holiday Appeal">
+                </div>
+
+                <div class="form-group">
+                    <label for="language">Language *</label>
+                    <select id="language" name="language">
+                        <option value="en" {{ 'selected' if not template or template.language == 'en' else '' }}>English</option>
+                        <option value="he" {{ 'selected' if template and template.language == 'he' else '' }}>Hebrew</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="subject">Email Subject *</label>
+                <input type="text" id="subject" name="subject" required value="{{ template.subject if template else '' }}" placeholder="e.g., Your Support Makes a Difference">
+            </div>
+
+            <div class="form-group">
+                <label for="body">Email Body *</label>
+                <textarea id="body" name="body" required placeholder="Write your email template here...">{{ template.body if template else '' }}</textarea>
+                <div class="help-text">Use {greeting} for personalized greeting and {amount} for the pledged amount.</div>
+            </div>
+
+            <div class="form-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="is_global" name="is_global" {{ 'checked' if template and template.is_global else '' }}>
+                    <label for="is_global">Make this template available to all salespersons</label>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">{{ 'Update' if template else 'Create' }} Template</button>
+                <a href="{{ url_for('admin.email_templates') }}" class="btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

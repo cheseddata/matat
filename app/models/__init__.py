@@ -7,10 +7,12 @@ from .donation_link import DonationLink
 from .receipt import Receipt, ReceiptCounter
 from .message import MessageQueue, MessageTemplate, CommProvider
 from .config_settings import ConfigSettings
+from .email_template import EmailTemplate
+from .claude_session import ClaudeSession, ClaudeScreenshot, ClaudeConfig
 
 __all__ = [
     'User',
-    'Donor', 
+    'Donor',
     'Donation',
     'Commission',
     'Campaign',
@@ -21,4 +23,8 @@ __all__ = [
     'MessageTemplate',
     'CommProvider',
     'ConfigSettings',
+    'EmailTemplate',
+    'ClaudeSession',
+    'ClaudeScreenshot',
+    'ClaudeConfig',
 ]

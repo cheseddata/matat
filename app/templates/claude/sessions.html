@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Claude Sessions{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sessions-table {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .sessions-table th,
+    .sessions-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .sessions-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .sessions-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-active {
+        background: #27ae60;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .status-ended {
+        background: #95a5a6;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+    }
+
+    .btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #ecf0f1;
+        color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Claude Sessions</h1>
+        <a href="{{ url_for('claude.chat') }}" class="btn btn-primary">Open Chat</a>
+    </div>
+
+    <table class="sessions-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>User</th>
+                <th>Started</th>
+                <th>Ended</th>
+                <th>Duration</th>
+                <th>Purpose</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in sessions %}
+            <tr>
+                <td>#{{ s.id }}</td>
+                <td>{{ s.user.username if s.user else 'Unknown' }}</td>
+                <td>{{ s.started_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ s.ended_at.strftime('%Y-%m-%d %H:%M') if s.ended_at else '-' }}</td>
+                <td>{{ s.duration }} min</td>
+                <td>{{ s.purpose or '-' }}</td>
+                <td>
+                    {% if s.is_active %}
+                    <span class="status-active">Active</span>
+                    {% else %}
+                    <span class="status-ended">Ended</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('claude.view_session', id=s.id) }}" class="btn btn-secondary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

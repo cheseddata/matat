@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Link Donor - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .back-link {
+        color: #666;
+        text-decoration: none;
+        display: inline-block;
+        margin-bottom: 20px;
+    }
+
+    .back-link:hover {
+        color: #3498db;
+    }
+
+    .card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 25px;
+        margin-bottom: 20px;
+    }
+
+    .match-card {
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .match-card:hover {
+        border-color: #3498db;
+        background: #f8f9fa;
+    }
+
+    .match-info h4 {
+        margin: 0 0 5px 0;
+        color: #2c3e50;
+    }
+
+    .match-info p {
+        margin: 0;
+        color: #666;
+        font-size: 14px;
+    }
+
+    .action-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        text-decoration: none;
+    }
+
+    .action-btn.primary {
+        background: #3498db;
+        color: white;
+    }
+
+    .action-btn.primary:hover {
+        background: #2980b9;
+    }
+
+    .info-box {
+        background: #e8f4f8;
+        border-left: 4px solid #3498db;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('admin.donor_detail', id=primary_donor.id) }}" class="back-link">&larr; Back to {{ primary_donor.full_name }}</a>
+
+    <h1>Link Donor Record</h1>
+
+    <div class="info-box">
+        <p><strong>Linking to:</strong> {{ primary_donor.full_name }} ({{ primary_donor.email }})</p>
+        <p>Search results for: "{{ search }}"</p>
+    </div>
+
+    <div class="card">
+        <h3 style="margin-top: 0;">Select a donor to link</h3>
+        <p style="color: #666; margin-bottom: 20px;">These donors will be linked as the same person. All donations will be combined in reports.</p>
+
+        {% for donor in matches %}
+        <div class="match-card">
+            <div class="match-info">
+                <h4>{{ donor.full_name }}</h4>
+                <p>{{ donor.email }}</p>
+                <p style="font-size: 12px; color: #999;">
+                    {{ donor.donations.count() }} donations
+                    {% if donor.external_id %} | External ID: {{ donor.external_id }}{% endif %}
+                </p>
+            </div>
+            <form method="POST" action="{{ url_for('admin.link_donor_confirm', id=primary_donor.id, target_id=donor.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="action-btn primary">Link This Donor</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

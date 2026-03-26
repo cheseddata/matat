@@ -198,7 +198,7 @@
                 </td>
                 <td><strong>${{ "%.2f"|format(receipt.amount / 100) }}</strong></td>
                 <td>
-                    {% if receipt.email_sent %}
+                    {% if receipt.sent_at %}
                     <span class="status-sent">{{ t('receipt.sent') }}</span>
                     {% else %}
                     <span class="status-pending">{{ t('common.pending') }}</span>

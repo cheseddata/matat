@@ -70,6 +70,7 @@
         <a href="{{ url_for('salesperson.my_links') }}">{{ t('nav.my_links') }}</a>
         {% endif %}
         <div class="nav-right">
+            <a href="{{ url_for('claude.chat') }}" style="background: #9b59b6; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; margin-right: 10px;">Help</a>
             <button class="lang-toggle" onclick="toggleLanguage()">
                 {% if lang == 'he' %}{{ t('nav.switch_to_english') }}{% else %}{{ t('nav.switch_to_hebrew') }}{% endif %}
             </button>

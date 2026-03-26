@@ -41,12 +41,16 @@ def create_app(config_name='default'):
     from .blueprints.salesperson import salesperson_bp
     from .blueprints.donate import donate_bp
     from .blueprints.webhook import webhook_bp
-    
+    from .blueprints.upload import upload_bp
+    from .blueprints.claude import claude_bp
+
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp, url_prefix='/admin')
     app.register_blueprint(salesperson_bp, url_prefix='/salesperson')
     app.register_blueprint(donate_bp)
     app.register_blueprint(webhook_bp, url_prefix='/api')
+    app.register_blueprint(upload_bp)
+    app.register_blueprint(claude_bp)
     
     # User loader for Flask-Login
     from .models.user import User

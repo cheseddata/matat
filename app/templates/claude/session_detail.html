@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Session #{{ session.id }} - Claude{% endblock %}
+
+{% block extra_css %}
+<style>
+    .session-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 25px;
+        margin-bottom: 20px;
+    }
+
+    .session-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .session-title h2 {
+        margin: 0 0 5px 0;
+    }
+
+    .session-meta {
+        color: #666;
+        font-size: 14px;
+    }
+
+    .status-active {
+        background: #27ae60;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .status-ended {
+        background: #95a5a6;
+        color: white;
+        padding: 5px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+
+    .info-item label {
+        display: block;
+        font-size: 12px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+
+    .info-item .value {
+        font-size: 16px;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .notes-section {
+        margin-top: 20px;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    .notes-section h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        color: #666;
+    }
+
+    .notes-content {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 4px;
+        white-space: pre-wrap;
+    }
+
+    .screenshots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .screenshot-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .screenshot-card img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+    }
+
+    .screenshot-card .info {
+        padding: 10px;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .screenshot-card .url {
+        font-size: 10px;
+        color: #3498db;
+        word-break: break-all;
+        cursor: pointer;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .btn-secondary {
+        background: #ecf0f1;
+        color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('claude.list_sessions') }}" style="color: #666; text-decoration: none;">&larr; Back to Sessions</a>
+
+    <div class="session-card" style="margin-top: 20px;">
+        <div class="session-header">
+            <div class="session-title">
+                <h2>Session #{{ session.id }}</h2>
+                <div class="session-meta">
+                    {% if session.user %}
+                    Started by {{ session.user.username }}
+                    {% endif %}
+                </div>
+            </div>
+            {% if session.is_active %}
+            <span class="status-active">Active</span>
+            {% else %}
+            <span class="status-ended">Ended</span>
+            {% endif %}
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Started</label>
+                <div class="value">{{ session.started_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
+            <div class="info-item">
+                <label>Ended</label>
+                <div class="value">{{ session.ended_at.strftime('%Y-%m-%d %H:%M') if session.ended_at else 'Still active' }}</div>
+            </div>
+            <div class="info-item">
+                <label>Duration</label>
+                <div class="value">{{ session.duration }} minutes</div>
+            </div>
+            <div class="info-item">
+                <label>tmux Session</label>
+                <div class="value">{{ session.tmux_session }}</div>
+            </div>
+        </div>
+
+        {% if session.purpose %}
+        <div class="notes-section">
+            <h3>Purpose</h3>
+            <div class="notes-content">{{ session.purpose }}</div>
+        </div>
+        {% endif %}
+
+        {% if session.notes %}
+        <div class="notes-section">
+            <h3>Session Notes</h3>
+            <div class="notes-content">{{ session.notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if screenshots %}
+    <div class="session-card">
+        <h3 style="margin-top: 0;">Screenshots ({{ screenshots|length }})</h3>
+        <div class="screenshots-grid">
+            {% for s in screenshots %}
+            <div class="screenshot-card">
+                <a href="{{ s.url }}" target="_blank">
+                    <img src="{{ s.url }}" alt="Screenshot">
+                </a>
+                <div class="info">
+                    {{ s.created_at.strftime('%H:%M:%S') }}
+                    {% if s.description %}<br>{{ s.description }}{% endif %}
+                    <div class="url" onclick="navigator.clipboard.writeText(window.location.origin + '{{ s.url }}'); alert('URL copied!');">
+                        {{ s.url }} (click to copy)
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

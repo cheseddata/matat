@@ -1,0 +1,518 @@
+{% extends "base.html" %}
+{% block title %}Claude Chat - Matat{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-container {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 20px;
+        height: calc(100vh - 150px);
+    }
+
+    @media (max-width: 900px) {
+        .chat-container {
+            grid-template-columns: 1fr;
+            height: auto;
+        }
+    }
+
+    .terminal-wrapper {
+        background: #1e1e1e;
+        border-radius: 8px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .terminal-header {
+        background: #333;
+        padding: 10px 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .terminal-title {
+        color: #fff;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .terminal-title .dot {
+        width: 10px;
+        height: 10px;
+        background: #27ae60;
+        border-radius: 50%;
+    }
+
+    .terminal-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .terminal-actions button {
+        padding: 5px 12px;
+        background: #555;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .terminal-actions button:hover {
+        background: #666;
+    }
+
+    .terminal-frame {
+        flex: 1;
+        border: none;
+        width: 100%;
+        min-height: 500px;
+    }
+
+    .sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .sidebar-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 15px;
+    }
+
+    .sidebar-card h3 {
+        margin: 0 0 15px 0;
+        font-size: 14px;
+        color: #333;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .session-info {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .session-info p {
+        margin: 5px 0;
+    }
+
+    .session-info strong {
+        color: #333;
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #2980b9;
+    }
+
+    .btn-danger {
+        background: #e74c3c;
+        color: white;
+    }
+
+    .btn-danger:hover {
+        background: #c0392b;
+    }
+
+    .btn-secondary {
+        background: #ecf0f1;
+        color: #333;
+    }
+
+    .btn-block {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    /* Screenshot paste area */
+    .paste-area {
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .paste-area:hover, .paste-area.drag-over {
+        border-color: #3498db;
+        background: #f8f9fa;
+    }
+
+    .paste-area p {
+        margin: 5px 0;
+        font-size: 13px;
+        color: #666;
+    }
+
+    .paste-area .icon {
+        font-size: 24px;
+        margin-bottom: 5px;
+    }
+
+    .screenshot-preview {
+        max-width: 100%;
+        max-height: 100px;
+        border-radius: 4px;
+        margin-top: 10px;
+    }
+
+    .screenshot-url {
+        font-size: 11px;
+        color: #3498db;
+        word-break: break-all;
+        margin-top: 10px;
+        padding: 8px;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+
+    .screenshots-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .screenshot-thumb {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 5px;
+        background: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .screenshot-thumb:hover {
+        background: #e8f4f8;
+    }
+
+    .screenshot-thumb img {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+
+    .screenshot-thumb .info {
+        flex: 1;
+        font-size: 12px;
+        color: #666;
+    }
+
+    .recent-sessions {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .session-item {
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 5px;
+        background: #f8f9fa;
+        font-size: 12px;
+    }
+
+    .session-item:hover {
+        background: #e8f4f8;
+    }
+
+    .session-item a {
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .session-item .date {
+        color: #999;
+    }
+
+    .status-active {
+        color: #27ae60;
+        font-weight: 500;
+    }
+
+    .status-ended {
+        color: #999;
+    }
+
+    /* Modal for ending session */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        max-width: 400px;
+        width: 90%;
+    }
+
+    .modal-content h3 {
+        margin: 0 0 15px 0;
+    }
+
+    .modal-content textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-height: 80px;
+        margin-bottom: 15px;
+        font-family: inherit;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">Claude Chat</h1>
+
+    <div class="chat-container">
+        <!-- Terminal -->
+        <div class="terminal-wrapper">
+            <div class="terminal-header">
+                <div class="terminal-title">
+                    <span class="dot"></span>
+                    tmux session: {{ tmux_session }}
+                </div>
+                <div class="terminal-actions">
+                    <button onclick="reloadTerminal()">Reload</button>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('claude.config') }}" class="btn btn-secondary" style="padding: 5px 12px; font-size: 12px;">Config</a>
+                    {% endif %}
+                </div>
+            </div>
+            <iframe id="terminal" class="terminal-frame" src="http://{{ request.host.split(':')[0] }}:{{ ttyd_port }}"></iframe>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Current Session -->
+            <div class="sidebar-card">
+                <h3>Current Session</h3>
+                <div class="session-info">
+                    <p><strong>ID:</strong> #{{ session.id }}</p>
+                    <p><strong>Started:</strong> {{ session.started_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                    <p><strong>Duration:</strong> {{ session.duration }} min</p>
+                    <p><strong>Status:</strong> <span class="status-active">Active</span></p>
+                </div>
+                <button class="btn btn-danger btn-block" onclick="showEndSessionModal()">End Session</button>
+                <form method="POST" action="{{ url_for('claude.start_session') }}" style="margin-top: 5px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-secondary btn-block">New Session</button>
+                </form>
+            </div>
+
+            <!-- Screenshot Paste -->
+            <div class="sidebar-card">
+                <h3>Paste Screenshot</h3>
+                <div class="paste-area" id="pasteArea" onclick="document.getElementById('fileInput').click()">
+                    <div class="icon">📷</div>
+                    <p>Click to upload or<br>Ctrl+V to paste</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="uploadFile(this)">
+                <div id="uploadStatus"></div>
+            </div>
+
+            <!-- Screenshots -->
+            {% if screenshots %}
+            <div class="sidebar-card">
+                <h3>Screenshots ({{ screenshots|length }})</h3>
+                <div class="screenshots-list">
+                    {% for s in screenshots %}
+                    <div class="screenshot-thumb" onclick="copyUrl('{{ s.url }}')">
+                        <img src="{{ s.url }}" alt="Screenshot">
+                        <div class="info">
+                            {{ s.created_at.strftime('%H:%M') }}<br>
+                            <span style="color: #999;">Click to copy URL</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Recent Sessions -->
+            <div class="sidebar-card">
+                <h3>Recent Sessions</h3>
+                <div class="recent-sessions">
+                    {% for s in recent_sessions %}
+                    <div class="session-item">
+                        <a href="{{ url_for('claude.view_session', id=s.id) }}">#{{ s.id }}</a>
+                        <span class="date">{{ s.started_at.strftime('%m/%d %H:%M') }}</span>
+                        {% if s.is_active %}
+                        <span class="status-active">(active)</span>
+                        {% else %}
+                        <span class="status-ended">{{ s.duration }}min</span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                <a href="{{ url_for('claude.list_sessions') }}" class="btn btn-secondary btn-block" style="margin-top: 10px;">View All</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- End Session Modal -->
+<div class="modal" id="endSessionModal">
+    <div class="modal-content">
+        <h3>End Session</h3>
+        <form method="POST" action="{{ url_for('claude.end_session') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Session Notes (optional):</label>
+            <textarea name="notes" placeholder="What was accomplished? Any issues?"></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="hideEndSessionModal()">Cancel</button>
+                <button type="submit" class="btn btn-danger">End Session</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function reloadTerminal() {
+    document.getElementById('terminal').src = document.getElementById('terminal').src;
+}
+
+function showEndSessionModal() {
+    document.getElementById('endSessionModal').classList.add('active');
+}
+
+function hideEndSessionModal() {
+    document.getElementById('endSessionModal').classList.remove('active');
+}
+
+// Screenshot paste handling
+document.addEventListener('paste', async function(e) {
+    const items = e.clipboardData.items;
+    for (let item of items) {
+        if (item.type.indexOf('image') !== -1) {
+            const file = item.getAsFile();
+            await uploadImage(file);
+            break;
+        }
+    }
+});
+
+// Drag and drop
+const pasteArea = document.getElementById('pasteArea');
+pasteArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('drag-over');
+});
+
+pasteArea.addEventListener('dragleave', function(e) {
+    this.classList.remove('drag-over');
+});
+
+pasteArea.addEventListener('drop', async function(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].type.indexOf('image') !== -1) {
+        await uploadImage(files[0]);
+    }
+});
+
+function uploadFile(input) {
+    if (input.files.length > 0) {
+        uploadImage(input.files[0]);
+    }
+}
+
+async function uploadImage(file) {
+    const status = document.getElementById('uploadStatus');
+    status.innerHTML = '<p style="color: #666;">Uploading...</p>';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('{{ url_for("claude.upload_screenshot") }}', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            const fullUrl = window.location.origin + data.url;
+            status.innerHTML = `
+                <img src="${data.url}" class="screenshot-preview">
+                <div class="screenshot-url" onclick="copyUrl('${data.url}')" style="cursor: pointer;">
+                    ${fullUrl}<br><small>Click to copy</small>
+                </div>
+            `;
+        } else {
+            status.innerHTML = `<p style="color: #e74c3c;">Error: ${data.error}</p>`;
+        }
+    } catch (err) {
+        status.innerHTML = `<p style="color: #e74c3c;">Upload failed: ${err.message}</p>`;
+    }
+}
+
+function copyUrl(url) {
+    const fullUrl = window.location.origin + url;
+    navigator.clipboard.writeText(fullUrl).then(() => {
+        alert('URL copied to clipboard!');
+    });
+}
+
+// Close modal on escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideEndSessionModal();
+    }
+});
+</script>
+{% endblock %}

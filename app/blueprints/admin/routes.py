@@ -1,3 +1,4 @@
+import logging
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import current_user
 from sqlalchemy import func, extract
@@ -5,6 +6,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 import shortuuid
 from . import admin_bp
+
+logger = logging.getLogger(__name__)
 from ...extensions import db, bcrypt
 from ...utils.decorators import admin_required
 from ...models.user import User
@@ -977,7 +980,8 @@ def donors():
                 Donor.email.ilike(f'%{search}%'),
                 Donor.first_name.ilike(f'%{search}%'),
                 Donor.last_name.ilike(f'%{search}%'),
-                Donor.phone.ilike(f'%{search}%')
+                Donor.phone.ilike(f'%{search}%'),
+                Donor.external_id.ilike(f'%{search}%')
             )
         )
 
@@ -1045,6 +1049,103 @@ def toggle_donor_test(id):
     donor.test = not donor.test
     db.session.commit()
     return jsonify({'success': True, 'test': donor.test})
+
+
+@admin_bp.route('/donors/<int:id>/link', methods=['POST'])
+@admin_required
+def link_donor(id):
+    """Link another donor record to this one."""
+    primary_donor = Donor.query.get_or_404(id)
+    search = request.form.get('search', '').strip()
+
+    if not search:
+        flash('Please enter a search term.', 'error')
+        return redirect(url_for('admin.donor_detail', id=id))
+
+    # Search for donors to link
+    matches = Donor.query.filter(
+        Donor.id != id,
+        Donor.primary_donor_id.is_(None),  # Only show primary donors
+        db.or_(
+            Donor.email.ilike(f'%{search}%'),
+            Donor.first_name.ilike(f'%{search}%'),
+            Donor.last_name.ilike(f'%{search}%'),
+            Donor.external_id.ilike(f'%{search}%')
+        )
+    ).limit(10).all()
+
+    if not matches:
+        flash(f'No donors found matching "{search}".', 'error')
+        return redirect(url_for('admin.donor_detail', id=id))
+
+    if len(matches) == 1:
+        # Auto-link if only one match
+        donor_to_link = matches[0]
+        donor_to_link.primary_donor_id = primary_donor.effective_primary.id
+        db.session.commit()
+        logger.info(f'[link_donor] Linked donor {donor_to_link.id} to primary {primary_donor.effective_primary.id}')
+        flash(f'Linked {donor_to_link.full_name} ({donor_to_link.email}) to this record.', 'success')
+        return redirect(url_for('admin.donor_detail', id=id))
+
+    # Multiple matches - show selection page
+    return render_template(
+        'admin/link_donor_select.html',
+        primary_donor=primary_donor,
+        matches=matches,
+        search=search
+    )
+
+
+@admin_bp.route('/donors/<int:id>/link/<int:target_id>', methods=['POST'])
+@admin_required
+def link_donor_confirm(id, target_id):
+    """Confirm linking a specific donor."""
+    primary_donor = Donor.query.get_or_404(id)
+    donor_to_link = Donor.query.get_or_404(target_id)
+
+    # Determine the actual primary (in case primary_donor is already linked)
+    actual_primary = primary_donor.effective_primary
+
+    # Link the donor
+    donor_to_link.primary_donor_id = actual_primary.id
+    db.session.commit()
+
+    logger.info(f'[link_donor] Linked donor {donor_to_link.id} to primary {actual_primary.id}')
+    flash(f'Linked {donor_to_link.full_name} ({donor_to_link.email}) to this record.', 'success')
+    return redirect(url_for('admin.donor_detail', id=id))
+
+
+@admin_bp.route('/donors/<int:id>/unlink', methods=['POST'])
+@admin_required
+def unlink_donor(id):
+    """Unlink a donor from its primary."""
+    donor = Donor.query.get_or_404(id)
+
+    if donor.primary_donor_id:
+        primary_id = donor.primary_donor_id
+        donor.primary_donor_id = None
+        db.session.commit()
+        logger.info(f'[unlink_donor] Unlinked donor {id} from primary {primary_id}')
+        flash(f'Unlinked {donor.full_name} ({donor.email}).', 'success')
+    else:
+        flash('This donor is not linked to another record.', 'error')
+
+    return redirect(url_for('admin.donor_detail', id=id))
+
+
+@admin_bp.route('/donors/<int:id>/external-id', methods=['POST'])
+@admin_required
+def set_external_id(id):
+    """Set or update external system ID."""
+    donor = Donor.query.get_or_404(id)
+
+    donor.external_id = request.form.get('external_id', '').strip() or None
+    donor.external_source = request.form.get('external_source', '').strip() or None
+    db.session.commit()
+
+    logger.info(f'[set_external_id] Updated donor {id}: external_id={donor.external_id}, source={donor.external_source}')
+    flash('External ID updated.', 'success')
+    return redirect(url_for('admin.donor_detail', id=id))
 
 
 # =============================================================================
@@ -1230,3 +1331,188 @@ def links():
         email_status=email_status,
         now=datetime.utcnow()
     )
+
+
+@admin_bp.route('/links/<int:id>/delete', methods=['POST'])
+@admin_required
+def delete_link(id):
+    """Delete a pending donation link."""
+    from ...models.message import MessageQueue
+
+    logger.info(f'[admin delete_link] Attempting to delete link {id} by admin {current_user.id}')
+
+    link = DonationLink.query.get_or_404(id)
+
+    logger.info(f'[admin delete_link] Found link: {link.short_code}, times_used={link.times_used}')
+
+    # Only allow deleting unused links
+    if link.times_used and link.times_used > 0:
+        logger.warning(f'[admin delete_link] Cannot delete link {id} - has been used {link.times_used} times')
+        flash('Cannot delete a link that has been used.', 'error')
+        return redirect(url_for('admin.links'))
+
+    try:
+        # Clear related messages first (set link reference to NULL)
+        related_messages = MessageQueue.query.filter_by(related_link_id=id).all()
+        logger.info(f'[admin delete_link] Found {len(related_messages)} related messages')
+        for msg in related_messages:
+            msg.related_link_id = None
+
+        db.session.delete(link)
+        db.session.commit()
+        logger.info(f'[admin delete_link] Link {id} deleted successfully')
+        flash('Link deleted successfully.', 'success')
+    except Exception as e:
+        logger.error(f'[admin delete_link] Error deleting link {id}: {str(e)}')
+        db.session.rollback()
+        flash('Error deleting link. Please try again.', 'error')
+
+    return redirect(url_for('admin.links'))
+
+
+@admin_bp.route('/links/<int:id>/edit', methods=['POST'])
+@admin_required
+def edit_link(id):
+    """Edit a pending donation link."""
+    link = DonationLink.query.get_or_404(id)
+
+    # Only allow editing unused links
+    if link.times_used and link.times_used > 0:
+        flash('Cannot edit a link that has been used.', 'error')
+        return redirect(url_for('admin.links'))
+
+    link.donor_name = request.form.get('donor_name', '').strip() or None
+    link.donor_email = request.form.get('donor_email', '').strip() or None
+    link.donor_address = request.form.get('donor_address', '').strip() or None
+
+    db.session.commit()
+    flash('Link updated successfully.', 'success')
+    return redirect(url_for('admin.links'))
+
+
+# =============================================================================
+# EMAIL TEMPLATES
+# =============================================================================
+
+@admin_bp.route('/email-templates')
+@admin_required
+def email_templates():
+    """Manage email templates."""
+    from ...models.email_template import EmailTemplate
+
+    templates = EmailTemplate.query.filter(
+        EmailTemplate.deleted_at.is_(None)
+    ).order_by(EmailTemplate.name).all()
+
+    return render_template(
+        'admin/email_templates.html',
+        templates=templates
+    )
+
+
+@admin_bp.route('/email-templates/create', methods=['GET', 'POST'])
+@admin_required
+def create_email_template():
+    """Create a new email template."""
+    from ...models.email_template import EmailTemplate
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        language = request.form.get('language', 'en')
+        subject = request.form.get('subject', '').strip()
+        body = request.form.get('body', '').strip()
+        is_global = request.form.get('is_global') == 'on'
+
+        if not name or not subject or not body:
+            flash('Name, subject, and body are required.', 'error')
+            return redirect(url_for('admin.create_email_template'))
+
+        template = EmailTemplate(
+            name=name,
+            language=language,
+            subject=subject,
+            body=body,
+            is_global=is_global,
+            created_by=current_user.id
+        )
+        db.session.add(template)
+        db.session.commit()
+
+        logger.info(f'[email_templates] Created template "{name}" by admin {current_user.id}')
+        flash('Template created successfully.', 'success')
+        return redirect(url_for('admin.email_templates'))
+
+    return render_template('admin/email_template_form.html', template=None)
+
+
+@admin_bp.route('/email-templates/<int:id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_email_template(id):
+    """Edit an email template."""
+    from ...models.email_template import EmailTemplate
+
+    template = EmailTemplate.query.filter(
+        EmailTemplate.id == id,
+        EmailTemplate.deleted_at.is_(None)
+    ).first_or_404()
+
+    if request.method == 'POST':
+        template.name = request.form.get('name', '').strip()
+        template.language = request.form.get('language', 'en')
+        template.subject = request.form.get('subject', '').strip()
+        template.body = request.form.get('body', '').strip()
+        template.is_global = request.form.get('is_global') == 'on'
+
+        if not template.name or not template.subject or not template.body:
+            flash('Name, subject, and body are required.', 'error')
+            return redirect(url_for('admin.edit_email_template', id=id))
+
+        db.session.commit()
+        logger.info(f'[email_templates] Updated template {id} by admin {current_user.id}')
+        flash('Template updated successfully.', 'success')
+        return redirect(url_for('admin.email_templates'))
+
+    return render_template('admin/email_template_form.html', template=template)
+
+
+@admin_bp.route('/email-templates/<int:id>/delete', methods=['POST'])
+@admin_required
+def delete_email_template(id):
+    """Delete an email template (soft delete)."""
+    from ...models.email_template import EmailTemplate
+
+    template = EmailTemplate.query.filter(
+        EmailTemplate.id == id,
+        EmailTemplate.deleted_at.is_(None)
+    ).first_or_404()
+
+    template.deleted_at = datetime.utcnow()
+    db.session.commit()
+
+    logger.info(f'[email_templates] Deleted template {id} by admin {current_user.id}')
+    flash('Template deleted successfully.', 'success')
+    return redirect(url_for('admin.email_templates'))
+
+
+@admin_bp.route('/api/email-templates')
+@admin_required
+def api_email_templates():
+    """API to get email templates for the send_link page."""
+    from ...models.email_template import EmailTemplate
+
+    templates = EmailTemplate.query.filter(
+        EmailTemplate.deleted_at.is_(None),
+        EmailTemplate.is_global == True
+    ).order_by(EmailTemplate.name).all()
+
+    result = []
+    for t in templates:
+        result.append({
+            'id': t.id,
+            'name': t.name,
+            'language': t.language,
+            'subject': t.subject,
+            'body': t.body
+        })
+
+    return jsonify(result)

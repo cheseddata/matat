@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Claude Config - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 25px;
+        max-width: 600px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .help-text {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .status-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+
+    .status-running {
+        color: #27ae60;
+    }
+
+    .status-stopped {
+        color: #e74c3c;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-primary {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-secondary {
+        background: #ecf0f1;
+        color: #333;
+        text-decoration: none;
+    }
+
+    .btn-warning {
+        background: #f39c12;
+        color: white;
+    }
+
+    .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('claude.chat') }}" style="color: #666; text-decoration: none;">&larr; Back to Chat</a>
+    <h1 style="margin: 20px 0;">Claude Configuration</h1>
+
+    <div class="config-card">
+        <div class="status-card">
+            <strong>ttyd Status:</strong>
+            {% if ttyd_running %}
+            <span class="status-running">Running</span>
+            {% else %}
+            <span class="status-stopped">Stopped</span>
+            {% endif %}
+            <button class="btn btn-warning" style="margin-left: 15px; padding: 5px 15px;" onclick="restartTtyd()">Restart ttyd</button>
+        </div>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="tmux_session">tmux Session ID</label>
+                <input type="text" id="tmux_session" name="tmux_session" value="{{ tmux_session }}" required>
+                <p class="help-text">The tmux session that Claude Code is running in. Use <code>tmux list-sessions</code> to see available sessions.</p>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+                <a href="{{ url_for('claude.chat') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+async function restartTtyd() {
+    if (!confirm('Restart ttyd? This will briefly disconnect any active terminal sessions.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('{{ url_for("claude.restart_ttyd") }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert('ttyd restarted successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (err) {
+        alert('Failed to restart ttyd: ' + err.message);
+    }
+}
+</script>
+{% endblock %}
