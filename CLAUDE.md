@@ -153,3 +153,4 @@ Link existing donors to donation links using external_id.
 - **Donor Detail Page:** Added comprehensive donor detail view with donation history
 - **Link Management:** Enhanced donation links with donor selection and pending links tab
 - **Email Tracking:** Added delivery, open, and click tracking via Mailtrap webhooks
+- **Fix:** ttyd systemctl commands now use full path (`/usr/bin/systemctl`) for gunicorn compatibility

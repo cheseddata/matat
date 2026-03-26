@@ -30,11 +30,12 @@ def is_ttyd_running():
     """Check if ttyd-matat service is running."""
     try:
         result = subprocess.run(
-            ['systemctl', 'is-active', 'ttyd-matat'],
+            ['/usr/bin/systemctl', 'is-active', 'ttyd-matat'],
             capture_output=True, text=True
         )
         return result.stdout.strip() == 'active'
-    except:
+    except Exception as e:
+        logger.error(f'[claude] Failed to check ttyd status: {e}')
         return False
 
 
@@ -44,7 +45,7 @@ def start_ttyd():
         return True
 
     try:
-        subprocess.run(['systemctl', 'start', 'ttyd-matat'], capture_output=True)
+        subprocess.run(['/usr/bin/systemctl', 'start', 'ttyd-matat'], capture_output=True)
         logger.info(f'[claude] Started ttyd-matat service')
         return True
     except Exception as e:
@@ -286,11 +287,12 @@ def restart_ttyd():
 
     try:
         # Restart ttyd-matat service
-        subprocess.run(['systemctl', 'restart', 'ttyd-matat'], capture_output=True)
+        subprocess.run(['/usr/bin/systemctl', 'restart', 'ttyd-matat'], capture_output=True)
         import time
         time.sleep(2)
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'running': is_ttyd_running()})
     except Exception as e:
+        logger.error(f'[claude] Failed to restart ttyd: {e}')
         return jsonify({'error': str(e)}), 500
 
 
