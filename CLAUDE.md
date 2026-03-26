@@ -1,5 +1,13 @@
 # Matat Mordechai Implementation Guide
 
+## Claude Workflow (IMPORTANT)
+**Before every git commit, you MUST:**
+1. Update the **Changelog** section at the bottom of this file with a summary of changes
+2. Update any relevant sections if new features/models/routes were added
+3. Include the date (format: YYYY-MM-DD) and brief bullet points of what changed
+
+This ensures all changes are documented for future sessions.
+
 ## Tech Stack
 - **Backend:** Flask (Python 3.x)
 - **Database:** MySQL (using SQLAlchemy with Alembic migrations)
