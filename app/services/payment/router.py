@@ -10,6 +10,7 @@ import logging
 from typing import Dict, Any, List, Optional, Type
 
 from .base import BasePaymentProcessor
+# Credit card processors
 from .stripe_processor import StripeProcessor
 from .nedarim_processor import NedarimProcessor
 from .cardcom_processor import CardComProcessor
@@ -18,6 +19,10 @@ from .tranzila_processor import TranzilaProcessor
 from .payme_processor import PayMeProcessor
 from .icount_processor import ICountProcessor
 from .easycard_processor import EasyCardProcessor
+# DAF / charity card processors
+from .donorsfund_processor import DonorsFundProcessor
+from .matbia_processor import MatbiaProcessor
+from .chariot_processor import ChariotProcessor
 from ...models.payment_processor import PaymentProcessor
 from ...models.payment_routing_rule import PaymentRoutingRule
 
@@ -26,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 # Registry of processor implementations
 PROCESSOR_CLASSES: Dict[str, Type[BasePaymentProcessor]] = {
+    # Credit card processors
     'stripe': StripeProcessor,
     'nedarim': NedarimProcessor,
     'cardcom': CardComProcessor,
@@ -34,6 +40,10 @@ PROCESSOR_CLASSES: Dict[str, Type[BasePaymentProcessor]] = {
     'payme': PayMeProcessor,
     'icount': ICountProcessor,
     'easycard': EasyCardProcessor,
+    # DAF / charity card processors
+    'donors_fund': DonorsFundProcessor,
+    'matbia': MatbiaProcessor,
+    'chariot': ChariotProcessor,
 }
 
 

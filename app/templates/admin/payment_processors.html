@@ -238,13 +238,14 @@
         Routing rules determine which processor handles each donation based on currency, country, or amount.
     </div>
 
-    <!-- Processors Section -->
+    <!-- Credit Card Processors Section -->
     <div class="section-header">
-        <h2>Available Processors</h2>
+        <h2>Credit Card Processors</h2>
     </div>
 
     <div class="processor-grid">
         {% for processor in processors %}
+        {% if processor.processor_type != 'daf' and processor.processor_type != 'daf_aggregator' %}
         <div class="processor-card {{ 'enabled' if processor.enabled else 'disabled' }}">
             <div class="processor-header">
                 <div>
@@ -281,6 +282,62 @@
                 </a>
             </div>
         </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- DAF / Charity Card Processors Section -->
+    <div class="section-header" style="margin-top: 40px;">
+        <h2>DAF & Charity Card Processors</h2>
+    </div>
+
+    <div class="help-text" style="background: #f0f7ff; border-left: 4px solid #3498db;">
+        <strong>Donor-Advised Funds (DAF)</strong><br>
+        Accept donations from donor-advised funds like The Donors Fund, OJC Fund, Jewish Communal Fund, and 1,100+ more via DAFpay.
+        Matbia charity cards are also supported for the Orthodox community.
+    </div>
+
+    <div class="processor-grid">
+        {% for processor in processors %}
+        {% if processor.processor_type == 'daf' or processor.processor_type == 'daf_aggregator' %}
+        <div class="processor-card {{ 'enabled' if processor.enabled else 'disabled' }}" style="border-left-color: {{ '#9b59b6' if processor.enabled else '#bdc3c7' }};">
+            <div class="processor-header">
+                <div>
+                    <h3 class="processor-name">{{ processor.name }}</h3>
+                    <span class="processor-code">{{ processor.code }}</span>
+                    {% if processor.processor_type == 'daf_aggregator' %}
+                    <span style="display: inline-block; background: #9b59b6; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px;">UNIVERSAL</span>
+                    {% endif %}
+                </div>
+                <span class="status-badge {{ 'enabled' if processor.enabled else 'disabled' }}">
+                    {{ 'Enabled' if processor.enabled else 'Disabled' }}
+                </span>
+            </div>
+
+            {% if not processor.config_json or (processor.code == 'donors_fund' and not processor.config_json.get('validation_token')) or (processor.code == 'matbia' and not processor.config_json.get('api_key')) or (processor.code == 'chariot' and not processor.config_json.get('api_key')) %}
+            <div class="credentials-warning">
+                ⚠️ Credentials not configured
+            </div>
+            {% endif %}
+
+            <div class="processor-info">
+                <p><strong>Currencies:</strong> {{ processor.supported_currencies | join(', ') if processor.supported_currencies else 'All' }}</p>
+                <p><strong>Type:</strong> {{ 'Universal DAF (1,151+ providers)' if processor.processor_type == 'daf_aggregator' else 'DAF / Charity Card' }}</p>
+                {% if processor.fee_percentage %}
+                <p><strong>Fee:</strong> {{ processor.fee_percentage }}% + {{ (processor.fee_fixed_cents or 0) / 100 | round(2) }} {{ processor.fee_currency or 'USD' }}</p>
+                {% endif %}
+            </div>
+
+            <div class="processor-actions">
+                <button class="btn-sm btn-toggle" onclick="toggleProcessor({{ processor.id }}, this)">
+                    {{ 'Disable' if processor.enabled else 'Enable' }}
+                </button>
+                <a href="{{ url_for('admin.edit_processor', id=processor.id) }}" class="btn-sm btn-edit">
+                    Configure
+                </a>
+            </div>
+        </div>
+        {% endif %}
         {% endfor %}
     </div>
 

@@ -11,6 +11,7 @@ class PaymentProcessor(db.Model):
     name = db.Column(db.String(100), nullable=False)               # Display name
     enabled = db.Column(db.Boolean, default=False)
     priority = db.Column(db.Integer, default=100)                  # Lower = higher priority
+    processor_type = db.Column(db.String(50), default='credit_card')  # 'credit_card', 'daf', 'daf_aggregator'
 
     # Credentials (stored in DB, consider encryption for production)
     config_json = db.Column(db.JSON, nullable=True)  # API keys, mosad_id, etc.

@@ -142,6 +142,30 @@
             <strong>EasyCard</strong> - PCI DSS Level 1 certified gateway.<br>
             Contact <a href="mailto:office@e-c.co.il">office@e-c.co.il</a> or call 073-2615690 for credentials.
         </div>
+        {% elif processor.code == 'donors_fund' %}
+        <div class="info-box" style="background: #f0f7ff; border-left: 4px solid #9b59b6;">
+            <strong>The Donors Fund</strong> - Jewish Donor-Advised Fund (DAF).<br>
+            Donors authenticate with username+PIN or 16-digit giving card+CVV.<br>
+            Contact <a href="mailto:support@thedonorsfund.org">support@thedonorsfund.org</a> or call 1-844-666-0808 for API access.
+        </div>
+        <div class="warning-box">
+            ⚠️ Fee: 2.9% on all grants. Both Api-Key and Validation-Token required.
+        </div>
+        {% elif processor.code == 'matbia' %}
+        <div class="info-box" style="background: #f0f7ff; border-left: 4px solid #9b59b6;">
+            <strong>Matbia</strong> - Jewish charity card platform with NFC cards.<br>
+            Donors use physical Matbia cards (like credit cards for tzedakah).<br>
+            Register at <a href="https://developers.matbia.org" target="_blank">developers.matbia.org</a>
+        </div>
+        {% elif processor.code == 'chariot' %}
+        <div class="info-box" style="background: #f0f7ff; border-left: 4px solid #9b59b6;">
+            <strong>DAFpay (Chariot)</strong> - Universal DAF button covering 1,151+ providers!<br>
+            One integration = The Donors Fund, OJC Fund, JCF, Fidelity, Schwab, and 1,145+ more.<br>
+            Named TIME Best Invention of 2025. Docs: <a href="https://docs.givechariot.com" target="_blank">docs.givechariot.com</a>
+        </div>
+        <div class="warning-box">
+            ⚠️ First register your nonprofit via the API, then create a Connect ID (CID) for the DAFpay button.
+        </div>
         {% endif %}
 
         <form method="POST">
@@ -300,6 +324,101 @@
                 <label>API Key</label>
                 <input type="password" name="api_key"
                        value="{{ processor.config_json.api_key if processor.config_json else '' }}">
+            </div>
+
+            {% elif processor.code == 'donors_fund' %}
+            <div class="form-group">
+                <label>Validation Token (Private API Key)</label>
+                <input type="password" name="validation_token"
+                       value="{{ processor.config_json.validation_token if processor.config_json else '' }}">
+                <p class="help-text">Obtain from The Donors Fund after registration.</p>
+            </div>
+            <div class="form-group">
+                <label>Charity Account Number</label>
+                <input type="text" name="account_number"
+                       value="{{ processor.config_json.account_number if processor.config_json else '' }}"
+                       placeholder="e.g., 1974419">
+                <p class="help-text">Your 7-digit account number (or use Tax ID below)</p>
+            </div>
+            <div class="form-group">
+                <label>Charity Tax ID</label>
+                <input type="text" name="tax_id"
+                       value="{{ processor.config_json.tax_id if processor.config_json else '' }}"
+                       placeholder="e.g., 47-4844275">
+                <p class="help-text">Your charity's EIN/Tax ID</p>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-row">
+                    <input type="checkbox" name="sandbox" id="sandbox"
+                           {{ 'checked' if processor.config_json and processor.config_json.get('sandbox') else '' }}>
+                    <label for="sandbox">Sandbox Mode (for testing)</label>
+                </div>
+            </div>
+
+            {% elif processor.code == 'matbia' %}
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" name="api_key"
+                       value="{{ processor.config_json.api_key if processor.config_json else '' }}">
+                <p class="help-text">Get from developers.matbia.org</p>
+            </div>
+            <div class="form-group">
+                <label>Organization Handle</label>
+                <input type="text" name="org_handle"
+                       value="{{ processor.config_json.org_handle if processor.config_json else '' }}"
+                       placeholder="Your Matbia handle">
+                <p class="help-text">Or provide Tax ID + Name + Email below</p>
+            </div>
+            <div class="form-group">
+                <label>Organization Tax ID (alternative)</label>
+                <input type="text" name="org_tax_id"
+                       value="{{ processor.config_json.org_tax_id if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>Organization Name (required if using Tax ID)</label>
+                <input type="text" name="org_name"
+                       value="{{ processor.config_json.org_name if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>Organization Email (required if using Tax ID)</label>
+                <input type="email" name="org_email"
+                       value="{{ processor.config_json.org_email if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <div class="checkbox-row">
+                    <input type="checkbox" name="sandbox" id="sandbox"
+                           {{ 'checked' if processor.config_json and processor.config_json.get('sandbox') else '' }}>
+                    <label for="sandbox">Sandbox Mode (for testing)</label>
+                </div>
+            </div>
+
+            {% elif processor.code == 'chariot' %}
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" name="api_key"
+                       value="{{ processor.config_json.api_key if processor.config_json else '' }}">
+                <p class="help-text">Get from Chariot dashboard</p>
+            </div>
+            <div class="form-group">
+                <label>Connect ID (CID)</label>
+                <input type="text" name="connect_id"
+                       value="{{ processor.config_json.connect_id if processor.config_json else '' }}"
+                       placeholder="Generated after registration">
+                <p class="help-text">Used to initialize the DAFpay button. Run registration first.</p>
+            </div>
+            <div class="form-group">
+                <label>Nonprofit EIN</label>
+                <input type="text" name="ein"
+                       value="{{ processor.config_json.ein if processor.config_json else '' }}"
+                       placeholder="e.g., 123456789 (no hyphens)">
+                <p class="help-text">Your nonprofit's EIN for registration</p>
+            </div>
+            <div class="form-group">
+                <div class="checkbox-row">
+                    <input type="checkbox" name="sandbox" id="sandbox"
+                           {{ 'checked' if processor.config_json and processor.config_json.get('sandbox') else '' }}>
+                    <label for="sandbox">Sandbox Mode (for testing)</label>
+                </div>
             </div>
             {% endif %}
 

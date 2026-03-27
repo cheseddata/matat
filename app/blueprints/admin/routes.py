@@ -1751,6 +1751,24 @@ def edit_processor(id):
         elif processor.code == 'easycard':
             config['terminal_number'] = request.form.get('terminal_number', '').strip() or None
             config['api_key'] = request.form.get('api_key', '').strip() or None
+        # DAF Processors
+        elif processor.code == 'donors_fund':
+            config['validation_token'] = request.form.get('validation_token', '').strip() or None
+            config['account_number'] = request.form.get('account_number', '').strip() or None
+            config['tax_id'] = request.form.get('tax_id', '').strip() or None
+            config['sandbox'] = request.form.get('sandbox') == 'on'
+        elif processor.code == 'matbia':
+            config['api_key'] = request.form.get('api_key', '').strip() or None
+            config['org_handle'] = request.form.get('org_handle', '').strip() or None
+            config['org_tax_id'] = request.form.get('org_tax_id', '').strip() or None
+            config['org_name'] = request.form.get('org_name', '').strip() or None
+            config['org_email'] = request.form.get('org_email', '').strip() or None
+            config['sandbox'] = request.form.get('sandbox') == 'on'
+        elif processor.code == 'chariot':
+            config['api_key'] = request.form.get('api_key', '').strip() or None
+            config['connect_id'] = request.form.get('connect_id', '').strip() or None
+            config['ein'] = request.form.get('ein', '').strip() or None
+            config['sandbox'] = request.form.get('sandbox') == 'on'
 
         processor.config_json = config
         processor.updated_at = datetime.utcnow()

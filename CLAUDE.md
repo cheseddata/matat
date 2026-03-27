@@ -165,10 +165,13 @@ payment/
 ├── tranzila_processor.py    # Tranzila (oldest Israel gateway)
 ├── payme_processor.py       # PayMe (modern, hosted fields)
 ├── icount_processor.py      # iCount (payment + invoicing)
-└── easycard_processor.py    # EasyCard (PCI Level 1)
+├── easycard_processor.py    # EasyCard (PCI Level 1)
+├── donorsfund_processor.py  # The Donors Fund (DAF)
+├── matbia_processor.py      # Matbia charity cards
+└── chariot_processor.py     # Chariot/DAFpay (1,151+ DAF providers)
 ```
 
-**Supported Processors:**
+**Credit Card Processors:**
 
 | Code | Name | Best For | Key Features |
 |------|------|----------|--------------|
@@ -180,6 +183,19 @@ payment/
 | `payme` | PayMe | Modern apps | Hosted fields, amounts in agorot |
 | `icount` | iCount | Accounting | Payment + invoicing combined |
 | `easycard` | EasyCard | High security | PCI Level 1, Bit, Google Pay |
+
+**DAF / Charity Card Processors:**
+
+| Code | Name | Best For | Key Features |
+|------|------|----------|--------------|
+| `donors_fund` | The Donors Fund | Jewish DAF | Username+PIN or Card+CVV, 2.9% fee |
+| `matbia` | Matbia | Orthodox community | NFC charity cards, recurring schedules |
+| `chariot` | DAFpay (Chariot) | Universal DAF | **1,151+ providers**: OJC, JCF, Fidelity, Schwab |
+
+**DAF Important Notes:**
+- DAF donations do NOT generate tax receipts (donor has receipt from DAF provider)
+- Send thank-you acknowledgment only, NOT a tax receipt
+- `is_daf_donation=True` and `daf_provider` fields track DAF source
 
 **Donation Model Extensions (generic for all processors):**
 - `payment_processor` - Which processor: 'stripe', 'nedarim', 'cardcom', etc.
@@ -223,6 +239,9 @@ estimate_fee()        # Estimate processing fee
 - PayMe (disabled) - Awaiting credentials
 - iCount (disabled) - Awaiting credentials
 - EasyCard (disabled) - Awaiting credentials
+- The Donors Fund (disabled) - Awaiting validation_token from support@thedonorsfund.org
+- Matbia (disabled) - Awaiting API key from developers.matbia.org
+- Chariot/DAFpay (disabled) - Awaiting API key from givechariot.com
 
 **Important Notes:**
 - CardCom webhook is GET (not POST!)
@@ -231,25 +250,34 @@ estimate_fee()        # Estimate processing fee
 - PayMe amounts are in agorot (smallest unit)
 - iCount rate limit: 30 requests/minute
 - Nedarim webhook IP: 18.194.219.73
+- **DAF donations: Send thank-you email only, NOT a tax receipt** (donor has receipt from DAF)
 
 ---
 
 ## Changelog
 
 ### 2026-03-27
-- **Multi-Processor Payment System (Phase 1 & 2 Complete):** Built table-driven payment routing infrastructure supporting 8 processors
+- **Multi-Processor Payment System (Complete):** Built table-driven payment routing supporting 11 processors
   - Created `PaymentProcessor` model for processor configuration (credentials, currencies, countries, fees)
   - Created `PaymentRoutingRule` model for routing rules (currency, country, amount, donation type)
   - Added `payment/` service package with abstract `BasePaymentProcessor` class
-  - Implemented 8 processor classes: Stripe, Nedarim Plus, CardCom, Grow, Tranzila, PayMe, iCount, EasyCard
+  - 8 credit card processors: Stripe, Nedarim Plus, CardCom, Grow, Tranzila, PayMe, iCount, EasyCard
+  - 3 DAF processors: The Donors Fund, Matbia, Chariot/DAFpay (1,151+ providers)
   - `PaymentRouter` class with table-driven routing logic
   - Generic `Donation` model fields: `processor_transaction_id`, `processor_token`, `processor_confirmation`, `processor_recurring_id`, `processor_receipt_url`
   - Created `seed_processors.py` for initial processor/rule setup
+- **DAF/Charity Card Processors:** Added support for Donor-Advised Fund donations
+  - `DonorsFundProcessor`: Username+PIN or Card+CVV authentication
+  - `MatbiaProcessor`: Jewish charity cards with NFC support
+  - `ChariotProcessor`: Universal DAFpay button covering OJC, JCF, Fidelity, Schwab, etc.
+  - Added `is_daf_donation`, `daf_provider`, `daf_grant_id` fields to Donation model
+  - DAF donations do NOT generate tax receipts (donor has receipt from DAF provider)
+  - Chariot webhook at `/webhook/chariot` with HMAC-SHA256 verification
 - **Admin UI for Payment Processors:** `/admin/payment-processors`
-  - Processor grid showing all 8 processors with enable/disable toggle
-  - Processor-specific credential configuration forms
+  - Credit card processors section with enable/disable toggle
+  - DAF processors section (separate, purple accent)
+  - Processor-specific credential configuration forms for all 11 processors
   - Routing rules table with priority, conditions, and target processor
-  - Create/edit routing rules with currency, country, donation type, and amount range conditions
   - Link added to Settings page for easy access
 - **Multi-Platform Design:** Each platform/client can enable different processors based on their needs
 - **International Routing:** System routes by donor location for multi-country organizations with multiple merchant IDs

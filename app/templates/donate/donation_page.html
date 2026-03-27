@@ -149,6 +149,95 @@
         font-size: 13px;
     }
 
+    /* Payment method tabs */
+    .payment-method-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .payment-method-tab {
+        flex: 1;
+        min-width: 100px;
+        padding: 12px 15px;
+        border: 2px solid #ddd;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    .payment-method-tab:hover {
+        border-color: #3498db;
+    }
+    .payment-method-tab.active {
+        border-color: #3498db;
+        background: #e8f4f8;
+    }
+    .payment-method-tab .tab-icon {
+        font-size: 20px;
+        margin-bottom: 5px;
+    }
+
+    /* Payment sections */
+    .payment-section {
+        display: none;
+    }
+    .payment-section.active {
+        display: block;
+    }
+
+    /* DAF auth tabs (for Donors Fund) */
+    .daf-auth-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    .daf-auth-tab {
+        flex: 1;
+        padding: 10px;
+        border: 1px solid #ddd;
+        background: #f8f9fa;
+        border-radius: 6px;
+        cursor: pointer;
+        text-align: center;
+        font-size: 13px;
+    }
+    .daf-auth-tab.active {
+        border-color: #9b59b6;
+        background: #f5eeff;
+    }
+
+    .daf-auth-section {
+        display: none;
+    }
+    .daf-auth-section.active {
+        display: block;
+    }
+
+    /* DAF info box */
+    .daf-info {
+        background: #f5eeff;
+        border-left: 4px solid #9b59b6;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 13px;
+    }
+    .daf-info strong {
+        color: #9b59b6;
+    }
+
+    /* DAFpay button container */
+    .dafpay-container {
+        text-align: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
     /* RTL support */
     [dir="rtl"] .donor-info { direction: rtl; }
     [dir="rtl"] .section-header { flex-direction: row-reverse; }
@@ -279,14 +368,129 @@
 
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
 
-            <!-- Step 4: Payment -->
+            <!-- Step 4: Payment Method Selection -->
             <div class="section-header">
                 <span class="section-number">3</span>
                 <h3>{{ t('donate.payment_details') }}</h3>
             </div>
 
-            <div id="payment-element"></div>
-            <div id="payment-errors" role="alert"></div>
+            <!-- Payment Method Tabs (only show if multiple methods available) -->
+            {% if processors.has_daf %}
+            <div class="payment-method-tabs">
+                {% if processors.has_stripe %}
+                <button type="button" class="payment-method-tab active" data-method="credit_card">
+                    <div class="tab-icon">💳</div>
+                    Credit Card
+                </button>
+                {% endif %}
+                {% if processors.has_chariot %}
+                <button type="button" class="payment-method-tab" data-method="dafpay">
+                    <div class="tab-icon">🏦</div>
+                    DAFpay
+                </button>
+                {% endif %}
+                {% if processors.has_donors_fund %}
+                <button type="button" class="payment-method-tab" data-method="donors_fund">
+                    <div class="tab-icon">📋</div>
+                    Donors Fund
+                </button>
+                {% endif %}
+                {% if processors.has_matbia %}
+                <button type="button" class="payment-method-tab" data-method="matbia">
+                    <div class="tab-icon">🎴</div>
+                    Matbia
+                </button>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Credit Card Section -->
+            <div class="payment-section active" id="payment-credit_card">
+                <div id="payment-element"></div>
+                <div id="payment-errors" role="alert"></div>
+            </div>
+
+            {% if processors.has_chariot %}
+            <!-- DAFpay Section (Chariot) -->
+            <div class="payment-section" id="payment-dafpay">
+                <div class="daf-info">
+                    <strong>Pay from your Donor-Advised Fund</strong><br>
+                    DAFpay connects to 1,151+ DAF providers including The Donors Fund, OJC Fund, Jewish Communal Fund, Fidelity Charitable, Schwab Charitable, and more.
+                </div>
+                <div class="dafpay-container" id="dafpay-button-container">
+                    <!-- DAFpay button will be loaded here -->
+                    <p style="color: #666;">Loading DAFpay...</p>
+                </div>
+                <p style="font-size: 12px; color: #999; margin-top: 10px; text-align: center;">
+                    Note: Your tax receipt was provided by your DAF when you made your contribution.
+                </p>
+            </div>
+            {% endif %}
+
+            {% if processors.has_donors_fund %}
+            <!-- The Donors Fund Section -->
+            <div class="payment-section" id="payment-donors_fund">
+                <div class="daf-info">
+                    <strong>Pay with The Donors Fund</strong><br>
+                    Enter your Donors Fund credentials to make a grant from your DAF account.
+                </div>
+
+                <!-- Auth method tabs -->
+                <div class="daf-auth-tabs">
+                    <button type="button" class="daf-auth-tab active" data-auth="username">
+                        Username & PIN
+                    </button>
+                    <button type="button" class="daf-auth-tab" data-auth="card">
+                        Giving Card
+                    </button>
+                </div>
+
+                <!-- Username + PIN -->
+                <div class="daf-auth-section active" id="df-auth-username">
+                    <div class="form-group">
+                        <label for="df_username">Username</label>
+                        <input type="text" id="df_username" name="df_username" placeholder="Your Donors Fund username">
+                    </div>
+                    <div class="form-group">
+                        <label for="df_pin">4-Digit PIN</label>
+                        <input type="password" id="df_pin" name="df_pin" maxlength="4" placeholder="••••">
+                    </div>
+                </div>
+
+                <!-- Card + CVV -->
+                <div class="daf-auth-section" id="df-auth-card">
+                    <div class="form-group">
+                        <label for="df_card_number">Giving Card Number</label>
+                        <input type="text" id="df_card_number" name="df_card_number" maxlength="16" placeholder="16-digit card number">
+                    </div>
+                    <div class="form-group">
+                        <label for="df_cvv">CVV</label>
+                        <input type="password" id="df_cvv" name="df_cvv" maxlength="3" placeholder="•••">
+                    </div>
+                </div>
+
+                <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                    Note: Your tax receipt was provided by The Donors Fund when you contributed to your DAF.
+                </p>
+            </div>
+            {% endif %}
+
+            {% if processors.has_matbia %}
+            <!-- Matbia Section -->
+            <div class="payment-section" id="payment-matbia">
+                <div class="daf-info">
+                    <strong>Pay with Matbia Charity Card</strong><br>
+                    Enter your Matbia card number to donate from your charity card balance.
+                </div>
+                <div class="form-group">
+                    <label for="matbia_card">Matbia Card Number</label>
+                    <input type="text" id="matbia_card" name="matbia_card" placeholder="Enter your Matbia card number">
+                </div>
+                <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                    Note: Your tax receipt was provided when you loaded your Matbia card.
+                </p>
+            </div>
+            {% endif %}
 
             <!-- Hidden fields -->
             <input type="hidden" id="ref_code" value="{{ ref_code or '' }}">
@@ -294,6 +498,7 @@
             <input type="hidden" id="link_id" value="{{ request.args.get('link_id', '') }}">
             <input type="hidden" id="donation_type" value="{{ donation_type or 'one_time' }}">
             <input type="hidden" id="lang" value="{{ lang }}">
+            <input type="hidden" id="payment_method" value="credit_card">
 
             <button type="submit" class="btn" id="submit-btn">
                 {{ t('donate.donate_btn') }}
@@ -406,7 +611,114 @@ document.getElementById('amount').addEventListener('input', function() {
     document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
 });
 
-// Form submission
+// =============================================================================
+// PAYMENT METHOD SWITCHING
+// =============================================================================
+
+let currentPaymentMethod = 'credit_card';
+
+// Payment method tabs
+document.querySelectorAll('.payment-method-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        const method = this.dataset.method;
+        currentPaymentMethod = method;
+        document.getElementById('payment_method').value = method;
+
+        // Update tab states
+        document.querySelectorAll('.payment-method-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+
+        // Show/hide payment sections
+        document.querySelectorAll('.payment-section').forEach(s => s.classList.remove('active'));
+        const section = document.getElementById('payment-' + method);
+        if (section) section.classList.add('active');
+
+        // Update submit button text
+        updateSubmitButton();
+    });
+});
+
+// Donors Fund auth method tabs
+document.querySelectorAll('.daf-auth-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        const auth = this.dataset.auth;
+
+        // Update tab states
+        document.querySelectorAll('.daf-auth-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+
+        // Show/hide auth sections
+        document.querySelectorAll('.daf-auth-section').forEach(s => s.classList.remove('active'));
+        const section = document.getElementById('df-auth-' + auth);
+        if (section) section.classList.add('active');
+    });
+});
+
+function updateSubmitButton() {
+    const btn = document.getElementById('submit-btn');
+    if (donationType === 'recurring') {
+        btn.textContent = '{{ t("donate.donate_monthly") }}';
+    } else if (currentPaymentMethod === 'dafpay') {
+        btn.textContent = 'Complete with DAFpay';
+    } else if (currentPaymentMethod === 'donors_fund') {
+        btn.textContent = 'Donate via Donors Fund';
+    } else if (currentPaymentMethod === 'matbia') {
+        btn.textContent = 'Donate via Matbia';
+    } else {
+        btn.textContent = '{{ t("donate.donate_btn") }}';
+    }
+}
+
+// =============================================================================
+// DAFpay INITIALIZATION (Chariot)
+// =============================================================================
+
+{% if processors.has_chariot and chariot_connect_id %}
+// Load DAFpay script
+(function() {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.givechariot.com/dafpay.js';
+    script.onload = function() {
+        // Initialize DAFpay button when user selects it
+        console.log('DAFpay script loaded');
+    };
+    document.head.appendChild(script);
+})();
+
+function initDAFpay() {
+    const container = document.getElementById('dafpay-button-container');
+    const amount = document.getElementById('amount').value;
+
+    if (typeof DAFpay !== 'undefined') {
+        container.innerHTML = '';
+        DAFpay.render({
+            connectId: '{{ chariot_connect_id }}',
+            amount: parseFloat(amount) || 0,
+            onSuccess: function(grant) {
+                console.log('DAFpay grant received:', grant);
+                // Redirect to success page
+                window.location.href = '/donate/success?daf_confirmation=' + grant.id + '&daf_provider=' + encodeURIComponent(grant.provider || 'DAF');
+            },
+            onError: function(error) {
+                console.error('DAFpay error:', error);
+                document.getElementById('payment-errors').textContent = error.message || 'DAFpay error';
+            }
+        }, container);
+    } else {
+        container.innerHTML = '<p style="color: #e74c3c;">DAFpay not loaded. Please refresh the page.</p>';
+    }
+}
+
+// Initialize DAFpay when tab is clicked
+document.querySelector('[data-method="dafpay"]')?.addEventListener('click', function() {
+    setTimeout(initDAFpay, 100);
+});
+{% endif %}
+
+// =============================================================================
+// FORM SUBMISSION
+// =============================================================================
+
 document.getElementById('donation-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -420,79 +732,172 @@ document.getElementById('donation-form').addEventListener('submit', async functi
         return;
     }
 
+    // DAFpay is handled by the widget, not form submission
+    if (currentPaymentMethod === 'dafpay') {
+        errorDisplay.textContent = 'Please use the DAFpay button above to complete your donation.';
+        return;
+    }
+
     form.classList.add('processing');
     submitBtn.disabled = true;
     submitBtn.textContent = '{{ t("donate.processing") }}';
     errorDisplay.textContent = '';
 
     try {
-        // Create PaymentIntent
-        const response = await fetch('/donate/create-payment-intent', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({
-                amount: parseFloat(amount),
-                first_name: document.getElementById('first_name').value,
-                last_name: document.getElementById('last_name').value,
-                email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
-                address_line1: document.getElementById('address_line1').value,
-                city: document.getElementById('city').value,
-                state: document.getElementById('state').value,
-                zip: document.getElementById('zip').value,
-                country: document.getElementById('country').value,
-                ref_code: document.getElementById('ref_code').value,
-                aff_code: document.getElementById('aff_code').value,
-                link_id: document.getElementById('link_id').value,
-                donation_type: donationType,
-                language: document.getElementById('lang').value,
-                source: document.getElementById('link_id').value ? 'email_link' : 'direct'
-            })
-        });
+        const baseData = {
+            amount: parseFloat(amount),
+            first_name: document.getElementById('first_name').value,
+            last_name: document.getElementById('last_name').value,
+            email: document.getElementById('email').value,
+            phone: document.getElementById('phone').value,
+            address_line1: document.getElementById('address_line1').value,
+            city: document.getElementById('city').value,
+            state: document.getElementById('state').value,
+            zip: document.getElementById('zip').value,
+            country: document.getElementById('country').value,
+            ref_code: document.getElementById('ref_code').value,
+            aff_code: document.getElementById('aff_code').value,
+            link_id: document.getElementById('link_id').value,
+            donation_type: donationType,
+            language: document.getElementById('lang').value,
+            source: document.getElementById('link_id').value ? 'email_link' : 'direct'
+        };
 
-        const data = await response.json();
-
-        if (data.error) {
-            throw new Error(data.error);
+        // Route to appropriate processor
+        if (currentPaymentMethod === 'donors_fund') {
+            await processDonorsFund(baseData);
+        } else if (currentPaymentMethod === 'matbia') {
+            await processMatbia(baseData);
+        } else {
+            await processCreditCard(baseData);
         }
-
-        // Confirm payment with Card Element
-        const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
-            payment_method: {
-                card: cardElement,
-                billing_details: {
-                    name: document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value,
-                    email: document.getElementById('email').value,
-                    phone: document.getElementById('phone').value,
-                    address: {
-                        line1: document.getElementById('address_line1').value,
-                        city: document.getElementById('city').value,
-                        state: document.getElementById('state').value,
-                        postal_code: document.getElementById('zip').value,
-                        country: document.getElementById('country').value
-                    }
-                }
-            }
-        });
-
-        if (error) {
-            throw new Error(error.message);
-        }
-
-        // Redirect to success page
-        window.location.href = '/donate/success?payment_intent=' + data.paymentIntentId;
 
     } catch (err) {
         errorDisplay.textContent = err.message;
         form.classList.remove('processing');
         submitBtn.disabled = false;
-        submitBtn.textContent = donationType === 'recurring'
-            ? '{{ t("donate.donate_monthly") }}'
-            : '{{ t("donate.donate_btn") }}';
+        updateSubmitButton();
     }
 });
+
+async function processCreditCard(baseData) {
+    // Create PaymentIntent
+    const response = await fetch('/donate/create-payment-intent', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify(baseData)
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+        throw new Error(data.error);
+    }
+
+    // Confirm payment with Card Element
+    const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+        payment_method: {
+            card: cardElement,
+            billing_details: {
+                name: baseData.first_name + ' ' + baseData.last_name,
+                email: baseData.email,
+                phone: baseData.phone,
+                address: {
+                    line1: baseData.address_line1,
+                    city: baseData.city,
+                    state: baseData.state,
+                    postal_code: baseData.zip,
+                    country: baseData.country
+                }
+            }
+        }
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    // Redirect to success page
+    window.location.href = '/donate/success?payment_intent=' + data.paymentIntentId;
+}
+
+async function processDonorsFund(baseData) {
+    // Determine auth method
+    const usernameTab = document.querySelector('.daf-auth-tab[data-auth="username"]');
+    const isUsernameAuth = usernameTab && usernameTab.classList.contains('active');
+
+    const dfData = {
+        ...baseData,
+        auth_method: isUsernameAuth ? 'username' : 'card'
+    };
+
+    if (isUsernameAuth) {
+        dfData.username = document.getElementById('df_username').value;
+        dfData.pin = document.getElementById('df_pin').value;
+
+        if (!dfData.username || !dfData.pin) {
+            throw new Error('Please enter your username and PIN');
+        }
+    } else {
+        dfData.card_number = document.getElementById('df_card_number').value;
+        dfData.cvv = document.getElementById('df_cvv').value;
+
+        if (!dfData.card_number || !dfData.cvv) {
+            throw new Error('Please enter your card number and CVV');
+        }
+    }
+
+    const response = await fetch('/donate/process-donors-fund', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify(dfData)
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+        throw new Error(data.error);
+    }
+
+    // Redirect to success page
+    window.location.href = '/donate/success?daf_confirmation=' + data.confirmation + '&daf_provider=The%20Donors%20Fund';
+}
+
+async function processMatbia(baseData) {
+    const cardNumber = document.getElementById('matbia_card').value;
+
+    if (!cardNumber) {
+        throw new Error('Please enter your Matbia card number');
+    }
+
+    const matbiaData = {
+        ...baseData,
+        card_number: cardNumber
+    };
+
+    const response = await fetch('/donate/process-matbia', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify(matbiaData)
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+        throw new Error(data.error);
+    }
+
+    // Redirect to success page
+    window.location.href = '/donate/success?daf_confirmation=' + data.confirmation + '&daf_provider=Matbia';
+}
 </script>
 {% endblock %}

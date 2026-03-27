@@ -155,7 +155,7 @@
             </p>
         </div>
 
-        <!-- Success State -->
+        <!-- Success State (Credit Card) -->
         <div id="success-state" class="hidden">
             <div class="status-icon success">✓</div>
             <h1>{{ t('donate.thank_you') }}</h1>
@@ -182,6 +182,51 @@
 
             <p class="message-text">
                 {{ t('donate.tax_receipt_email') }}
+            </p>
+
+            <div class="share-section">
+                <p style="color: #666; font-size: 14px;">
+                    {{ t('donate.share_support') }}
+                </p>
+                <div class="share-buttons">
+                    <a href="#" class="share-btn facebook" onclick="shareOnFacebook()" title="Facebook">f</a>
+                    <a href="#" class="share-btn twitter" onclick="shareOnTwitter()" title="Twitter">𝕏</a>
+                    <a href="#" class="share-btn whatsapp" onclick="shareOnWhatsApp()" title="WhatsApp">💬</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- DAF Success State -->
+        <div id="daf-success-state" class="hidden">
+            <div class="status-icon success" style="background: #f5eeff; color: #9b59b6;">✓</div>
+            <h1>{{ t('donate.thank_you') }}</h1>
+            <p class="message-text">
+                Your generous donation has been received via <strong id="daf-provider-name">your DAF</strong>.
+            </p>
+
+            <div class="receipt-box {% if lang == 'he' %}rtl{% endif %}" style="background: #f5eeff;">
+                <div class="receipt-row">
+                    <span class="receipt-label">Confirmation</span>
+                    <span class="receipt-value" id="daf-confirmation-value">-</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">Payment Method</span>
+                    <span class="receipt-value" id="daf-method-value">Donor-Advised Fund</span>
+                </div>
+                <div class="receipt-row">
+                    <span class="receipt-label">{{ t('common.status') }}</span>
+                    <span class="receipt-value" style="color: #9b59b6;">
+                        Grant Submitted
+                    </span>
+                </div>
+            </div>
+
+            <div style="background: #fff3cd; padding: 12px 15px; border-radius: 8px; margin: 15px 0; font-size: 13px; color: #856404;">
+                <strong>Note:</strong> Your tax receipt was provided by <span id="daf-provider-note">your DAF provider</span> when you made your original contribution to your DAF. This is a thank-you acknowledgment only.
+            </div>
+
+            <p class="message-text">
+                We will send you a thank-you email shortly.
             </p>
 
             <div class="share-section">
@@ -230,12 +275,20 @@
  * until the donation record is found or max attempts reached.
  */
 const paymentIntentId = '{{ payment_intent_id }}';
+const dafConfirmation = '{{ daf_confirmation or "" }}';
+const dafProvider = '{{ daf_provider or "" }}';
 const lang = '{{ lang }}';
 let attempts = 0;
 const maxAttempts = 20;  // ~40 seconds total
 const pollInterval = 2000;  // 2 seconds
 
 async function checkDonationStatus() {
+    // If this is a DAF donation, show DAF success immediately
+    if (dafConfirmation) {
+        showDAFSuccess(dafConfirmation, dafProvider);
+        return;
+    }
+
     if (!paymentIntentId) {
         showPending();
         return;
@@ -298,7 +351,25 @@ function showSuccess(data) {
 function showPending() {
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('success-state').classList.add('hidden');
+    document.getElementById('daf-success-state').classList.add('hidden');
     document.getElementById('pending-state').classList.remove('hidden');
+}
+
+function showDAFSuccess(confirmation, provider) {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('pending-state').classList.add('hidden');
+    document.getElementById('success-state').classList.add('hidden');
+    document.getElementById('daf-success-state').classList.remove('hidden');
+
+    // Populate DAF data
+    if (confirmation) {
+        document.getElementById('daf-confirmation-value').textContent = confirmation;
+    }
+    if (provider) {
+        document.getElementById('daf-provider-name').textContent = provider;
+        document.getElementById('daf-method-value').textContent = provider;
+        document.getElementById('daf-provider-note').textContent = provider;
+    }
 }
 
 // Social sharing functions

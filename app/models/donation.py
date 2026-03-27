@@ -37,7 +37,13 @@ class Donation(db.Model):
     nedarim_transaction_id = db.Column(db.String(255), unique=True, nullable=True)
     nedarim_confirmation = db.Column(db.String(255), nullable=True)
     nedarim_keva_id = db.Column(db.String(255), nullable=True)  # Standing order ID for recurring
-    
+
+    # DAF (Donor-Advised Fund) fields
+    is_daf_donation = db.Column(db.Boolean, default=False)  # True for DAF/charity card donations
+    daf_provider = db.Column(db.String(100), nullable=True)  # "The Donors Fund", "OJC Fund", "JCF", "Matbia", etc.
+    daf_grant_id = db.Column(db.String(255), nullable=True)  # External grant ID (Chariot, etc.)
+    daf_tracking_id = db.Column(db.String(255), nullable=True)  # Tracking ID for reconciliation
+
     # Amount fields (in cents)
     amount = db.Column(db.Integer, nullable=False)  # Gross amount in cents
     currency = db.Column(db.String(10), default='usd')

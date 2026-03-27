@@ -433,3 +433,193 @@ def mailtrap_webhook():
     except Exception as e:
         logger.error(f'Mailtrap webhook error: {str(e)}')
         return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# CHARIOT/DAFPAY WEBHOOK
+# =============================================================================
+
+@webhook_bp.route('/chariot/webhook', methods=['POST'])
+@csrf.exempt
+def chariot_webhook():
+    """
+    Handle Chariot/DAFpay webhook for DAF grant notifications.
+
+    DAF grants do NOT generate tax receipts (donor already has receipt from DAF).
+    We only send a thank-you acknowledgment.
+
+    Webhook is verified via HMAC-SHA256 signature.
+    """
+    from datetime import datetime
+    from ...models.payment_processor import PaymentProcessor
+    from ...services.payment.chariot_processor import ChariotProcessor
+
+    logger.info('=' * 50)
+    logger.info('CHARIOT/DAFPAY WEBHOOK RECEIVED')
+    logger.info('=' * 50)
+
+    # Get Chariot processor config
+    chariot_db = PaymentProcessor.get_by_code('chariot')
+    if not chariot_db or not chariot_db.enabled:
+        logger.warning('Chariot webhook received but processor not enabled')
+        return jsonify({'error': 'Chariot not enabled'}), 400
+
+    config = chariot_db.config_json or {}
+    processor = ChariotProcessor(config=config)
+
+    # Get raw payload for signature verification
+    payload = request.get_data()
+    headers = dict(request.headers)
+
+    # Verify webhook signature
+    if not processor.verify_webhook_origin(payload, headers):
+        logger.error('Chariot webhook signature verification failed')
+        return jsonify({'error': 'Invalid signature'}), 401
+
+    logger.info('Chariot webhook signature verified')
+
+    # Process webhook
+    try:
+        result = processor.process_webhook(payload, headers)
+
+        if result.get('event_type') == 'error':
+            logger.error(f'Chariot webhook parse error: {result.get("error")}')
+            return jsonify({'error': result.get('error')}), 400
+
+        event_type = result.get('event_type')
+        logger.info(f'Chariot event: {event_type}')
+
+        if event_type == 'payment_succeeded':
+            handle_chariot_grant(result)
+        elif event_type == 'payment_failed':
+            logger.warning(f'Chariot grant failed: {result.get("transaction_id")}')
+        elif event_type == 'payment_pending':
+            logger.info(f'Chariot grant pending: {result.get("transaction_id")}')
+
+        return jsonify({'status': 'received'}), 200
+
+    except Exception as e:
+        logger.error(f'Chariot webhook error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+def handle_chariot_grant(data):
+    """
+    Process a successful Chariot/DAFpay grant.
+
+    IMPORTANT: DAF donations do NOT generate tax receipts.
+    The donor received their tax receipt when they contributed to their DAF.
+    We only send a thank-you acknowledgment (not a tax receipt).
+    """
+    from datetime import datetime
+    from ...services.commission_service import calculate_commission, create_commission_record
+
+    logger.info(f'[chariot] Processing grant: {data.get("transaction_id")}')
+
+    # Check for duplicate
+    existing = Donation.query.filter_by(
+        daf_grant_id=data.get('transaction_id')
+    ).first()
+    if existing:
+        logger.info(f'[chariot] Duplicate - donation {existing.id} already exists')
+        return
+
+    # Extract donor info
+    donor_email = data.get('donor_email')
+    donor_name = data.get('donor_name', 'DAF Donor')
+    amount_cents = data.get('amount_cents', 0)
+    daf_provider = data.get('daf_provider', 'Unknown DAF')
+
+    # Parse donor name
+    name_parts = donor_name.split(' ', 1) if donor_name else ['DAF', 'Donor']
+    first_name = name_parts[0]
+    last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+    # Get or create donor
+    donor = None
+    if donor_email:
+        donor = Donor.query.filter_by(email=donor_email).first()
+
+    if not donor:
+        donor = Donor(
+            first_name=first_name,
+            last_name=last_name,
+            email=donor_email or f'daf_{data.get("transaction_id")}@unknown.com',
+            test=False  # DAF grants are always real
+        )
+        db.session.add(donor)
+        db.session.flush()
+        logger.info(f'[chariot] Created donor {donor.id} for DAF grant')
+
+    # Create donation record
+    donation = Donation(
+        donor_id=donor.id,
+        payment_processor='chariot',
+        processor_transaction_id=data.get('transaction_id'),
+        daf_grant_id=data.get('transaction_id'),
+        daf_tracking_id=data.get('tracking_id'),
+        is_daf_donation=True,
+        daf_provider=daf_provider,
+        amount=amount_cents,
+        currency=data.get('currency', 'USD'),
+        status='succeeded',
+        donation_type='one_time',  # DAF grants are one-time
+        source='dafpay',
+        processor_metadata=data.get('raw_data')
+    )
+    db.session.add(donation)
+    db.session.flush()
+
+    logger.info(f'[chariot] Created donation {donation.id} from {daf_provider}: ${amount_cents/100:.2f}')
+
+    # Calculate commission (DAF donations may still have commissions)
+    commission_data = calculate_commission(donation)
+    if commission_data:
+        create_commission_record(donation, commission_data)
+        logger.info(f'[chariot] Commission created for donation {donation.id}')
+
+    db.session.commit()
+
+    # Send thank-you email (NOT a tax receipt)
+    # DAF donors already have their tax receipt from the DAF provider
+    if donor.email and donor.email.endswith('@unknown.com') is False:
+        try:
+            send_daf_thank_you_email(donor, donation, daf_provider)
+            logger.info(f'[chariot] Thank-you email sent to {donor.email}')
+        except Exception as e:
+            logger.error(f'[chariot] Thank-you email failed: {e}')
+
+
+def send_daf_thank_you_email(donor, donation, daf_provider):
+    """
+    Send a thank-you acknowledgment for DAF donations.
+
+    This is NOT a tax receipt. DAF donors receive their tax receipt
+    from their DAF provider (The Donors Fund, Fidelity, etc.).
+    """
+    from ...services.email_service import send_email
+
+    subject = f'Thank you for your donation via {daf_provider}'
+
+    body = f"""Dear {donor.first_name},
+
+Thank you for your generous donation of ${donation.amount/100:.2f} via {daf_provider}.
+
+Your support helps us continue our important work.
+
+This is a thank-you acknowledgment only. Since your donation was made through a Donor-Advised Fund, your tax receipt was provided by {daf_provider} when you made your original contribution to your DAF.
+
+With gratitude,
+Matat Mordechai Foundation
+"""
+
+    try:
+        send_email(
+            to_email=donor.email,
+            to_name=f'{donor.first_name} {donor.last_name}',
+            subject=subject,
+            body=body,
+            category='daf_thank_you'
+        )
+    except Exception as e:
+        logger.error(f'Failed to send DAF thank-you email: {e}')
