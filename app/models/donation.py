@@ -12,6 +12,19 @@ class Donation(db.Model):
     campaign_id = db.Column(db.Integer, db.ForeignKey('campaigns.id', ondelete='RESTRICT'), nullable=True)
     link_id = db.Column(db.Integer, db.ForeignKey('donation_links.id', ondelete='SET NULL'), nullable=True)
     
+    # Payment processor tracking (generic fields for all processors)
+    payment_processor = db.Column(db.String(50), default='stripe')  # 'stripe', 'nedarim', 'cardcom', etc.
+    processor_transaction_id = db.Column(db.String(255), nullable=True)  # Generic transaction ID
+    processor_confirmation = db.Column(db.String(255), nullable=True)  # Authorization/confirmation code
+    processor_token = db.Column(db.String(255), nullable=True)  # Saved payment token for recurring
+    processor_recurring_id = db.Column(db.String(255), nullable=True)  # Recurring/subscription/keva ID
+    processor_fee = db.Column(db.Integer, nullable=True)  # Fee in cents/agorot
+    processor_fee_currency = db.Column(db.String(10), nullable=True)  # Fee currency
+    processor_metadata = db.Column(db.JSON, nullable=True)  # Processor-specific data
+    processor_receipt_url = db.Column(db.String(500), nullable=True)  # External receipt URL (CardCom, iCount)
+    routing_reason = db.Column(db.String(255), nullable=True)  # Why this processor was selected
+    donor_country = db.Column(db.String(5), nullable=True)  # Country code for routing
+
     # Stripe fields
     stripe_payment_intent_id = db.Column(db.String(255), unique=True, nullable=True)
     stripe_charge_id = db.Column(db.String(255), nullable=True)
@@ -19,6 +32,11 @@ class Donation(db.Model):
     stripe_subscription_id = db.Column(db.String(255), nullable=True)
     stripe_receipt_url = db.Column(db.String(500), nullable=True)
     stripe_metadata = db.Column(db.JSON, nullable=True)
+
+    # Nedarim Plus fields
+    nedarim_transaction_id = db.Column(db.String(255), unique=True, nullable=True)
+    nedarim_confirmation = db.Column(db.String(255), nullable=True)
+    nedarim_keva_id = db.Column(db.String(255), nullable=True)  # Standing order ID for recurring
     
     # Amount fields (in cents)
     amount = db.Column(db.Integer, nullable=False)  # Gross amount in cents

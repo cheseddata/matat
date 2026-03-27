@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% block title %}Configure {{ processor.name }} - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .config-card h2 {
+        margin: 0 0 20px 0;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .processor-badge {
+        display: inline-block;
+        background: #3498db;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-left: 10px;
+        font-weight: normal;
+    }
+
+    .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 25px 0 15px 0;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    .section-title:first-of-type {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+    }
+
+    .help-text {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-top: 5px;
+    }
+
+    .info-box {
+        background: #e8f4f8;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .warning-box {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #856404;
+    }
+
+    .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+        width: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="config-card">
+        <h2>
+            Configure {{ processor.name }}
+            <span class="processor-badge">{{ processor.code }}</span>
+        </h2>
+
+        {% if processor.code == 'stripe' %}
+        <div class="info-box">
+            Stripe credentials are configured in the main <a href="{{ url_for('admin.settings') }}">Settings</a> page.
+            This page is for advanced processor settings only.
+        </div>
+        {% elif processor.code == 'nedarim' %}
+        <div class="info-box">
+            <strong>Nedarim Plus</strong> - Israel's leading nonprofit payment platform.<br>
+            Contact <a href="mailto:office@nedar.im">office@nedar.im</a> to obtain your MosadId and API password.
+        </div>
+        {% elif processor.code == 'cardcom' %}
+        <div class="info-box">
+            <strong>CardCom</strong> - Auto-generates Israeli Section 46 donation receipts!<br>
+            Get credentials from CardCom Dashboard: Settings > Company Setup > Manage API-keys
+        </div>
+        <div class="warning-box">
+            ⚠️ Terminal Number must be a number (e.g., 1000), not a string.
+        </div>
+        {% elif processor.code == 'grow' %}
+        <div class="info-box">
+            <strong>Grow (Meshulam)</strong> - Israel's most popular payment gateway.<br>
+            Supports Bit, Apple Pay, Google Pay.
+        </div>
+        <div class="warning-box">
+            ⚠️ Important: You MUST call approveTransaction after each webhook. This is handled automatically.
+        </div>
+        {% elif processor.code == 'tranzila' %}
+        <div class="info-box">
+            <strong>Tranzila</strong> - Israel's oldest payment gateway.<br>
+            Contact Tranzila to obtain your terminal credentials.
+        </div>
+        {% elif processor.code == 'payme' %}
+        <div class="info-box">
+            <strong>PayMe</strong> - Modern Israeli payment gateway with hosted fields.<br>
+            Get your seller_payme_id from the PayMe dashboard Settings page.
+        </div>
+        {% elif processor.code == 'icount' %}
+        <div class="info-box">
+            <strong>iCount</strong> - Combined payment + invoicing system.<br>
+            Create an API Token in your iCount dashboard. Rate limit: 30 requests/minute.
+        </div>
+        {% elif processor.code == 'easycard' %}
+        <div class="info-box">
+            <strong>EasyCard</strong> - PCI DSS Level 1 certified gateway.<br>
+            Contact <a href="mailto:office@e-c.co.il">office@e-c.co.il</a> or call 073-2615690 for credentials.
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="section-title">Display Settings</div>
+
+            <div class="form-group">
+                <label>Display Name</label>
+                <input type="text" name="display_name" value="{{ processor.display_name or '' }}"
+                       placeholder="{{ processor.name }}">
+                <p class="help-text">Name shown to donors (leave blank to use default)</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Routing Priority</label>
+                    <input type="number" name="priority" value="{{ processor.priority }}" min="1">
+                    <p class="help-text">Lower = higher priority</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Display Order</label>
+                    <input type="number" name="display_order" value="{{ processor.display_order }}" min="1">
+                    <p class="help-text">Order in donor UI</p>
+                </div>
+            </div>
+
+            <div class="section-title">Fee Estimation</div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Fee Percentage (%)</label>
+                    <input type="number" step="0.01" name="fee_percentage"
+                           value="{{ processor.fee_percentage or '' }}" placeholder="e.g., 2.9">
+                </div>
+
+                <div class="form-group">
+                    <label>Fixed Fee (cents)</label>
+                    <input type="number" name="fee_fixed_cents"
+                           value="{{ processor.fee_fixed_cents or '' }}" placeholder="e.g., 30">
+                </div>
+            </div>
+
+            {% if processor.code != 'stripe' %}
+            <div class="section-title">API Credentials</div>
+
+            {% if processor.code == 'nedarim' %}
+            <div class="form-group">
+                <label>MosadId (7-digit Institution ID)</label>
+                <input type="text" name="mosad_id"
+                       value="{{ processor.config_json.mosad_id if processor.config_json else '' }}"
+                       placeholder="e.g., 1234567">
+            </div>
+            <div class="form-group">
+                <label>API Password (ApiValid)</label>
+                <input type="password" name="api_password"
+                       value="{{ processor.config_json.api_password if processor.config_json else '' }}"
+                       placeholder="Your API token">
+            </div>
+
+            {% elif processor.code == 'cardcom' %}
+            <div class="form-group">
+                <label>Terminal Number</label>
+                <input type="number" name="terminal_number"
+                       value="{{ processor.config_json.terminal_number if processor.config_json else '' }}"
+                       placeholder="e.g., 1000">
+                <p class="help-text">Must be a number, not a string</p>
+            </div>
+            <div class="form-group">
+                <label>API Name</label>
+                <input type="text" name="api_name"
+                       value="{{ processor.config_json.api_name if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>API Password</label>
+                <input type="password" name="api_password"
+                       value="{{ processor.config_json.api_password if processor.config_json else '' }}">
+            </div>
+
+            {% elif processor.code == 'grow' %}
+            <div class="form-group">
+                <label>Page Code</label>
+                <input type="text" name="page_code"
+                       value="{{ processor.config_json.page_code if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>User ID</label>
+                <input type="text" name="user_id"
+                       value="{{ processor.config_json.user_id if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>API Key (optional, for multi-business)</label>
+                <input type="password" name="api_key"
+                       value="{{ processor.config_json.api_key if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <div class="checkbox-row">
+                    <input type="checkbox" name="sandbox" id="sandbox"
+                           {{ 'checked' if processor.config_json and processor.config_json.get('sandbox') else '' }}>
+                    <label for="sandbox">Sandbox Mode (for testing)</label>
+                </div>
+            </div>
+
+            {% elif processor.code == 'tranzila' %}
+            <div class="form-group">
+                <label>Terminal Name (Supplier)</label>
+                <input type="text" name="terminal_name"
+                       value="{{ processor.config_json.terminal_name if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>Terminal Password</label>
+                <input type="password" name="terminal_password"
+                       value="{{ processor.config_json.terminal_password if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>App Key</label>
+                <input type="password" name="app_key"
+                       value="{{ processor.config_json.app_key if processor.config_json else '' }}">
+            </div>
+
+            {% elif processor.code == 'payme' %}
+            <div class="form-group">
+                <label>Seller PayMe ID</label>
+                <input type="text" name="seller_id"
+                       value="{{ processor.config_json.seller_id if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" name="api_key"
+                       value="{{ processor.config_json.api_key if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <div class="checkbox-row">
+                    <input type="checkbox" name="sandbox" id="sandbox"
+                           {{ 'checked' if processor.config_json and processor.config_json.get('sandbox') else '' }}>
+                    <label for="sandbox">Sandbox Mode (for testing)</label>
+                </div>
+            </div>
+
+            {% elif processor.code == 'icount' %}
+            <div class="form-group">
+                <label>API Token (Bearer)</label>
+                <input type="password" name="api_token"
+                       value="{{ processor.config_json.api_token if processor.config_json else '' }}">
+                <p class="help-text">Create in iCount Dashboard. Old cid/user/pass method is deprecated.</p>
+            </div>
+
+            {% elif processor.code == 'easycard' %}
+            <div class="form-group">
+                <label>Terminal Number</label>
+                <input type="text" name="terminal_number"
+                       value="{{ processor.config_json.terminal_number if processor.config_json else '' }}">
+            </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <input type="password" name="api_key"
+                       value="{{ processor.config_json.api_key if processor.config_json else '' }}">
+            </div>
+            {% endif %}
+
+            {% endif %}
+
+            <div class="btn-row">
+                <button type="submit" class="btn btn-success">Save Configuration</button>
+                <a href="{{ url_for('admin.payment_processors') }}" class="btn" style="background: #95a5a6;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

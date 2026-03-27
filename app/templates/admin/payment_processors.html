@@ -1,0 +1,405 @@
+{% extends "base.html" %}
+{% block title %}Payment Processors - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 25px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .admin-nav a {
+        padding: 8px 16px;
+        background: #ecf0f1;
+        color: #2c3e50;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .admin-nav a:hover, .admin-nav a.active {
+        background: #3498db;
+        color: white;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .section-header h2 {
+        margin: 0;
+    }
+
+    .processor-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+
+    .processor-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border-left: 4px solid #bdc3c7;
+        transition: all 0.2s;
+    }
+
+    .processor-card.enabled {
+        border-left-color: #27ae60;
+    }
+
+    .processor-card.disabled {
+        opacity: 0.7;
+        border-left-color: #e74c3c;
+    }
+
+    .processor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .processor-name {
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .processor-code {
+        font-size: 12px;
+        color: #7f8c8d;
+        font-family: monospace;
+    }
+
+    .status-badge {
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .status-badge.enabled {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.disabled {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .processor-info {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 15px;
+    }
+
+    .processor-info p {
+        margin: 4px 0;
+    }
+
+    .processor-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+    }
+
+    .btn-toggle {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-toggle:hover {
+        background: #2980b9;
+    }
+
+    .btn-edit {
+        background: #95a5a6;
+        color: white;
+    }
+
+    .btn-edit:hover {
+        background: #7f8c8d;
+    }
+
+    .credentials-warning {
+        background: #fff3cd;
+        color: #856404;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        margin-bottom: 12px;
+    }
+
+    /* Rules table */
+    .rules-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .rules-table th, .rules-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .rules-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        font-size: 13px;
+        color: #555;
+    }
+
+    .rules-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .priority-badge {
+        display: inline-block;
+        background: #3498db;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .condition-tag {
+        display: inline-block;
+        background: #ecf0f1;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin: 2px;
+    }
+
+    .processor-tag {
+        display: inline-block;
+        background: #27ae60;
+        color: white;
+        padding: 3px 10px;
+        border-radius: 4px;
+        font-size: 12px;
+    }
+
+    .help-text {
+        background: #e8f4f8;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #2c3e50;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 style="margin-bottom: 20px;">Payment Processors</h1>
+
+    <!-- Admin Navigation -->
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin.donations') }}">Donations</a>
+        <a href="{{ url_for('admin.donors') }}">Donors</a>
+        <a href="{{ url_for('admin.settings') }}">Settings</a>
+        <a href="{{ url_for('admin.payment_processors') }}" class="active">Payment Processors</a>
+    </div>
+
+    <div class="help-text">
+        <strong>Multi-Processor Payment System</strong><br>
+        Configure payment processors for this platform. Enable processors and enter credentials to start accepting payments.
+        Routing rules determine which processor handles each donation based on currency, country, or amount.
+    </div>
+
+    <!-- Processors Section -->
+    <div class="section-header">
+        <h2>Available Processors</h2>
+    </div>
+
+    <div class="processor-grid">
+        {% for processor in processors %}
+        <div class="processor-card {{ 'enabled' if processor.enabled else 'disabled' }}">
+            <div class="processor-header">
+                <div>
+                    <h3 class="processor-name">{{ processor.name }}</h3>
+                    <span class="processor-code">{{ processor.code }}</span>
+                </div>
+                <span class="status-badge {{ 'enabled' if processor.enabled else 'disabled' }}">
+                    {{ 'Enabled' if processor.enabled else 'Disabled' }}
+                </span>
+            </div>
+
+            {% if not processor.config_json or (processor.code != 'stripe' and not processor.config_json.get('mosad_id') and not processor.config_json.get('terminal_number') and not processor.config_json.get('page_code') and not processor.config_json.get('seller_id') and not processor.config_json.get('api_token') and not processor.config_json.get('terminal_name')) %}
+            {% if processor.code != 'stripe' %}
+            <div class="credentials-warning">
+                ⚠️ Credentials not configured
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <div class="processor-info">
+                <p><strong>Currencies:</strong> {{ processor.supported_currencies | join(', ') if processor.supported_currencies else 'All' }}</p>
+                <p><strong>Priority:</strong> {{ processor.priority }} (lower = higher priority)</p>
+                {% if processor.fee_percentage %}
+                <p><strong>Fee:</strong> {{ processor.fee_percentage }}% + {{ (processor.fee_fixed_cents or 0) / 100 | round(2) }} {{ processor.fee_currency or 'USD' }}</p>
+                {% endif %}
+            </div>
+
+            <div class="processor-actions">
+                <button class="btn-sm btn-toggle" onclick="toggleProcessor({{ processor.id }}, this)">
+                    {{ 'Disable' if processor.enabled else 'Enable' }}
+                </button>
+                <a href="{{ url_for('admin.edit_processor', id=processor.id) }}" class="btn-sm btn-edit">
+                    Configure
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Routing Rules Section -->
+    <div class="section-header">
+        <h2>Routing Rules</h2>
+        <a href="{{ url_for('admin.new_routing_rule') }}" class="btn" style="font-size: 14px;">+ Add Rule</a>
+    </div>
+
+    <p style="color: #666; margin-bottom: 15px;">
+        Rules are checked in priority order (lowest number first). First matching rule determines the processor.
+    </p>
+
+    <table class="rules-table">
+        <thead>
+            <tr>
+                <th>Priority</th>
+                <th>Name</th>
+                <th>Conditions</th>
+                <th>Processor</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rule in rules %}
+            <tr>
+                <td><span class="priority-badge">{{ rule.priority }}</span></td>
+                <td>
+                    <strong>{{ rule.name }}</strong>
+                    {% if rule.description %}
+                    <br><small style="color: #999;">{{ rule.description }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if rule.currency %}
+                    <span class="condition-tag">Currency: {{ rule.currency }}</span>
+                    {% endif %}
+                    {% if rule.country_code %}
+                    <span class="condition-tag">Country: {{ rule.country_code }}</span>
+                    {% endif %}
+                    {% if rule.donation_type %}
+                    <span class="condition-tag">Type: {{ rule.donation_type }}</span>
+                    {% endif %}
+                    {% if rule.min_amount_cents %}
+                    <span class="condition-tag">Min: ${{ (rule.min_amount_cents / 100) | round(2) }}</span>
+                    {% endif %}
+                    {% if rule.max_amount_cents %}
+                    <span class="condition-tag">Max: ${{ (rule.max_amount_cents / 100) | round(2) }}</span>
+                    {% endif %}
+                    {% if not rule.currency and not rule.country_code and not rule.donation_type and not rule.min_amount_cents %}
+                    <span class="condition-tag" style="background: #ffeeba;">Any (default)</span>
+                    {% endif %}
+                </td>
+                <td><span class="processor-tag">{{ rule.processor.name }}</span></td>
+                <td>
+                    <span class="status-badge {{ 'enabled' if rule.enabled else 'disabled' }}">
+                        {{ 'Active' if rule.enabled else 'Inactive' }}
+                    </span>
+                </td>
+                <td>
+                    <button class="btn-sm btn-toggle" onclick="toggleRule({{ rule.id }}, this)">
+                        {{ 'Disable' if rule.enabled else 'Enable' }}
+                    </button>
+                    <a href="{{ url_for('admin.edit_routing_rule', id=rule.id) }}" class="btn-sm btn-edit">Edit</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #999; padding: 30px;">
+                    No routing rules configured. <a href="{{ url_for('admin.new_routing_rule') }}">Create one</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function toggleProcessor(id, btn) {
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/admin/payment-processors/${id}/toggle`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            btn.disabled = false;
+        }
+    } catch (err) {
+        alert('Error toggling processor');
+        btn.disabled = false;
+    }
+}
+
+async function toggleRule(id, btn) {
+    btn.disabled = true;
+    try {
+        const res = await fetch(`/admin/routing-rules/${id}/toggle`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+        });
+        const data = await res.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            btn.disabled = false;
+        }
+    } catch (err) {
+        alert('Error toggling rule');
+        btn.disabled = false;
+    }
+}
+</script>
+{% endblock %}

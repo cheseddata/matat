@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if rule else 'New' }} Routing Rule - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .config-card h2 {
+        margin: 0 0 20px 0;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 25px 0 15px 0;
+        padding-top: 15px;
+        border-top: 1px solid #eee;
+    }
+
+    .help-text {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-top: 5px;
+    }
+
+    .info-box {
+        background: #e8f4f8;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+    }
+
+    .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+        width: auto;
+    }
+
+    .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+
+    .danger-zone {
+        margin-top: 30px;
+        padding: 15px;
+        background: #fee;
+        border: 1px solid #e74c3c;
+        border-radius: 8px;
+    }
+
+    .danger-zone h4 {
+        margin: 0 0 10px 0;
+        color: #e74c3c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="config-card">
+        <h2>{{ 'Edit' if rule else 'New' }} Routing Rule</h2>
+
+        <div class="info-box">
+            <strong>How Routing Works:</strong><br>
+            Rules are checked in priority order (lowest first). The first rule that matches all conditions
+            determines which processor handles the payment. Leave conditions blank to match any value.
+        </div>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label>Rule Name *</label>
+                <input type="text" name="name" value="{{ rule.name if rule else '' }}" required
+                       placeholder="e.g., ILS -> Nedarim Plus">
+            </div>
+
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" rows="2" placeholder="Optional description">{{ rule.description if rule else '' }}</textarea>
+            </div>
+
+            <div class="two-col">
+                <div class="form-group">
+                    <label>Priority *</label>
+                    <input type="number" name="priority" value="{{ rule.priority if rule else 100 }}" min="1" required>
+                    <p class="help-text">Lower number = checked first</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <div class="checkbox-row" style="margin-top: 10px;">
+                        <input type="checkbox" name="enabled" id="enabled"
+                               {{ 'checked' if not rule or rule.enabled else '' }}>
+                        <label for="enabled">Enabled</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">Conditions (leave blank to match any)</div>
+
+            <div class="two-col">
+                <div class="form-group">
+                    <label>Currency</label>
+                    <select name="currency">
+                        <option value="">Any currency</option>
+                        <option value="USD" {{ 'selected' if rule and rule.currency == 'USD' else '' }}>USD (US Dollar)</option>
+                        <option value="ILS" {{ 'selected' if rule and rule.currency == 'ILS' else '' }}>ILS (Israeli Shekel)</option>
+                        <option value="EUR" {{ 'selected' if rule and rule.currency == 'EUR' else '' }}>EUR (Euro)</option>
+                        <option value="GBP" {{ 'selected' if rule and rule.currency == 'GBP' else '' }}>GBP (British Pound)</option>
+                        <option value="CAD" {{ 'selected' if rule and rule.currency == 'CAD' else '' }}>CAD (Canadian Dollar)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Country Code</label>
+                    <select name="country_code">
+                        <option value="">Any country</option>
+                        <option value="US" {{ 'selected' if rule and rule.country_code == 'US' else '' }}>US (United States)</option>
+                        <option value="IL" {{ 'selected' if rule and rule.country_code == 'IL' else '' }}>IL (Israel)</option>
+                        <option value="GB" {{ 'selected' if rule and rule.country_code == 'GB' else '' }}>GB (United Kingdom)</option>
+                        <option value="CA" {{ 'selected' if rule and rule.country_code == 'CA' else '' }}>CA (Canada)</option>
+                        <option value="DE" {{ 'selected' if rule and rule.country_code == 'DE' else '' }}>DE (Germany)</option>
+                        <option value="FR" {{ 'selected' if rule and rule.country_code == 'FR' else '' }}>FR (France)</option>
+                    </select>
+                    <p class="help-text">Based on donor's country</p>
+                </div>
+            </div>
+
+            <div class="two-col">
+                <div class="form-group">
+                    <label>Donation Type</label>
+                    <select name="donation_type">
+                        <option value="">Any type</option>
+                        <option value="one_time" {{ 'selected' if rule and rule.donation_type == 'one_time' else '' }}>One-time</option>
+                        <option value="recurring" {{ 'selected' if rule and rule.donation_type == 'recurring' else '' }}>Recurring</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <p class="help-text" style="margin-top: 15px;">Match one-time or recurring donations only</p>
+                </div>
+            </div>
+
+            <div class="two-col">
+                <div class="form-group">
+                    <label>Minimum Amount ($)</label>
+                    <input type="number" step="0.01" name="min_amount"
+                           value="{{ (rule.min_amount_cents / 100) if rule and rule.min_amount_cents else '' }}"
+                           placeholder="e.g., 100">
+                </div>
+
+                <div class="form-group">
+                    <label>Maximum Amount ($)</label>
+                    <input type="number" step="0.01" name="max_amount"
+                           value="{{ (rule.max_amount_cents / 100) if rule and rule.max_amount_cents else '' }}"
+                           placeholder="e.g., 10000">
+                </div>
+            </div>
+
+            <div class="section-title">Route To</div>
+
+            <div class="form-group">
+                <label>Payment Processor *</label>
+                <select name="processor_id" required>
+                    <option value="">-- Select Processor --</option>
+                    {% for processor in processors %}
+                    <option value="{{ processor.id }}"
+                            {{ 'selected' if rule and rule.processor_id == processor.id else '' }}>
+                        {{ processor.name }}
+                        {% if not processor.enabled %}(disabled){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="btn-row">
+                <button type="submit" class="btn btn-success">{{ 'Save Rule' if rule else 'Create Rule' }}</button>
+                <a href="{{ url_for('admin.payment_processors') }}" class="btn" style="background: #95a5a6;">Cancel</a>
+            </div>
+        </form>
+
+        {% if rule %}
+        <div class="danger-zone">
+            <h4>Danger Zone</h4>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">Delete this routing rule permanently.</p>
+            <form method="POST" action="{{ url_for('admin.delete_routing_rule', id=rule.id) }}"
+                  onsubmit="return confirm('Are you sure you want to delete this rule?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn" style="background: #e74c3c; color: white;">Delete Rule</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

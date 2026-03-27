@@ -126,6 +126,7 @@
         <a href="{{ url_for('admin.reports') }}">{{ t('nav.reports') }}</a>
         <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
         <a href="{{ url_for('admin.settings') }}" class="active">{{ t('nav.settings') }}</a>
+        <a href="{{ url_for('admin.payment_processors') }}">Payment Processors</a>
     </div>
 
     <form method="POST">
@@ -320,6 +321,18 @@
                 </div>
             </div>
 
+            <!-- Payment Processors Link -->
+            <div class="settings-card" style="border: 2px solid #3498db;">
+                <h2>Payment Processors</h2>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    Configure multiple payment processors and routing rules.
+                    Enable different processors per platform and set up automatic routing based on currency, country, or amount.
+                </p>
+                <a href="{{ url_for('admin.payment_processors') }}" class="btn btn-success" style="display: inline-block;">
+                    Manage Payment Processors
+                </a>
+            </div>
+
             <!-- Stripe Settings -->
             <div class="settings-card">
                 <h2>Stripe Configuration</h2>
@@ -392,6 +405,7 @@
 
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
                     <h4 style="margin: 0 0 10px 0;">Quick Links</h4>
+                    <p><a href="{{ url_for('admin.payment_processors') }}">Payment Processors</a></p>
                     <p><a href="{{ url_for('admin.reports') }}">View Reports</a></p>
                     <p><a href="{{ url_for('admin.receipts') }}">Receipt Lookup</a></p>
                     <p><a href="{{ url_for('admin.commissions', status='pending') }}">Pending Commissions</a></p>

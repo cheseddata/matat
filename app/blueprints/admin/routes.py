@@ -27,8 +27,101 @@ from ...models.config_settings import ConfigSettings
 @admin_bp.route('/dashboard')
 @admin_required
 def dashboard():
-    """Admin dashboard - redirects to donations."""
-    return redirect(url_for('admin.donations'))
+    """Admin dashboard with stats."""
+    # Total income (all succeeded donations)
+    total_income = db.session.query(func.sum(Donation.amount)).filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None)
+    ).scalar() or 0
+
+    # Donation count
+    donation_count = Donation.query.filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None)
+    ).count()
+
+    # Active salespersons
+    active_salespersons = User.query.filter(
+        User.role == 'salesperson',
+        User.active == True,
+        User.deleted_at.is_(None)
+    ).count()
+
+    # Total commissions
+    total_commissions = db.session.query(func.sum(Commission.commission_amount)).scalar() or 0
+    pending_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
+        Commission.status == 'pending'
+    ).scalar() or 0
+
+    # This month stats
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    this_month_income = db.session.query(func.sum(Donation.amount)).filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None),
+        Donation.created_at >= month_start
+    ).scalar() or 0
+
+    this_month_count = Donation.query.filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None),
+        Donation.created_at >= month_start
+    ).count()
+
+    # Today's stats
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_income = db.session.query(func.sum(Donation.amount)).filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None),
+        Donation.created_at >= today_start
+    ).scalar() or 0
+
+    # Yesterday's stats
+    yesterday_start = today_start - timedelta(days=1)
+    yesterday_income = db.session.query(func.sum(Donation.amount)).filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None),
+        Donation.created_at >= yesterday_start,
+        Donation.created_at < today_start
+    ).scalar() or 0
+
+    yesterday_count = Donation.query.filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None),
+        Donation.created_at >= yesterday_start,
+        Donation.created_at < today_start
+    ).count()
+
+    # Recent donations
+    recent_donations = Donation.query.filter(
+        Donation.deleted_at.is_(None)
+    ).order_by(Donation.created_at.desc()).limit(10).all()
+
+    # Top salespersons this month
+    top_salespersons = db.session.query(
+        User,
+        func.sum(Donation.amount).label('total'),
+        func.count(Donation.id).label('count')
+    ).join(Donation, User.id == Donation.salesperson_id).filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None),
+        Donation.created_at >= month_start
+    ).group_by(User.id).order_by(func.sum(Donation.amount).desc()).limit(5).all()
+
+    return render_template(
+        'admin/dashboard.html',
+        total_income=total_income / 100,
+        donation_count=donation_count,
+        active_salespersons=active_salespersons,
+        total_commissions=total_commissions / 100,
+        pending_commissions=pending_commissions / 100,
+        this_month_income=this_month_income / 100,
+        this_month_count=this_month_count,
+        today_income=today_income / 100,
+        yesterday_income=yesterday_income / 100,
+        yesterday_count=yesterday_count,
+        recent_donations=recent_donations,
+        top_salespersons=top_salespersons
+    )
 
 
 @admin_bp.route('/dashboard-stats')
@@ -1133,6 +1226,45 @@ def unlink_donor(id):
     return redirect(url_for('admin.donor_detail', id=id))
 
 
+@admin_bp.route('/donors/fix-unknown')
+@admin_required
+def fix_unknown_donors():
+    """Show list of donors with Unknown names for bulk editing."""
+    donors_list = Donor.query.filter(
+        Donor.deleted_at.is_(None),
+        db.or_(
+            Donor.first_name == 'Unknown',
+            Donor.first_name == '',
+            Donor.first_name.is_(None),
+            Donor.last_name == '',
+            Donor.last_name.is_(None)
+        )
+    ).order_by(Donor.created_at.desc()).all()
+
+    return render_template('admin/fix_unknown_donors.html', donors=donors_list)
+
+
+@admin_bp.route('/donors/<int:id>/update-name', methods=['POST'])
+@admin_required
+def update_donor_name(id):
+    """Update a donor's name via AJAX."""
+    donor = Donor.query.get_or_404(id)
+    data = request.get_json()
+
+    first_name = data.get('first_name', '').strip()
+    last_name = data.get('last_name', '').strip()
+
+    if not first_name:
+        return jsonify({'success': False, 'error': 'First name is required'}), 400
+
+    donor.first_name = first_name
+    donor.last_name = last_name
+    db.session.commit()
+
+    logger.info(f'[update_donor_name] Updated donor {id} name to {first_name} {last_name}')
+    return jsonify({'success': True, 'full_name': donor.full_name})
+
+
 @admin_bp.route('/donors/<int:id>/external-id', methods=['POST'])
 @admin_required
 def set_external_id(id):
@@ -1516,3 +1648,230 @@ def api_email_templates():
         })
 
     return jsonify(result)
+
+
+# =============================================================================
+# PAYMENT PROCESSORS
+# =============================================================================
+
+@admin_bp.route('/payment-processors')
+@admin_required
+def payment_processors():
+    """List and manage payment processors."""
+    from ...models.payment_processor import PaymentProcessor
+    from ...models.payment_routing_rule import PaymentRoutingRule
+
+    processors = PaymentProcessor.query.filter(
+        PaymentProcessor.deleted_at.is_(None)
+    ).order_by(PaymentProcessor.priority).all()
+
+    rules = PaymentRoutingRule.query.filter(
+        PaymentRoutingRule.deleted_at.is_(None)
+    ).order_by(PaymentRoutingRule.priority).all()
+
+    return render_template(
+        'admin/payment_processors.html',
+        processors=processors,
+        rules=rules
+    )
+
+
+@admin_bp.route('/payment-processors/<int:id>/toggle', methods=['POST'])
+@admin_required
+def toggle_processor(id):
+    """Enable/disable a payment processor."""
+    from ...models.payment_processor import PaymentProcessor
+
+    processor = PaymentProcessor.query.get_or_404(id)
+    processor.enabled = not processor.enabled
+    db.session.commit()
+
+    status = 'enabled' if processor.enabled else 'disabled'
+    logger.info(f'[payment_processors] {processor.code} {status} by admin {current_user.id}')
+
+    return jsonify({
+        'success': True,
+        'enabled': processor.enabled,
+        'message': f'{processor.name} {status}'
+    })
+
+
+@admin_bp.route('/payment-processors/<int:id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_processor(id):
+    """Edit payment processor credentials."""
+    from ...models.payment_processor import PaymentProcessor
+    import json
+
+    processor = PaymentProcessor.query.get_or_404(id)
+
+    if request.method == 'POST':
+        # Update basic fields
+        processor.name = request.form.get('name', processor.name).strip()
+        processor.display_name = request.form.get('display_name', '').strip() or None
+        processor.priority = int(request.form.get('priority', 100))
+        processor.display_order = int(request.form.get('display_order', 100))
+
+        # Update fees
+        fee_pct = request.form.get('fee_percentage', '').strip()
+        processor.fee_percentage = Decimal(fee_pct) if fee_pct else None
+
+        fee_fixed = request.form.get('fee_fixed_cents', '').strip()
+        processor.fee_fixed_cents = int(fee_fixed) if fee_fixed else None
+
+        # Update credentials (config_json)
+        config = processor.config_json or {}
+
+        # Processor-specific credentials
+        if processor.code == 'stripe':
+            # Stripe keys are stored in ConfigSettings, not here
+            pass
+        elif processor.code == 'nedarim':
+            config['mosad_id'] = request.form.get('mosad_id', '').strip() or None
+            config['api_password'] = request.form.get('api_password', '').strip() or None
+        elif processor.code == 'cardcom':
+            config['terminal_number'] = request.form.get('terminal_number', '').strip() or None
+            config['api_name'] = request.form.get('api_name', '').strip() or None
+            config['api_password'] = request.form.get('api_password', '').strip() or None
+        elif processor.code == 'grow':
+            config['page_code'] = request.form.get('page_code', '').strip() or None
+            config['user_id'] = request.form.get('user_id', '').strip() or None
+            config['api_key'] = request.form.get('api_key', '').strip() or None
+            config['sandbox'] = request.form.get('sandbox') == 'on'
+        elif processor.code == 'tranzila':
+            config['terminal_name'] = request.form.get('terminal_name', '').strip() or None
+            config['terminal_password'] = request.form.get('terminal_password', '').strip() or None
+            config['app_key'] = request.form.get('app_key', '').strip() or None
+        elif processor.code == 'payme':
+            config['seller_id'] = request.form.get('seller_id', '').strip() or None
+            config['api_key'] = request.form.get('api_key', '').strip() or None
+            config['sandbox'] = request.form.get('sandbox') == 'on'
+        elif processor.code == 'icount':
+            config['api_token'] = request.form.get('api_token', '').strip() or None
+        elif processor.code == 'easycard':
+            config['terminal_number'] = request.form.get('terminal_number', '').strip() or None
+            config['api_key'] = request.form.get('api_key', '').strip() or None
+
+        processor.config_json = config
+        processor.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        logger.info(f'[payment_processors] Updated {processor.code} by admin {current_user.id}')
+        flash(f'{processor.name} settings updated.', 'success')
+        return redirect(url_for('admin.payment_processors'))
+
+    return render_template('admin/edit_processor.html', processor=processor)
+
+
+@admin_bp.route('/routing-rules/<int:id>/toggle', methods=['POST'])
+@admin_required
+def toggle_routing_rule(id):
+    """Enable/disable a routing rule."""
+    from ...models.payment_routing_rule import PaymentRoutingRule
+
+    rule = PaymentRoutingRule.query.get_or_404(id)
+    rule.enabled = not rule.enabled
+    db.session.commit()
+
+    status = 'enabled' if rule.enabled else 'disabled'
+    logger.info(f'[routing_rules] Rule {rule.id} ({rule.name}) {status} by admin {current_user.id}')
+
+    return jsonify({
+        'success': True,
+        'enabled': rule.enabled,
+        'message': f'Rule "{rule.name}" {status}'
+    })
+
+
+@admin_bp.route('/routing-rules/new', methods=['GET', 'POST'])
+@admin_required
+def new_routing_rule():
+    """Create a new routing rule."""
+    from ...models.payment_processor import PaymentProcessor
+    from ...models.payment_routing_rule import PaymentRoutingRule
+
+    processors = PaymentProcessor.query.filter(
+        PaymentProcessor.deleted_at.is_(None)
+    ).order_by(PaymentProcessor.name).all()
+
+    if request.method == 'POST':
+        rule = PaymentRoutingRule(
+            name=request.form.get('name', '').strip(),
+            description=request.form.get('description', '').strip() or None,
+            priority=int(request.form.get('priority', 100)),
+            enabled=request.form.get('enabled') == 'on',
+            currency=request.form.get('currency', '').strip().upper() or None,
+            country_code=request.form.get('country_code', '').strip().upper() or None,
+            donation_type=request.form.get('donation_type', '').strip() or None,
+            processor_id=int(request.form.get('processor_id'))
+        )
+
+        min_amt = request.form.get('min_amount', '').strip()
+        if min_amt:
+            rule.min_amount_cents = int(float(min_amt) * 100)
+
+        max_amt = request.form.get('max_amount', '').strip()
+        if max_amt:
+            rule.max_amount_cents = int(float(max_amt) * 100)
+
+        db.session.add(rule)
+        db.session.commit()
+
+        logger.info(f'[routing_rules] Created rule {rule.id} by admin {current_user.id}')
+        flash(f'Routing rule "{rule.name}" created.', 'success')
+        return redirect(url_for('admin.payment_processors'))
+
+    return render_template('admin/edit_routing_rule.html', rule=None, processors=processors)
+
+
+@admin_bp.route('/routing-rules/<int:id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_routing_rule(id):
+    """Edit a routing rule."""
+    from ...models.payment_processor import PaymentProcessor
+    from ...models.payment_routing_rule import PaymentRoutingRule
+
+    rule = PaymentRoutingRule.query.get_or_404(id)
+    processors = PaymentProcessor.query.filter(
+        PaymentProcessor.deleted_at.is_(None)
+    ).order_by(PaymentProcessor.name).all()
+
+    if request.method == 'POST':
+        rule.name = request.form.get('name', '').strip()
+        rule.description = request.form.get('description', '').strip() or None
+        rule.priority = int(request.form.get('priority', 100))
+        rule.enabled = request.form.get('enabled') == 'on'
+        rule.currency = request.form.get('currency', '').strip().upper() or None
+        rule.country_code = request.form.get('country_code', '').strip().upper() or None
+        rule.donation_type = request.form.get('donation_type', '').strip() or None
+        rule.processor_id = int(request.form.get('processor_id'))
+
+        min_amt = request.form.get('min_amount', '').strip()
+        rule.min_amount_cents = int(float(min_amt) * 100) if min_amt else None
+
+        max_amt = request.form.get('max_amount', '').strip()
+        rule.max_amount_cents = int(float(max_amt) * 100) if max_amt else None
+
+        rule.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        logger.info(f'[routing_rules] Updated rule {rule.id} by admin {current_user.id}')
+        flash(f'Routing rule "{rule.name}" updated.', 'success')
+        return redirect(url_for('admin.payment_processors'))
+
+    return render_template('admin/edit_routing_rule.html', rule=rule, processors=processors)
+
+
+@admin_bp.route('/routing-rules/<int:id>/delete', methods=['POST'])
+@admin_required
+def delete_routing_rule(id):
+    """Delete a routing rule (soft delete)."""
+    from ...models.payment_routing_rule import PaymentRoutingRule
+
+    rule = PaymentRoutingRule.query.get_or_404(id)
+    rule.deleted_at = datetime.utcnow()
+    db.session.commit()
+
+    logger.info(f'[routing_rules] Deleted rule {rule.id} by admin {current_user.id}')
+    flash(f'Routing rule "{rule.name}" deleted.', 'success')
+    return redirect(url_for('admin.payment_processors'))

@@ -12,7 +12,7 @@ This ensures all changes are documented for future sessions.
 - **Backend:** Flask (Python 3.x)
 - **Database:** MySQL (using SQLAlchemy with Alembic migrations)
 - **PDFs:** WeasyPrint (for Hebrew RTL support)
-- **Payments:** Stripe (card payments, supports test and live modes)
+- **Payments:** Multi-processor system (Stripe, Nedarim Plus) with table-driven routing
 - **Email:** Mailtrap API (production), SendGrid (fallback), SMTP (fallback)
 - **SMS:** Twilio
 - **Web Server:** Gunicorn (port 5050) behind Caddy reverse proxy
@@ -29,7 +29,7 @@ app/
 │   ├── upload/      # File upload tool for migrations
 │   └── webhook/     # Stripe webhook handlers
 ├── models/          # SQLAlchemy models
-├── services/        # Business logic (stripe, email, pdf, receipts)
+├── services/        # Business logic (payment/, email, pdf, receipts)
 ├── templates/       # Jinja2 templates
 ├── i18n/           # Translation files (en.json, he.json)
 └── utils/          # Helpers (i18n, etc.)
@@ -113,7 +113,11 @@ Web interface for managing Claude coding sessions with embedded terminal.
 - `ClaudeConfig` - Key-value config storage
 
 **Service:**
-- `ttyd-matat.service` - Systemd service running ttyd on port 7681, attaching to tmux session 4
+- `ttyd-matat.service` - Systemd service running ttyd on port 7681, attaching to tmux session `matat`
+
+**Widget:**
+- Floating chat widget included on all admin pages via `components/claude_widget.html`
+- Features: minimize/maximize, drag to move, screenshot paste (Ctrl+V), resize
 
 ## File Upload Tool (`/upload`)
 Token-protected file upload page for migration files (Access databases, spreadsheets, etc.).
@@ -141,9 +145,114 @@ Link existing donors to donation links using external_id.
 - `find_by_external_id()` - Class method to find donors by external ID
 - `merge_with()` - Method to merge duplicate donor records
 
+## Multi-Processor Payment System
+Table-driven payment routing supporting 8 processors. Designed for multi-platform deployment where each client enables different processors.
+
+**Models:**
+- `PaymentProcessor` - Processor configuration (code, credentials, currencies, countries, fees)
+- `PaymentRoutingRule` - Rules for routing payments (by currency, country, amount, donation type)
+
+**Service Package:** `app/services/payment/`
+```
+payment/
+├── __init__.py              # Exports all processors
+├── base.py                  # Abstract BasePaymentProcessor class
+├── router.py                # PaymentRouter and route_payment()
+├── stripe_processor.py      # Stripe (international)
+├── nedarim_processor.py     # Nedarim Plus (Israeli nonprofits)
+├── cardcom_processor.py     # CardCom (auto Section 46 receipts!)
+├── grow_processor.py        # Grow/Meshulam (most popular Israel)
+├── tranzila_processor.py    # Tranzila (oldest Israel gateway)
+├── payme_processor.py       # PayMe (modern, hosted fields)
+├── icount_processor.py      # iCount (payment + invoicing)
+└── easycard_processor.py    # EasyCard (PCI Level 1)
+```
+
+**Supported Processors:**
+
+| Code | Name | Best For | Key Features |
+|------|------|----------|--------------|
+| `stripe` | Stripe | International | Stripe Elements, USD/EUR/ILS, recurring |
+| `nedarim` | Nedarim Plus | Israeli nonprofits | iframe PostMessage, Bit, standing orders |
+| `cardcom` | CardCom | Israeli nonprofits | **Auto Section 46 receipts**, webhook is GET! |
+| `grow` | Grow/Meshulam | Israel general | Most popular, Bit/Apple/Google Pay, form-data NOT JSON |
+| `tranzila` | Tranzila | Established | Oldest, handshake verification, J4/J5 modes |
+| `payme` | PayMe | Modern apps | Hosted fields, amounts in agorot |
+| `icount` | iCount | Accounting | Payment + invoicing combined |
+| `easycard` | EasyCard | High security | PCI Level 1, Bit, Google Pay |
+
+**Donation Model Extensions (generic for all processors):**
+- `payment_processor` - Which processor: 'stripe', 'nedarim', 'cardcom', etc.
+- `processor_transaction_id` - Generic transaction ID
+- `processor_confirmation` - Authorization/confirmation code
+- `processor_token` - Saved payment token for recurring
+- `processor_recurring_id` - Recurring/subscription/keva ID
+- `processor_fee` / `processor_fee_currency` - Processing fee
+- `processor_metadata` - JSON for processor-specific data
+- `processor_receipt_url` - External receipt URL (CardCom, iCount)
+- `routing_reason` - Why this processor was selected
+- `donor_country` - Donor's country for routing
+
+**Routing Logic:**
+1. Check routing rules in priority order (lower = higher priority)
+2. Fall back to best available processor based on currency/country
+3. ILS currency or IL country prefers Israeli processors
+4. Default to Stripe if no match
+
+**BasePaymentProcessor Interface:**
+```python
+create_payment()      # Create payment/intent
+get_client_config()   # Frontend config (iframe URL, publishable key)
+process_webhook()     # Verify and parse webhook
+refund()              # Process refund
+get_transaction()     # Retrieve transaction details
+charge_token()        # Charge saved token (recurring)
+supports_currency()   # Check currency support
+supports_country()    # Check country support
+estimate_fee()        # Estimate processing fee
+```
+
+**Seeding:** `python seed_processors.py` creates default processors and routing rules
+
+**Current Status:**
+- Stripe (enabled) - Ready
+- Nedarim Plus (disabled) - Awaiting credentials from office@nedar.im
+- CardCom (disabled) - Awaiting credentials
+- Grow (disabled) - Awaiting credentials
+- Tranzila (disabled) - Awaiting credentials
+- PayMe (disabled) - Awaiting credentials
+- iCount (disabled) - Awaiting credentials
+- EasyCard (disabled) - Awaiting credentials
+
+**Important Notes:**
+- CardCom webhook is GET (not POST!)
+- Grow requires approveTransaction() after webhook
+- Grow uses form-data NOT JSON
+- PayMe amounts are in agorot (smallest unit)
+- iCount rate limit: 30 requests/minute
+- Nedarim webhook IP: 18.194.219.73
+
 ---
 
 ## Changelog
+
+### 2026-03-27
+- **Multi-Processor Payment System (Phase 1 & 2 Complete):** Built table-driven payment routing infrastructure supporting 8 processors
+  - Created `PaymentProcessor` model for processor configuration (credentials, currencies, countries, fees)
+  - Created `PaymentRoutingRule` model for routing rules (currency, country, amount, donation type)
+  - Added `payment/` service package with abstract `BasePaymentProcessor` class
+  - Implemented 8 processor classes: Stripe, Nedarim Plus, CardCom, Grow, Tranzila, PayMe, iCount, EasyCard
+  - `PaymentRouter` class with table-driven routing logic
+  - Generic `Donation` model fields: `processor_transaction_id`, `processor_token`, `processor_confirmation`, `processor_recurring_id`, `processor_receipt_url`
+  - Created `seed_processors.py` for initial processor/rule setup
+- **Admin UI for Payment Processors:** `/admin/payment-processors`
+  - Processor grid showing all 8 processors with enable/disable toggle
+  - Processor-specific credential configuration forms
+  - Routing rules table with priority, conditions, and target processor
+  - Create/edit routing rules with currency, country, donation type, and amount range conditions
+  - Link added to Settings page for easy access
+- **Multi-Platform Design:** Each platform/client can enable different processors based on their needs
+- **International Routing:** System routes by donor location for multi-country organizations with multiple merchant IDs
 
 ### 2026-03-26
 - **Claude Session Tracking:** Added `/claude` blueprint with session management, embedded ttyd terminal, screenshot paste/upload
@@ -153,5 +262,11 @@ Link existing donors to donation links using external_id.
 - **Donor Detail Page:** Added comprehensive donor detail view with donation history
 - **Link Management:** Enhanced donation links with donor selection and pending links tab
 - **Email Tracking:** Added delivery, open, and click tracking via Mailtrap webhooks
+- **Claude Chat Widget:** Floating chat widget on all admin pages with screenshot paste/upload, minimize/maximize, drag to move
+- **Fix Unknown Donors:** Script to auto-fix "Unknown" donor names from Stripe billing details (fixed 36 donors)
+- **Bulk Fix Tool:** Added `/admin/donors/fix-unknown` page for manually fixing remaining unknown donor names
 - **Fix:** ttyd systemctl commands now use full path (`/usr/bin/systemctl`) for gunicorn compatibility
 - **Fix:** ttyd iframe now uses `/help` proxy path instead of direct port access (fixes HTTPS mixed-content)
+- **Fix:** ttyd service now attaches to tmux session `matat` (changed from session `4`)
+- **Fix:** Receipt MM-2026-00123 had wrong donor_id, corrected to match donation's donor
+- **Fix:** Prevent "Leave site?" browser warning on admin pages (all changes auto-saved via AJAX)

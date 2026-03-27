@@ -9,6 +9,11 @@ from .message import MessageQueue, MessageTemplate, CommProvider
 from .config_settings import ConfigSettings
 from .email_template import EmailTemplate
 from .claude_session import ClaudeSession, ClaudeScreenshot, ClaudeConfig
+from .help_request import HelpRequest
+from .chat_message import ChatMessage
+from .chat_archive import ChatArchive
+from .payment_processor import PaymentProcessor
+from .payment_routing_rule import PaymentRoutingRule
 
 __all__ = [
     'User',
@@ -27,4 +32,9 @@ __all__ = [
     'ClaudeSession',
     'ClaudeScreenshot',
     'ClaudeConfig',
+    'HelpRequest',
+    'ChatMessage',
+    'ChatArchive',
+    'PaymentProcessor',
+    'PaymentRoutingRule',
 ]
