@@ -151,6 +151,10 @@
             <div class="stat-value">${{ "%.2f"|format(today_income) }}</div>
             <div class="stat-label">{{ t('admin.today') }}</div>
         </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+            <div class="stat-value">${{ "%.2f"|format(yesterday_income) }}</div>
+            <div class="stat-label">Yesterday ({{ yesterday_count }} donations)</div>
+        </div>
         <div class="stat-card">
             <div class="stat-value">{{ donation_count }}</div>
             <div class="stat-label">{{ t('dashboard.total_donations') }}</div>

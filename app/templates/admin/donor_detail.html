@@ -174,6 +174,11 @@
         color: white;
     }
 
+    .action-btn.danger {
+        background: #dc3545;
+        color: white;
+    }
+
     .back-link {
         display: inline-block;
         margin-bottom: 15px;
@@ -183,6 +188,209 @@
 
     .back-link:hover {
         text-decoration: underline;
+    }
+
+    /* Tabs */
+    .tabs-container {
+        margin-bottom: 25px;
+    }
+
+    .tab-buttons {
+        display: flex;
+        gap: 5px;
+        border-bottom: 2px solid #eee;
+        margin-bottom: 20px;
+    }
+
+    .tab-btn {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: #3498db;
+    }
+
+    .tab-btn.active {
+        color: #3498db;
+        border-bottom-color: #3498db;
+        font-weight: 600;
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Notes */
+    .notes-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .note-form {
+        margin-bottom: 20px;
+    }
+
+    .note-form textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: vertical;
+        min-height: 80px;
+        font-family: inherit;
+    }
+
+    .note-form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .note-card {
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .note-card.pinned {
+        border-color: #f39c12;
+        background: #fffdf5;
+    }
+
+    .note-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .note-meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .note-content {
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+
+    .note-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .pin-icon {
+        color: #f39c12;
+    }
+
+    /* Activity Timeline */
+    .activity-timeline {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .activity-item {
+        display: flex;
+        gap: 15px;
+        padding: 15px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .activity-icon.donation {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .activity-icon.receipt {
+        background: #cce5ff;
+        color: #004085;
+    }
+
+    .activity-icon.email {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+
+    .activity-icon.email.clicked {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .activity-icon.email.opened {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .activity-icon.note {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-title {
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .activity-title a {
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .activity-title a:hover {
+        text-decoration: underline;
+    }
+
+    .activity-description {
+        font-size: 13px;
+        color: #666;
+    }
+
+    .activity-time {
+        font-size: 12px;
+        color: #999;
+        white-space: nowrap;
+    }
+
+    .loading-spinner {
+        text-align: center;
+        padding: 40px;
+        color: #666;
     }
 </style>
 {% endblock %}
@@ -283,149 +491,216 @@
         </div>
     </div>
 
-    <!-- Linked Donors Section -->
-    {% set linked = donor.get_all_linked_donors() %}
-    {% if linked|length > 1 or not donor.is_primary %}
-    <div class="card" style="margin-bottom: 25px; padding: 20px;">
-        <h3 style="margin-top: 0;">Linked Donor Records</h3>
-        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-            This person has multiple records. Combined total: <strong>${{ "%.2f"|format(donor.get_total_donated() / 100) }}</strong>
-        </p>
-        <table class="data-table" style="margin-bottom: 15px;">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Donations</th>
-                    <th>Primary</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for d in linked %}
-                <tr {% if d.id == donor.id %}style="background: #e8f4f8;"{% endif %}>
-                    <td>{{ d.full_name }}</td>
-                    <td>{{ d.email }}</td>
-                    <td>{{ d.donations.count() }}</td>
-                    <td>{% if d.is_primary %}<span style="color: #27ae60;">Primary</span>{% else %}<span style="color: #999;">Linked</span>{% endif %}</td>
-                    <td>
-                        {% if d.id != donor.id %}
-                        <a href="{{ url_for('admin.donor_detail', id=d.id) }}" class="action-btn primary">View</a>
-                        {% endif %}
-                        {% if not d.is_primary %}
-                        <form method="POST" action="{{ url_for('admin.unlink_donor', id=d.id) }}" style="display: inline;">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="action-btn secondary">Unlink</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="overview">Overview</button>
+            <button class="tab-btn" data-tab="notes">Notes</button>
+            <button class="tab-btn" data-tab="activity">Activity</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="tab-overview" class="tab-content active">
+            <!-- Linked Donors Section -->
+            {% set linked = donor.get_all_linked_donors() %}
+            {% if linked|length > 1 or not donor.is_primary %}
+            <div class="card" style="margin-bottom: 25px; padding: 20px;">
+                <h3 style="margin-top: 0;">Linked Donor Records</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    This person has multiple records. Combined total: <strong>${{ "%.2f"|format(donor.get_total_donated() / 100) }}</strong>
+                </p>
+                <table class="data-table" style="margin-bottom: 15px;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Donations</th>
+                            <th>Primary</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in linked %}
+                        <tr {% if d.id == donor.id %}style="background: #e8f4f8;"{% endif %}>
+                            <td>{{ d.full_name }}</td>
+                            <td>{{ d.email }}</td>
+                            <td>{{ d.donations.count() }}</td>
+                            <td>{% if d.is_primary %}<span style="color: #27ae60;">Primary</span>{% else %}<span style="color: #999;">Linked</span>{% endif %}</td>
+                            <td>
+                                {% if d.id != donor.id %}
+                                <a href="{{ url_for('admin.donor_detail', id=d.id) }}" class="action-btn primary">View</a>
+                                {% endif %}
+                                {% if not d.is_primary %}
+                                <form method="POST" action="{{ url_for('admin.unlink_donor', id=d.id) }}" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="action-btn secondary">Unlink</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
+            <!-- Link Donor Form -->
+            <div class="card" style="margin-bottom: 25px; padding: 20px;">
+                <h3 style="margin-top: 0;">Link Another Record</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Link another donor record to this person (same person, different email/entry).</p>
+                <form method="POST" action="{{ url_for('admin.link_donor', id=donor.id) }}" style="display: flex; gap: 10px; align-items: center;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="search" placeholder="Search by email or name..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                    <button type="submit" class="action-btn primary">Search & Link</button>
+                </form>
+            </div>
+
+            <!-- External ID Form -->
+            <div class="card" style="margin-bottom: 25px; padding: 20px;">
+                <h3 style="margin-top: 0;">External System ID</h3>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Store the ID from your previous/external CRM system for easy lookup.</p>
+                <form method="POST" action="{{ url_for('admin.set_external_id', id=donor.id) }}" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="external_id" value="{{ donor.external_id or '' }}" placeholder="External ID" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+                    <input type="text" name="external_source" value="{{ donor.external_source or '' }}" placeholder="Source (e.g., salesforce)" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
+                    <button type="submit" class="action-btn primary">Save</button>
+                </form>
+            </div>
+
+            <!-- Donations History -->
+            <h2 class="section-title">{{ t('admin.donation_history') }}</h2>
+
+            {% if donations %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{{ t('common.date') }}</th>
+                        <th>{{ t('common.amount') }}</th>
+                        <th>{{ t('common.type') }}</th>
+                        <th>{{ t('common.source') }}</th>
+                        <th>{{ t('common.status') }}</th>
+                        <th>{{ t('common.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in donations %}
+                    <tr>
+                        <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>${{ "%.2f"|format(d.amount / 100) }}</td>
+                        <td>{{ d.donation_type | replace('_', ' ') | title }}</td>
+                        <td>{{ d.source or t('common.direct') }}</td>
+                        <td>
+                            <span class="status-badge {{ d.status }}">
+                                {{ d.status | title }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('admin.donation_detail', id=d.id) }}" class="action-btn primary">{{ t('common.view') }}</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
+                <p style="color: #666;">{{ t('admin.no_donations') }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Receipts -->
+            <h2 class="section-title">{{ t('nav.receipts') }}</h2>
+
+            {% if receipts %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{{ t('receipt.receipt_number') }}</th>
+                        <th>{{ t('common.date') }}</th>
+                        <th>{{ t('common.amount') }}</th>
+                        <th>{{ t('common.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in receipts %}
+                    <tr>
+                        <td><strong>{{ r.receipt_number }}</strong></td>
+                        <td>{{ r.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>${{ "%.2f"|format(r.amount / 100) }}</td>
+                        <td>
+                            <a href="{{ url_for('admin.download_receipt', id=r.id) }}" class="action-btn primary">{{ t('common.download') }}</a>
+                            <button class="action-btn secondary" onclick="resendReceipt({{ r.id }})">{{ t('common.resend') }}</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
+                <p style="color: #666;">{{ t('admin.no_receipts') }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Notes Tab -->
+        <div id="tab-notes" class="tab-content">
+            <div class="notes-section">
+                <h3 style="margin-top: 0;">Add Note</h3>
+                <form class="note-form" id="add-note-form">
+                    <textarea id="note-content" placeholder="Write a note about this donor..." required></textarea>
+                    <div class="note-form-actions">
+                        <label style="display: flex; align-items: center; gap: 5px;">
+                            <input type="checkbox" id="note-pinned"> Pin this note
+                        </label>
+                        <button type="submit" class="action-btn primary" style="margin-left: auto;">Add Note</button>
+                    </div>
+                </form>
+
+                <h3>Notes</h3>
+                <div id="notes-list">
+                    <div class="loading-spinner">Loading notes...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Tab -->
+        <div id="tab-activity" class="tab-content">
+            <div class="activity-timeline" id="activity-timeline">
+                <div class="loading-spinner">Loading activity...</div>
+            </div>
+        </div>
     </div>
-    {% endif %}
-
-    <!-- Link Donor Form -->
-    <div class="card" style="margin-bottom: 25px; padding: 20px;">
-        <h3 style="margin-top: 0;">Link Another Record</h3>
-        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Link another donor record to this person (same person, different email/entry).</p>
-        <form method="POST" action="{{ url_for('admin.link_donor', id=donor.id) }}" style="display: flex; gap: 10px; align-items: center;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="text" name="search" placeholder="Search by email or name..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-            <button type="submit" class="action-btn primary">Search & Link</button>
-        </form>
-    </div>
-
-    <!-- External ID Form -->
-    <div class="card" style="margin-bottom: 25px; padding: 20px;">
-        <h3 style="margin-top: 0;">External System ID</h3>
-        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Store the ID from your previous/external CRM system for easy lookup.</p>
-        <form method="POST" action="{{ url_for('admin.set_external_id', id=donor.id) }}" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="text" name="external_id" value="{{ donor.external_id or '' }}" placeholder="External ID" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
-            <input type="text" name="external_source" value="{{ donor.external_source or '' }}" placeholder="Source (e.g., salesforce)" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 200px;">
-            <button type="submit" class="action-btn primary">Save</button>
-        </form>
-    </div>
-
-    <!-- Donations History -->
-    <h2 class="section-title">{{ t('admin.donation_history') }}</h2>
-
-    {% if donations %}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>{{ t('common.date') }}</th>
-                <th>{{ t('common.amount') }}</th>
-                <th>{{ t('common.type') }}</th>
-                <th>{{ t('common.source') }}</th>
-                <th>{{ t('common.status') }}</th>
-                <th>{{ t('common.actions') }}</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for d in donations %}
-            <tr>
-                <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>${{ "%.2f"|format(d.amount / 100) }}</td>
-                <td>{{ d.donation_type | replace('_', ' ') | title }}</td>
-                <td>{{ d.source or t('common.direct') }}</td>
-                <td>
-                    <span class="status-badge {{ d.status }}">
-                        {{ d.status | title }}
-                    </span>
-                </td>
-                <td>
-                    <a href="{{ url_for('admin.donation_detail', id=d.id) }}" class="action-btn primary">{{ t('common.view') }}</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
-        <p style="color: #666;">{{ t('admin.no_donations') }}</p>
-    </div>
-    {% endif %}
-
-    <!-- Receipts -->
-    <h2 class="section-title">{{ t('nav.receipts') }}</h2>
-
-    {% if receipts %}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>{{ t('receipt.receipt_number') }}</th>
-                <th>{{ t('common.date') }}</th>
-                <th>{{ t('common.amount') }}</th>
-                <th>{{ t('common.actions') }}</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for r in receipts %}
-            <tr>
-                <td><strong>{{ r.receipt_number }}</strong></td>
-                <td>{{ r.created_at.strftime('%Y-%m-%d') }}</td>
-                <td>${{ "%.2f"|format(r.amount / 100) }}</td>
-                <td>
-                    <a href="{{ url_for('admin.download_receipt', id=r.id) }}" class="action-btn primary">{{ t('common.download') }}</a>
-                    <button class="action-btn secondary" onclick="resendReceipt({{ r.id }})">{{ t('common.resend') }}</button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
-        <p style="color: #666;">{{ t('admin.no_receipts') }}</p>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+const donorId = {{ donor.id }};
+const currentUserId = {{ current_user.id }};
+const isAdmin = {{ 'true' if current_user.role == 'admin' else 'false' }};
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tabId = this.dataset.tab;
+
+        // Update button states
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        // Update content visibility
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+
+        // Load data if needed
+        if (tabId === 'notes') {
+            loadNotes();
+        } else if (tabId === 'activity') {
+            loadActivity();
+        }
+    });
+});
+
+// Toggle test status
 function toggleTest(id) {
     fetch(`/admin/donors/${id}/toggle-test`, {
         method: 'POST',
@@ -442,6 +717,7 @@ function toggleTest(id) {
     .catch(err => alert('Error toggling test status'));
 }
 
+// Resend receipt
 function resendReceipt(id) {
     if (!confirm('Resend this receipt to {{ donor.email }}?')) return;
 
@@ -458,6 +734,199 @@ function resendReceipt(id) {
         }
     })
     .catch(err => alert('Error sending receipt'));
+}
+
+// Notes functionality
+function loadNotes() {
+    fetch(`/admin/donors/${donorId}/notes-list`)
+    .then(r => r.json())
+    .then(data => {
+        renderNotes(data.notes);
+    })
+    .catch(err => {
+        document.getElementById('notes-list').innerHTML = '<p style="color: red;">Error loading notes</p>';
+    });
+}
+
+function renderNotes(notes) {
+    const container = document.getElementById('notes-list');
+
+    if (notes.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No notes yet. Add one above!</p>';
+        return;
+    }
+
+    let html = '';
+    notes.forEach(note => {
+        const pinnedClass = note.is_pinned ? 'pinned' : '';
+        const pinIcon = note.is_pinned ? '&#x1F4CC;' : '';
+        const dateStr = new Date(note.created_at).toLocaleString();
+
+        html += `
+        <div class="note-card ${pinnedClass}" data-note-id="${note.id}">
+            <div class="note-header">
+                <div class="note-meta">
+                    ${pinIcon} <strong>${note.author}</strong> &middot; ${dateStr}
+                    ${note.updated_at && note.updated_at !== note.created_at ? ' (edited)' : ''}
+                </div>
+                <div class="note-actions">
+                    <button class="action-btn secondary" onclick="togglePin(${note.id})" title="${note.is_pinned ? 'Unpin' : 'Pin'}">
+                        ${note.is_pinned ? 'Unpin' : 'Pin'}
+                    </button>
+                    ${note.can_edit ? `
+                    <button class="action-btn secondary" onclick="editNote(${note.id})">Edit</button>
+                    <button class="action-btn danger" onclick="deleteNote(${note.id})">Delete</button>
+                    ` : ''}
+                </div>
+            </div>
+            <div class="note-content" id="note-content-${note.id}">${escapeHtml(note.content)}</div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Add note form
+document.getElementById('add-note-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const content = document.getElementById('note-content').value.trim();
+    const isPinned = document.getElementById('note-pinned').checked;
+
+    if (!content) return;
+
+    const formData = new FormData();
+    formData.append('content', content);
+    formData.append('is_pinned', isPinned ? 'true' : 'false');
+
+    fetch(`/admin/donors/${donorId}/notes`, {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('note-content').value = '';
+            document.getElementById('note-pinned').checked = false;
+            loadNotes();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add note'));
+        }
+    })
+    .catch(err => alert('Error adding note'));
+});
+
+function togglePin(noteId) {
+    fetch(`/admin/donors/${donorId}/notes/${noteId}/pin`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadNotes();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to toggle pin'));
+        }
+    })
+    .catch(err => alert('Error toggling pin'));
+}
+
+function editNote(noteId) {
+    const contentEl = document.getElementById('note-content-' + noteId);
+    const currentContent = contentEl.textContent;
+
+    const newContent = prompt('Edit note:', currentContent);
+    if (newContent === null || newContent.trim() === '') return;
+
+    fetch(`/admin/donors/${donorId}/notes/${noteId}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({content: newContent.trim()})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadNotes();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to edit note'));
+        }
+    })
+    .catch(err => alert('Error editing note'));
+}
+
+function deleteNote(noteId) {
+    if (!confirm('Delete this note?')) return;
+
+    fetch(`/admin/donors/${donorId}/notes/${noteId}`, {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadNotes();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete note'));
+        }
+    })
+    .catch(err => alert('Error deleting note'));
+}
+
+// Activity functionality
+function loadActivity() {
+    fetch(`/admin/donors/${donorId}/activity`)
+    .then(r => r.json())
+    .then(data => {
+        renderActivity(data.activities);
+    })
+    .catch(err => {
+        document.getElementById('activity-timeline').innerHTML = '<p style="color: red;">Error loading activity</p>';
+    });
+}
+
+function renderActivity(activities) {
+    const container = document.getElementById('activity-timeline');
+
+    if (activities.length === 0) {
+        container.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">No activity yet.</p>';
+        return;
+    }
+
+    const icons = {
+        'donation': '&#x1F4B0;',
+        'receipt': '&#x1F9FE;',
+        'email': '&#x1F4E7;',
+        'note': '&#x1F4DD;'
+    };
+
+    let html = '';
+    activities.forEach(activity => {
+        const dateStr = new Date(activity.timestamp).toLocaleString();
+        const icon = icons[activity.type] || '&#x2022;';
+        const statusClass = activity.status ? activity.status : '';
+
+        html += `
+        <div class="activity-item">
+            <div class="activity-icon ${activity.type} ${statusClass}">${icon}</div>
+            <div class="activity-content">
+                <div class="activity-title">
+                    ${activity.link ? `<a href="${activity.link}">${activity.title}</a>` : activity.title}
+                </div>
+                <div class="activity-description">${activity.description}</div>
+            </div>
+            <div class="activity-time">${dateStr}</div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
 }
 </script>
 {% endblock %}

@@ -24,6 +24,7 @@ class User(UserMixin, db.Model):
     active = db.Column(db.Boolean, default=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    claude_notes = db.Column(db.Text, nullable=True)  # Context for Claude about this user
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships

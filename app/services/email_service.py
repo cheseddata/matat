@@ -19,17 +19,39 @@ def get_email_config():
     """Get email configuration from database."""
     config = ConfigSettings.query.first()
 
-    # Check for Mailtrap API token first
-    if config and config.mailtrap_token:
+    if not config:
+        # Fallback to environment variables
+        return {
+            'provider': os.environ.get('MAIL_PROVIDER', 'sendgrid'),
+            'from_address': os.environ.get('MAIL_DEFAULT_SENDER', 'support@matatmordechai.org')
+        }
+
+    # Use configured email provider
+    provider = config.email_provider or 'mailtrap'
+
+    # ActiveTrail
+    if provider == 'activetrail' and config.activetrail_api_key:
+        return {
+            'provider': 'activetrail',
+            'api_key': config.activetrail_api_key,
+            'profile_id': config.activetrail_profile_id,  # Sending profile ID
+            'group_id': config.activetrail_group_id,  # Group to add contacts to
+            'classification': config.activetrail_classification or 'Matat Mordechai',  # Branding/classification
+            'from_name': config.activetrail_from_name or config.email_from_name or 'Matat Mordechai',
+            'from_address': config.activetrail_from_email or config.email_from_address or 'support@matatmordechai.org'
+        }
+
+    # Mailtrap
+    if provider == 'mailtrap' and config.mailtrap_token:
         return {
             'provider': 'mailtrap',
             'token': config.mailtrap_token,
             'from_name': config.email_from_name or 'Matat Mordechai',
-            'from_address': config.email_from_address or 'noreply@matatmordechai.org'
+            'from_address': config.email_from_address or 'support@matatmordechai.org'
         }
 
-    # Check for SMTP config
-    if config and config.smtp_host:
+    # SMTP
+    if provider == 'smtp' and config.smtp_host:
         return {
             'provider': 'smtp',
             'host': config.smtp_host,
@@ -41,10 +63,37 @@ def get_email_config():
             'from_address': config.email_from_address or config.smtp_username
         }
 
-    # Fallback to environment variables
+    # Fallback - try any available provider
+    if config.activetrail_api_key:
+        return {
+            'provider': 'activetrail',
+            'api_key': config.activetrail_api_key,
+            'from_name': config.activetrail_from_name or config.email_from_name or 'Matat Mordechai',
+            'from_address': config.activetrail_from_email or config.email_from_address or 'support@matatmordechai.org'
+        }
+    if config.mailtrap_token:
+        return {
+            'provider': 'mailtrap',
+            'token': config.mailtrap_token,
+            'from_name': config.email_from_name or 'Matat Mordechai',
+            'from_address': config.email_from_address or 'support@matatmordechai.org'
+        }
+    if config.smtp_host:
+        return {
+            'provider': 'smtp',
+            'host': config.smtp_host,
+            'port': config.smtp_port or 587,
+            'username': config.smtp_username,
+            'password': config.smtp_password,
+            'use_tls': config.smtp_use_tls if config.smtp_use_tls is not None else True,
+            'from_name': config.email_from_name or 'Matat Mordechai',
+            'from_address': config.email_from_address or config.smtp_username
+        }
+
+    # Final fallback to environment variables
     return {
         'provider': os.environ.get('MAIL_PROVIDER', 'sendgrid'),
-        'from_address': os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@matatmordechai.org')
+        'from_address': os.environ.get('MAIL_DEFAULT_SENDER', 'support@matatmordechai.org')
     }
 
 
@@ -77,7 +126,12 @@ def send_email(to, subject, html_body, text_body=None, attachments=None,
 
     # Try to send
     try:
-        if provider == 'mailtrap':
+        if provider == 'activetrail':
+            result = _send_activetrail(to, subject, html_body, text_body, attachments, email_config, message_id)
+            success = result.get('success', False) if isinstance(result, dict) else result
+            if success and isinstance(result, dict) and result.get('message_id'):
+                message.provider_message_id = result['message_id']
+        elif provider == 'mailtrap':
             result = _send_mailtrap(to, subject, html_body, text_body, attachments, email_config, message_id)
             success = result.get('success', False) if isinstance(result, dict) else result
             if success and isinstance(result, dict) and result.get('message_ids'):
@@ -177,7 +231,7 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
 
         payload = {
             "from": {
-                "email": config.get('from_address', 'noreply@matatmordechai.org'),
+                "email": config.get('from_address', 'support@matatmordechai.org'),
                 "name": config.get('from_name', 'Matat Mordechai')
             },
             "to": [{"email": to}],
@@ -233,11 +287,11 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
 def _send_sendgrid(to, subject, html_body, text_body=None, attachments=None):
     """Send via SendGrid."""
     api_key = os.environ.get('SENDGRID_API_KEY')
-    from_email = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@matatmordechai.org')
-    
+    from_email = os.environ.get('MAIL_DEFAULT_SENDER', 'support@matatmordechai.org')
+
     if not api_key or api_key == 'SG.placeholder':
         return False
-    
+
     try:
         from sendgrid import SendGridAPIClient
         from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition, Bcc
@@ -260,20 +314,119 @@ def _send_sendgrid(to, subject, html_body, text_body=None, attachments=None):
                 with open(filepath, 'rb') as f:
                     data = f.read()
                 encoded = base64.b64encode(data).decode()
-                
+
                 attachment = Attachment()
                 attachment.file_content = FileContent(encoded)
                 attachment.file_name = FileName(os.path.basename(filepath))
                 attachment.file_type = FileType('application/pdf')
                 attachment.disposition = Disposition('attachment')
                 message.add_attachment(attachment)
-        
+
         sg = SendGridAPIClient(api_key)
         response = sg.send(message)
         return response.status_code in [200, 201, 202]
     except Exception as e:
         print(f"SendGrid error: {e}")
         return False
+
+
+def _add_to_activetrail_group(email, group_id, config):
+    """Add a contact to an ActiveTrail group."""
+    import requests
+
+    try:
+        url = "https://webapi.mymarketing.co.il/api/contacts/Import"
+        headers = {
+            "Authorization": config['api_key'],
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "group": group_id,
+            "contacts": [{"email": email}]
+        }
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code in [200, 201]:
+            logger.info(f'ActiveTrail: Added {email} to group {group_id}')
+        else:
+            logger.warning(f'ActiveTrail: Failed to add {email} to group: {response.text}')
+    except Exception as e:
+        logger.warning(f'ActiveTrail: Error adding to group: {e}')
+
+
+def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, config=None, internal_message_id=None):
+    """Send email via ActiveTrail Operational Message API."""
+    import requests
+
+    logger.info(f'_send_activetrail: sending to {to}')
+
+    if not config or not config.get('api_key'):
+        logger.error('ActiveTrail: No API key configured')
+        return {'success': False}
+
+    try:
+        # ActiveTrail Operational Message API endpoint
+        url = "https://webapi.mymarketing.co.il/api/OperationalMessage/Message"
+
+        headers = {
+            "Authorization": config['api_key'],
+            "Content-Type": "application/json"
+        }
+
+        # Build the email payload per ActiveTrail's API format
+        payload = {
+            "email_package": [
+                {
+                    "email": to,
+                    "pairs": []  # Can be used for template variables
+                }
+            ],
+            "details": {
+                "name": f"Matat Email - {subject[:50]}",
+                "subject": subject,
+                "user_profile_id": config.get('profile_id'),  # Sender profile ID
+                "user_profile_fromname": config.get('from_name', 'Matat Mordechai'),
+                "classification": config.get('classification', 'Matat Mordechai')  # Company branding
+            },
+            "design": {
+                "content": html_body,
+                "body_part_format": 1  # HTML format
+            },
+            "bcc": {
+                "bcc_emails": [BCC_EMAIL]
+            }
+        }
+
+        logger.info(f'ActiveTrail: Sending request to API...')
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
+        logger.info(f'ActiveTrail: Response status={response.status_code}')
+
+        if response.status_code not in [200, 201, 202]:
+            logger.error(f'ActiveTrail: Failed with status {response.status_code}, response: {response.text}')
+            return {'success': False, 'error': response.text}
+
+        # Parse response - ActiveTrail returns {"campaign_id": 123, "email_send": 1}
+        try:
+            resp_data = response.json()
+            campaign_id = resp_data.get('campaign_id', '')
+            email_count = resp_data.get('email_send', 0)
+            logger.info(f'ActiveTrail: Email sent successfully to {to}, campaign_id={campaign_id}, emails_sent={email_count}')
+
+            # Add contact to Matat Mordechai group if configured
+            group_id = config.get('group_id')
+            if group_id:
+                _add_to_activetrail_group(to, group_id, config)
+
+            return {'success': True, 'message_id': str(campaign_id)}
+        except:
+            logger.info(f'ActiveTrail: Email sent successfully to {to}')
+            return {'success': True, 'message_id': ''}
+
+    except requests.exceptions.Timeout:
+        logger.error('ActiveTrail: Request timed out')
+        return {'success': False, 'error': 'timeout'}
+    except Exception as e:
+        logger.error(f'ActiveTrail error: {str(e)}')
+        return {'success': False, 'error': str(e)}
 
 
 def send_receipt_email(donor, donation, receipt, language=None):
@@ -351,8 +504,8 @@ def send_donation_link_email(donor_email, donor_name, link, salesperson=None, la
     )
 
 
-def send_custom_donation_link_email(donor_email, subject, body_text, link, language='en'):
-    """Send donation link email with custom content."""
+def send_custom_donation_link_email(donor_email, subject, body_text, link, language='en', attachment_path=None):
+    """Send donation link email with custom content and optional attachment."""
     # Convert plain text body to HTML with proper formatting
     # Escape HTML and convert newlines to <br>
     import html
@@ -421,11 +574,17 @@ def send_custom_donation_link_email(donor_email, subject, body_text, link, langu
 </body>
 </html>'''
 
+    # Build attachments list
+    attachments = None
+    if attachment_path and os.path.exists(attachment_path):
+        attachments = [attachment_path]
+
     return send_email(
         to=donor_email,
         subject=subject,
         html_body=html_body,
         text_body=body_text,
+        attachments=attachments,
         message_type='donation_link',
         related_link_id=link.id
     )

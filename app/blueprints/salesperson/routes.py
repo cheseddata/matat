@@ -10,6 +10,7 @@ from ...models.donation import Donation
 from ...models.commission import Commission
 from ...models.donation_link import DonationLink
 from ...models.donor import Donor
+from ...models.donor_note import DonorNote
 from ...services.link_service import create_donation_link
 from ...services.email_service import send_donation_link_email, send_donation_link_sms
 from ...services.stripe_service import get_stripe_keys, create_payment_intent, get_or_create_customer, is_test_mode
@@ -99,6 +100,7 @@ def dashboard_stats():
 def send_link():
     """Send donation link form."""
     from ...services.email_service import send_custom_donation_link_email
+    from ...models.email_template import EmailTemplate
 
     if request.method == 'POST':
         donor_email = request.form.get('donor_email', '').strip()
@@ -112,6 +114,7 @@ def send_link():
         # Custom email content
         email_subject = request.form.get('email_subject', '').strip()
         email_body = request.form.get('email_body', '').strip()
+        template_id = request.form.get('template_id', '').strip()
 
         logger.info(f'send_link: email={donor_email}, subject={email_subject[:50] if email_subject else "default"}')
 
@@ -139,6 +142,13 @@ def send_link():
 
         logger.info(f'Donation link created: {link.short_code}, URL: {link.full_url}')
 
+        # Get attachment from template if one was selected
+        attachment_path = None
+        if template_id:
+            template = EmailTemplate.query.get(int(template_id))
+            if template and template.attachment_path:
+                attachment_path = template.attachment_path
+
         # Send the email with custom content
         if email_subject and email_body:
             success = send_custom_donation_link_email(
@@ -146,7 +156,8 @@ def send_link():
                 subject=email_subject,
                 body_text=email_body,
                 link=link,
-                language=language
+                language=language,
+                attachment_path=attachment_path
             )
         else:
             # Fallback to default email
@@ -536,7 +547,9 @@ def api_email_templates():
             'name': t.name,
             'language': t.language,
             'subject': t.subject,
-            'body': t.body
+            'body': t.body,
+            'has_attachment': bool(t.attachment_path),
+            'attachment_name': t.attachment_name
         })
 
     return jsonify(result)
@@ -775,3 +788,184 @@ def resend_receipt(id):
         flash('Failed to send receipt email. Please try again.', 'error')
 
     return redirect(url_for('salesperson.donation_detail', id=id))
+
+
+# =============================================================================
+# DONOR MANAGEMENT (Salesperson View)
+# =============================================================================
+
+@salesperson_bp.route('/donors')
+@salesperson_required
+def my_donors():
+    """View donors that the salesperson has donations from."""
+    # Get all donor IDs that have donations attributed to this salesperson
+    donor_ids = db.session.query(Donation.donor_id).filter(
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None),
+        Donation.donor_id.isnot(None)
+    ).distinct().all()
+    donor_ids = [d[0] for d in donor_ids]
+
+    # Get all those donors
+    donors = Donor.query.filter(
+        Donor.id.in_(donor_ids),
+        Donor.deleted_at.is_(None)
+    ).order_by(Donor.last_name, Donor.first_name).all()
+
+    # Get stats for each donor
+    donor_stats = {}
+    for donor in donors:
+        total = db.session.query(func.sum(Donation.amount)).filter(
+            Donation.donor_id == donor.id,
+            Donation.salesperson_id == current_user.id,
+            Donation.status == 'succeeded',
+            Donation.deleted_at.is_(None)
+        ).scalar() or 0
+        count = Donation.query.filter(
+            Donation.donor_id == donor.id,
+            Donation.salesperson_id == current_user.id,
+            Donation.status == 'succeeded',
+            Donation.deleted_at.is_(None)
+        ).count()
+        donor_stats[donor.id] = {'total': total / 100, 'count': count}
+
+    return render_template(
+        'salesperson/my_donors.html',
+        donors=donors,
+        stats=donor_stats
+    )
+
+
+@salesperson_bp.route('/donors/<int:id>')
+@salesperson_required
+def sp_donor_detail(id):
+    """View donor details - only accessible if salesperson has donations from this donor."""
+    donor = Donor.query.get_or_404(id)
+
+    # Check if salesperson has at least one donation from this donor
+    has_access = Donation.query.filter(
+        Donation.donor_id == donor.id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first()
+
+    if not has_access:
+        flash('You do not have access to this donor.', 'error')
+        return redirect(url_for('salesperson.my_donors'))
+
+    # Get donation history (only this salesperson's donations)
+    donations_list = Donation.query.filter(
+        Donation.donor_id == donor.id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).order_by(Donation.created_at.desc()).all()
+
+    # Calculate totals
+    total_donated = sum(d.amount for d in donations_list if d.status == 'succeeded') / 100
+    donation_count = len([d for d in donations_list if d.status == 'succeeded'])
+
+    # Get notes (all notes are visible)
+    notes = DonorNote.query.filter(
+        DonorNote.donor_id == donor.id,
+        DonorNote.deleted_at.is_(None)
+    ).order_by(DonorNote.is_pinned.desc(), DonorNote.created_at.desc()).all()
+
+    return render_template(
+        'salesperson/donor_detail.html',
+        donor=donor,
+        donations=donations_list,
+        total_donated=total_donated,
+        donation_count=donation_count,
+        notes=notes
+    )
+
+
+@salesperson_bp.route('/donors/<int:id>/notes', methods=['POST'])
+@salesperson_required
+def add_donor_note(id):
+    """Add a note to a donor - only if salesperson has access."""
+    donor = Donor.query.get_or_404(id)
+
+    # Check if salesperson has at least one donation from this donor
+    has_access = Donation.query.filter(
+        Donation.donor_id == donor.id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first()
+
+    if not has_access:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'You do not have access to this donor'}), 403
+        flash('You do not have access to this donor.', 'error')
+        return redirect(url_for('salesperson.my_donors'))
+
+    content = request.form.get('content', '').strip()
+    if not content:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Note content is required'}), 400
+        flash('Note content is required.', 'error')
+        return redirect(url_for('salesperson.sp_donor_detail', id=id))
+
+    note = DonorNote(
+        donor_id=donor.id,
+        user_id=current_user.id,
+        content=content,
+        is_pinned=False  # Salespersons cannot pin notes
+    )
+    db.session.add(note)
+    db.session.commit()
+
+    logger.info(f'[donor_notes] Salesperson {current_user.id} added note {note.id} to donor {donor.id}')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'note': {
+                'id': note.id,
+                'content': note.content,
+                'is_pinned': note.is_pinned,
+                'created_at': note.created_at.isoformat(),
+                'author': current_user.full_name,
+                'author_id': current_user.id
+            }
+        })
+
+    flash('Note added successfully.', 'success')
+    return redirect(url_for('salesperson.sp_donor_detail', id=id))
+
+
+@salesperson_bp.route('/donors/<int:id>/notes-list')
+@salesperson_required
+def donor_notes_list(id):
+    """Get all notes for a donor (AJAX endpoint) - only if salesperson has access."""
+    donor = Donor.query.get_or_404(id)
+
+    # Check if salesperson has at least one donation from this donor
+    has_access = Donation.query.filter(
+        Donation.donor_id == donor.id,
+        Donation.salesperson_id == current_user.id,
+        Donation.deleted_at.is_(None)
+    ).first()
+
+    if not has_access:
+        return jsonify({'error': 'You do not have access to this donor'}), 403
+
+    notes = DonorNote.query.filter(
+        DonorNote.donor_id == donor.id,
+        DonorNote.deleted_at.is_(None)
+    ).order_by(DonorNote.is_pinned.desc(), DonorNote.created_at.desc()).all()
+
+    notes_data = []
+    for note in notes:
+        notes_data.append({
+            'id': note.id,
+            'content': note.content,
+            'is_pinned': note.is_pinned,
+            'created_at': note.created_at.isoformat(),
+            'updated_at': note.updated_at.isoformat() if note.updated_at else None,
+            'author': note.user.full_name if note.user else 'Unknown',
+            'author_id': note.user_id,
+            'can_edit': note.user_id == current_user.id  # Only own notes can be edited
+        })
+
+    return jsonify({'notes': notes_data})

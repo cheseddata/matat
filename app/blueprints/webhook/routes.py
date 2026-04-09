@@ -623,3 +623,70 @@ Matat Mordechai Foundation
         )
     except Exception as e:
         logger.error(f'Failed to send DAF thank-you email: {e}')
+
+
+# =============================================================================
+# ACTIVETRAIL WEBHOOK
+# =============================================================================
+
+@webhook_bp.route('/activetrail', methods=['POST'])
+@csrf.exempt
+def activetrail_webhook():
+    """
+    Handle ActiveTrail webhook for contact changes.
+
+    ActiveTrail webhooks trigger on contact_change events when:
+    - A contact is added via forms, imports, or API
+    - A contact's information is updated
+    - A contact unsubscribes
+
+    Note: ActiveTrail does NOT send webhooks for email opens/clicks/bounces.
+    """
+    logger.info('=' * 50)
+    logger.info('ACTIVETRAIL WEBHOOK RECEIVED')
+    logger.info('=' * 50)
+
+    try:
+        data = request.get_json() or {}
+
+        # Log the incoming data for debugging
+        logger.info(f'ActiveTrail webhook data: {data}')
+
+        event_type = data.get('event_type') or data.get('type') or 'unknown'
+        email = data.get('email') or data.get('contact', {}).get('email')
+
+        logger.info(f'ActiveTrail event: {event_type}, email: {email}')
+
+        # Handle different event types
+        if event_type in ['contact_change', 'unsubscribe', 'contact_unsubscribe']:
+            handle_activetrail_contact_change(data)
+        else:
+            logger.info(f'Unhandled ActiveTrail event type: {event_type}')
+
+        return jsonify({'status': 'received'}), 200
+
+    except Exception as e:
+        logger.error(f'ActiveTrail webhook error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+def handle_activetrail_contact_change(data):
+    """Handle ActiveTrail contact change events."""
+    email = data.get('email') or data.get('contact', {}).get('email')
+
+    if not email:
+        logger.warning('ActiveTrail contact change with no email')
+        return
+
+    # Check if this contact is an unsubscribe
+    is_unsubscribed = data.get('is_unsubscribed') or data.get('unsubscribed', False)
+
+    if is_unsubscribed:
+        # Find donor by email and mark as unsubscribed
+        donor = Donor.query.filter_by(email=email).first()
+        if donor:
+            donor.email_unsubscribed = True
+            db.session.commit()
+            logger.info(f'Donor {donor.id} ({email}) marked as unsubscribed from ActiveTrail')
+    else:
+        logger.info(f'ActiveTrail contact change for {email}')

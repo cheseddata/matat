@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Chat Conversations - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chat-list {
+        display: grid;
+        gap: 20px;
+    }
+
+    .user-chat-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .user-chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .user-chat-header h3 {
+        margin: 0;
+        font-size: 16px;
+    }
+
+    .user-chat-header .meta {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+
+    .user-notes {
+        background: #fff3cd;
+        padding: 10px 20px;
+        font-size: 13px;
+        color: #856404;
+        border-bottom: 1px solid #eee;
+    }
+
+    .chat-messages {
+        padding: 15px 20px;
+        max-height: 400px;
+        overflow-y: auto;
+        background: #f8f9fa;
+    }
+
+    .chat-message {
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-message.user {
+        align-items: flex-end;
+    }
+
+    .chat-message.assistant {
+        align-items: flex-start;
+    }
+
+    .chat-bubble {
+        max-width: 80%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .chat-message.user .chat-bubble {
+        background: #667eea;
+        color: white;
+    }
+
+    .chat-message.assistant .chat-bubble {
+        background: white;
+        color: #333;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .chat-time {
+        font-size: 10px;
+        color: #999;
+        margin-top: 4px;
+    }
+
+    .no-messages {
+        text-align: center;
+        color: #999;
+        padding: 20px;
+    }
+
+    .needs-attention {
+        border: 2px solid #e74c3c;
+    }
+
+    .needs-attention .user-chat-header {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    }
+
+    .flag-badge {
+        background: #e74c3c;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        margin-left: 10px;
+    }
+
+    .action-bar {
+        padding: 10px 20px;
+        background: #f0f0f0;
+        display: flex;
+        gap: 10px;
+    }
+
+    .action-btn {
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .action-btn.primary { background: #3498db; color: white; }
+    .action-btn.danger { background: #e74c3c; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">User Chat Conversations</h1>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('claude.chat_archives') }}" class="btn" style="font-size: 14px; background: #9b59b6;">View Archives</a>
+        </div>
+    </div>
+    <p style="color: #666; margin-bottom: 20px;">Monitor conversations between users and Claude. Look for requests that need developer attention.</p>
+
+    <div class="chat-list">
+        {% for user_id, data in conversations.items() %}
+        <div class="user-chat-card {% if data.needs_attention %}needs-attention{% endif %}">
+            <div class="user-chat-header">
+                <div>
+                    <h3>{{ data.user.full_name }}
+                        {% if data.needs_attention %}<span class="flag-badge">Needs Attention</span>{% endif %}
+                    </h3>
+                    <div class="meta">{{ data.messages|length }} messages • Last: {{ data.last_message.strftime('%m/%d %I:%M %p') }}</div>
+                </div>
+            </div>
+            {% if data.user.claude_notes %}
+            <div class="user-notes">
+                <strong>Context:</strong> {{ data.user.claude_notes.split('\n')[0] }}
+            </div>
+            {% endif %}
+            <div class="chat-messages">
+                {% if data.messages %}
+                    {% for msg in data.messages[-10:] %}
+                    <div class="chat-message {{ msg.role }}">
+                        <div class="chat-bubble">{{ msg.content[:500] }}{% if msg.content|length > 500 %}...{% endif %}</div>
+                        <div class="chat-time">{{ msg.created_at.strftime('%m/%d %I:%M %p') }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-messages">No messages</div>
+                {% endif %}
+            </div>
+            <div class="action-bar">
+                <button class="action-btn primary" onclick="location.href='/claude/chat/user/{{ user_id }}'">View Full Chat</button>
+                <button class="action-btn danger" onclick="clearUserChat({{ user_id }})">Clear History</button>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-messages" style="padding: 40px;">
+            <h3>No chat conversations yet</h3>
+            <p>When users chat with Claude, their conversations will appear here.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+async function clearUserChat(userId) {
+    const resolution = prompt('What was done to resolve this? (Leave blank to skip)');
+    if (resolution === null) return; // User clicked cancel
+
+    try {
+        const formData = new FormData();
+        formData.append('resolution', resolution);
+
+        const res = await fetch('/claude/chat/clear/' + userId, { method: 'POST', body: formData });
+        if (res.ok) {
+            alert('Chat archived and cleared.');
+            location.reload();
+        } else {
+            alert('Failed to clear chat');
+        }
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+</script>
+{% endblock %}

@@ -69,6 +69,6 @@ def dashboard_redirect():
         return redirect(url_for('auth.change_password'))
     
     if current_user.role == 'admin':
-        return redirect(url_for('admin.dashboard'))
+        return redirect(url_for('admin.donations'))
     else:
         return redirect(url_for('salesperson.dashboard'))

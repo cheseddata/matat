@@ -165,6 +165,89 @@
         padding-top: 20px;
         border-top: 1px solid #eee;
     }
+
+    /* Attachment styles */
+    .file-upload-area {
+        border: 2px dashed #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        background: #fafafa;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .file-upload-area:hover {
+        border-color: #3498db;
+        background: #f0f8ff;
+    }
+
+    .file-upload-area.has-file {
+        border-color: #27ae60;
+        background: #f0fff4;
+    }
+
+    .file-upload-area input[type="file"] {
+        display: none;
+    }
+
+    .file-upload-icon {
+        font-size: 32px;
+        color: #999;
+        margin-bottom: 10px;
+    }
+
+    .file-upload-text {
+        font-size: 14px;
+        color: #666;
+    }
+
+    .file-upload-hint {
+        font-size: 12px;
+        color: #999;
+        margin-top: 5px;
+    }
+
+    .current-attachment {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #e8f4f8;
+        padding: 10px 15px;
+        border-radius: 6px;
+        margin-bottom: 10px;
+    }
+
+    .current-attachment .file-icon {
+        font-size: 24px;
+    }
+
+    .current-attachment .file-info {
+        flex: 1;
+    }
+
+    .current-attachment .file-name {
+        font-weight: 500;
+    }
+
+    .current-attachment .file-size {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .btn-remove {
+        padding: 4px 12px;
+        background: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+    }
+
+    .btn-remove:hover {
+        background: #c0392b;
+    }
 </style>
 {% endblock %}
 
@@ -184,7 +267,7 @@
             </div>
         </div>
 
-        <form method="POST">
+        <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-row">
@@ -213,6 +296,28 @@
                 <div class="help-text">Use {greeting} for personalized greeting and {amount} for the pledged amount.</div>
             </div>
 
+            <!-- Attachment Section -->
+            <div class="form-group">
+                <label>Attachment (optional)</label>
+                {% if template and template.attachment_name %}
+                <div class="current-attachment" id="current-attachment">
+                    <span class="file-icon">&#x1F4CE;</span>
+                    <div class="file-info">
+                        <div class="file-name">{{ template.attachment_name }}</div>
+                        <div class="file-size">Current attachment</div>
+                    </div>
+                    <button type="button" class="btn-remove" onclick="removeAttachment()">Remove</button>
+                </div>
+                <input type="hidden" name="remove_attachment" id="remove_attachment" value="">
+                {% endif %}
+                <div class="file-upload-area" id="file-upload-area" onclick="document.getElementById('attachment').click()">
+                    <div class="file-upload-icon">&#x1F4C1;</div>
+                    <div class="file-upload-text" id="upload-text">Click to upload or drag and drop</div>
+                    <div class="file-upload-hint">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10MB)</div>
+                    <input type="file" id="attachment" name="attachment" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                </div>
+            </div>
+
             <div class="form-group">
                 <div class="checkbox-group">
                     <input type="checkbox" id="is_global" name="is_global" {{ 'checked' if template and template.is_global else '' }}>
@@ -227,4 +332,60 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// File upload preview
+document.getElementById('attachment').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const uploadArea = document.getElementById('file-upload-area');
+    const uploadText = document.getElementById('upload-text');
+
+    if (file) {
+        uploadArea.classList.add('has-file');
+        uploadText.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
+    } else {
+        uploadArea.classList.remove('has-file');
+        uploadText.textContent = 'Click to upload or drag and drop';
+    }
+});
+
+// Drag and drop
+const uploadArea = document.getElementById('file-upload-area');
+
+uploadArea.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    this.classList.add('has-file');
+});
+
+uploadArea.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    if (!document.getElementById('attachment').files.length) {
+        this.classList.remove('has-file');
+    }
+});
+
+uploadArea.addEventListener('drop', function(e) {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length) {
+        document.getElementById('attachment').files = files;
+        document.getElementById('attachment').dispatchEvent(new Event('change'));
+    }
+});
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function removeAttachment() {
+    document.getElementById('remove_attachment').value = 'true';
+    document.getElementById('current-attachment').style.display = 'none';
+}
+</script>
 {% endblock %}

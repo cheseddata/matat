@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+{% block title %}{{ donor.full_name }} - Donor{% endblock %}
+
+{% block extra_css %}
+<style>
+    .donor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .donor-info {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        flex: 1;
+        min-width: 300px;
+    }
+
+    .donor-stats {
+        display: flex;
+        gap: 15px;
+    }
+
+    .stat-card {
+        background: white;
+        padding: 20px 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    .stat-card .value {
+        font-size: 28px;
+        font-weight: bold;
+        color: #27ae60;
+    }
+
+    .stat-card .label {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+    }
+
+    .info-row {
+        display: flex;
+        margin-bottom: 12px;
+    }
+
+    .info-label {
+        width: 100px;
+        font-weight: bold;
+        color: #666;
+    }
+
+    .info-value {
+        flex: 1;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.succeeded { background: #d4edda; color: #155724; }
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.failed { background: #f8d7da; color: #721c24; }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 30px 0 15px 0;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #eee;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .data-table th, .data-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .data-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .action-btn {
+        display: inline-block;
+        padding: 4px 10px;
+        font-size: 12px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+        border: none;
+        margin-right: 5px;
+    }
+
+    .action-btn.primary { background: #3498db; color: white; }
+    .action-btn.secondary { background: #6c757d; color: white; }
+    .action-btn.danger { background: #dc3545; color: white; }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 15px;
+        color: #3498db;
+        text-decoration: none;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Tabs */
+    .tabs-container {
+        margin-bottom: 25px;
+    }
+
+    .tab-buttons {
+        display: flex;
+        gap: 5px;
+        border-bottom: 2px solid #eee;
+        margin-bottom: 20px;
+    }
+
+    .tab-btn {
+        padding: 12px 24px;
+        background: none;
+        border: none;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+        cursor: pointer;
+        font-size: 14px;
+        color: #666;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover { color: #3498db; }
+    .tab-btn.active { color: #3498db; border-bottom-color: #3498db; font-weight: 600; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Notes */
+    .notes-section {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .note-form { margin-bottom: 20px; }
+
+    .note-form textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        resize: vertical;
+        min-height: 80px;
+        font-family: inherit;
+    }
+
+    .note-form-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+        justify-content: flex-end;
+    }
+
+    .note-card {
+        border: 1px solid #eee;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .note-card.pinned {
+        border-color: #f39c12;
+        background: #fffdf5;
+    }
+
+    .note-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .note-meta {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .note-content {
+        white-space: pre-wrap;
+        line-height: 1.5;
+    }
+
+    .empty-notes {
+        text-align: center;
+        padding: 30px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <a href="{{ url_for('salesperson.my_donors') }}" class="back-link">&larr; Back to My Donors</a>
+
+    <div class="donor-header">
+        <div class="donor-info">
+            <h1 style="margin-bottom: 20px;">{{ donor.full_name }}</h1>
+
+            <div class="info-row">
+                <div class="info-label">{{ t('common.email') }}:</div>
+                <div class="info-value">{{ donor.email }}</div>
+            </div>
+
+            {% if donor.phone %}
+            <div class="info-row">
+                <div class="info-label">{{ t('common.phone') }}:</div>
+                <div class="info-value">{{ donor.phone }}</div>
+            </div>
+            {% endif %}
+
+            {% if donor.full_address %}
+            <div class="info-row">
+                <div class="info-label">Address:</div>
+                <div class="info-value">{{ donor.full_address | replace('\n', '<br>') | safe }}</div>
+            </div>
+            {% endif %}
+
+            <div class="info-row">
+                <div class="info-label">{{ t('common.country') }}:</div>
+                <div class="info-value">{{ donor.country or 'Unknown' }}</div>
+            </div>
+        </div>
+
+        <div class="donor-stats">
+            <div class="stat-card">
+                <div class="value">${{ "%.2f"|format(total_donated) }}</div>
+                <div class="label">Your Total</div>
+            </div>
+            <div class="stat-card">
+                <div class="value">{{ donation_count }}</div>
+                <div class="label">{{ t('nav.donations') }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <div class="tab-buttons">
+            <button class="tab-btn active" data-tab="donations">Donations</button>
+            <button class="tab-btn" data-tab="notes">Notes</button>
+        </div>
+
+        <!-- Donations Tab -->
+        <div id="tab-donations" class="tab-content active">
+            {% if donations %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{{ t('common.date') }}</th>
+                        <th>{{ t('common.amount') }}</th>
+                        <th>{{ t('common.type') }}</th>
+                        <th>{{ t('common.status') }}</th>
+                        <th>{{ t('common.actions') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in donations %}
+                    <tr>
+                        <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>${{ "%.2f"|format(d.amount / 100) }}</td>
+                        <td>{{ d.donation_type | replace('_', ' ') | title }}</td>
+                        <td>
+                            <span class="status-badge {{ d.status }}">{{ d.status | title }}</span>
+                        </td>
+                        <td>
+                            <a href="{{ url_for('salesperson.donation_detail', id=d.id) }}" class="action-btn primary">{{ t('common.view') }}</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
+                <p style="color: #666;">No donations yet.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Notes Tab -->
+        <div id="tab-notes" class="tab-content">
+            <div class="notes-section">
+                <h3 style="margin-top: 0;">Add Note</h3>
+                <form class="note-form" id="add-note-form">
+                    <textarea id="note-content" placeholder="Write a note about this donor..." required></textarea>
+                    <div class="note-form-actions">
+                        <button type="submit" class="action-btn primary">Add Note</button>
+                    </div>
+                </form>
+
+                <h3>Notes</h3>
+                <div id="notes-list">
+                    {% if notes %}
+                        {% for note in notes %}
+                        <div class="note-card {% if note.is_pinned %}pinned{% endif %}" data-note-id="{{ note.id }}">
+                            <div class="note-header">
+                                <div class="note-meta">
+                                    {% if note.is_pinned %}&#x1F4CC;{% endif %}
+                                    <strong>{{ note.user.full_name if note.user else 'Unknown' }}</strong>
+                                    &middot; {{ note.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </div>
+                            </div>
+                            <div class="note-content">{{ note.content }}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-notes">No notes yet. Add one above!</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const donorId = {{ donor.id }};
+
+// Tab switching
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tabId = this.dataset.tab;
+
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+    });
+});
+
+// Add note form
+document.getElementById('add-note-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const content = document.getElementById('note-content').value.trim();
+    if (!content) return;
+
+    const formData = new FormData();
+    formData.append('content', content);
+
+    fetch(`/salesperson/donors/${donorId}/notes`, {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('note-content').value = '';
+            // Reload notes
+            loadNotes();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to add note'));
+        }
+    })
+    .catch(err => alert('Error adding note'));
+});
+
+function loadNotes() {
+    fetch(`/salesperson/donors/${donorId}/notes-list`)
+    .then(r => r.json())
+    .then(data => {
+        renderNotes(data.notes);
+    })
+    .catch(err => {
+        console.error('Error loading notes:', err);
+    });
+}
+
+function renderNotes(notes) {
+    const container = document.getElementById('notes-list');
+
+    if (notes.length === 0) {
+        container.innerHTML = '<div class="empty-notes">No notes yet. Add one above!</div>';
+        return;
+    }
+
+    let html = '';
+    notes.forEach(note => {
+        const pinnedClass = note.is_pinned ? 'pinned' : '';
+        const pinIcon = note.is_pinned ? '&#x1F4CC;' : '';
+        const dateStr = new Date(note.created_at).toLocaleString();
+
+        html += `
+        <div class="note-card ${pinnedClass}" data-note-id="${note.id}">
+            <div class="note-header">
+                <div class="note-meta">
+                    ${pinIcon} <strong>${note.author}</strong> &middot; ${dateStr}
+                </div>
+            </div>
+            <div class="note-content">${escapeHtml(note.content)}</div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+{% endblock %}

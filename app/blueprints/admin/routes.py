@@ -18,6 +18,8 @@ from ...models.donation_link import DonationLink
 from ...models.campaign import Campaign
 from ...models.receipt import Receipt
 from ...models.config_settings import ConfigSettings
+from ...models.donor_note import DonorNote
+from ...models.message import MessageQueue
 
 
 # =============================================================================
@@ -1327,6 +1329,16 @@ def settings():
         config.email_from_name = request.form.get('email_from_name', '').strip() or 'Matat Mordechai'
         config.email_from_address = request.form.get('email_from_address', '').strip() or None
 
+        # Email provider selection
+        config.email_provider = request.form.get('email_provider', 'mailtrap').strip()
+
+        # ActiveTrail settings
+        config.activetrail_api_key = request.form.get('activetrail_api_key', '').strip() or None
+        activetrail_profile_id = request.form.get('activetrail_profile_id', '').strip()
+        config.activetrail_profile_id = int(activetrail_profile_id) if activetrail_profile_id else None
+        config.activetrail_from_email = request.form.get('activetrail_from_email', '').strip() or None
+        config.activetrail_from_name = request.form.get('activetrail_from_name', '').strip() or None
+
         # Email/SMTP settings (fallback)
         config.smtp_host = request.form.get('smtp_host', '').strip() or None
         smtp_port = request.form.get('smtp_port', '').strip()
@@ -1547,6 +1559,8 @@ def email_templates():
 def create_email_template():
     """Create a new email template."""
     from ...models.email_template import EmailTemplate
+    from werkzeug.utils import secure_filename
+    import os
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -1567,6 +1581,36 @@ def create_email_template():
             is_global=is_global,
             created_by=current_user.id
         )
+
+        # Handle file upload
+        if 'attachment' in request.files:
+            file = request.files['attachment']
+            if file and file.filename:
+                # Validate file size (10MB max)
+                file.seek(0, 2)  # Seek to end
+                file_size = file.tell()
+                file.seek(0)  # Seek back to start
+
+                if file_size > 10 * 1024 * 1024:  # 10MB
+                    flash('Attachment too large. Maximum size is 10MB.', 'error')
+                    return redirect(url_for('admin.create_email_template'))
+
+                # Save file
+                filename = secure_filename(file.filename)
+                # Add timestamp to avoid collisions
+                import time
+                timestamp = int(time.time())
+                filename = f"{timestamp}_{filename}"
+
+                upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'uploads', 'email_attachments')
+                os.makedirs(upload_dir, exist_ok=True)
+
+                file_path = os.path.join(upload_dir, filename)
+                file.save(file_path)
+
+                template.attachment_path = file_path
+                template.attachment_name = request.files['attachment'].filename
+
         db.session.add(template)
         db.session.commit()
 
@@ -1582,6 +1626,8 @@ def create_email_template():
 def edit_email_template(id):
     """Edit an email template."""
     from ...models.email_template import EmailTemplate
+    from werkzeug.utils import secure_filename
+    import os
 
     template = EmailTemplate.query.filter(
         EmailTemplate.id == id,
@@ -1598,6 +1644,51 @@ def edit_email_template(id):
         if not template.name or not template.subject or not template.body:
             flash('Name, subject, and body are required.', 'error')
             return redirect(url_for('admin.edit_email_template', id=id))
+
+        # Handle attachment removal
+        if request.form.get('remove_attachment') == 'true':
+            if template.attachment_path and os.path.exists(template.attachment_path):
+                try:
+                    os.remove(template.attachment_path)
+                except:
+                    pass
+            template.attachment_path = None
+            template.attachment_name = None
+
+        # Handle new file upload
+        if 'attachment' in request.files:
+            file = request.files['attachment']
+            if file and file.filename:
+                # Validate file size (10MB max)
+                file.seek(0, 2)  # Seek to end
+                file_size = file.tell()
+                file.seek(0)  # Seek back to start
+
+                if file_size > 10 * 1024 * 1024:  # 10MB
+                    flash('Attachment too large. Maximum size is 10MB.', 'error')
+                    return redirect(url_for('admin.edit_email_template', id=id))
+
+                # Remove old file if exists
+                if template.attachment_path and os.path.exists(template.attachment_path):
+                    try:
+                        os.remove(template.attachment_path)
+                    except:
+                        pass
+
+                # Save new file
+                filename = secure_filename(file.filename)
+                import time
+                timestamp = int(time.time())
+                filename = f"{timestamp}_{filename}"
+
+                upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'uploads', 'email_attachments')
+                os.makedirs(upload_dir, exist_ok=True)
+
+                file_path = os.path.join(upload_dir, filename)
+                file.save(file_path)
+
+                template.attachment_path = file_path
+                template.attachment_name = request.files['attachment'].filename
 
         db.session.commit()
         logger.info(f'[email_templates] Updated template {id} by admin {current_user.id}')
@@ -1644,7 +1735,9 @@ def api_email_templates():
             'name': t.name,
             'language': t.language,
             'subject': t.subject,
-            'body': t.body
+            'body': t.body,
+            'has_attachment': bool(t.attachment_path),
+            'attachment_name': t.attachment_name
         })
 
     return jsonify(result)
@@ -1893,3 +1986,260 @@ def delete_routing_rule(id):
     logger.info(f'[routing_rules] Deleted rule {rule.id} by admin {current_user.id}')
     flash(f'Routing rule "{rule.name}" deleted.', 'success')
     return redirect(url_for('admin.payment_processors'))
+
+
+# =============================================================================
+# DONOR NOTES
+# =============================================================================
+
+@admin_bp.route('/donors/<int:id>/notes', methods=['POST'])
+@admin_required
+def add_donor_note(id):
+    """Add a note to a donor."""
+    donor = Donor.query.get_or_404(id)
+
+    content = request.form.get('content', '').strip()
+    if not content:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error': 'Note content is required'}), 400
+        flash('Note content is required.', 'error')
+        return redirect(url_for('admin.donor_detail', id=id))
+
+    note = DonorNote(
+        donor_id=donor.id,
+        user_id=current_user.id,
+        content=content,
+        is_pinned=request.form.get('is_pinned') == 'true'
+    )
+    db.session.add(note)
+    db.session.commit()
+
+    logger.info(f'[donor_notes] Added note {note.id} to donor {donor.id} by user {current_user.id}')
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({
+            'success': True,
+            'note': {
+                'id': note.id,
+                'content': note.content,
+                'is_pinned': note.is_pinned,
+                'created_at': note.created_at.isoformat(),
+                'author': current_user.full_name,
+                'author_id': current_user.id
+            }
+        })
+
+    flash('Note added successfully.', 'success')
+    return redirect(url_for('admin.donor_detail', id=id))
+
+
+@admin_bp.route('/donors/<int:donor_id>/notes/<int:note_id>', methods=['PUT'])
+@admin_required
+def update_donor_note(donor_id, note_id):
+    """Update a donor note."""
+    note = DonorNote.query.filter(
+        DonorNote.id == note_id,
+        DonorNote.donor_id == donor_id,
+        DonorNote.deleted_at.is_(None)
+    ).first_or_404()
+
+    # Only author or admin can edit
+    if note.user_id != current_user.id and current_user.role != 'admin':
+        return jsonify({'error': 'Not authorized to edit this note'}), 403
+
+    data = request.get_json() or {}
+    content = data.get('content', '').strip()
+
+    if not content:
+        return jsonify({'error': 'Note content is required'}), 400
+
+    note.content = content
+    note.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    logger.info(f'[donor_notes] Updated note {note.id} by user {current_user.id}')
+
+    return jsonify({
+        'success': True,
+        'note': {
+            'id': note.id,
+            'content': note.content,
+            'is_pinned': note.is_pinned,
+            'updated_at': note.updated_at.isoformat()
+        }
+    })
+
+
+@admin_bp.route('/donors/<int:donor_id>/notes/<int:note_id>', methods=['DELETE'])
+@admin_required
+def delete_donor_note(donor_id, note_id):
+    """Soft-delete a donor note."""
+    note = DonorNote.query.filter(
+        DonorNote.id == note_id,
+        DonorNote.donor_id == donor_id,
+        DonorNote.deleted_at.is_(None)
+    ).first_or_404()
+
+    # Only author or admin can delete
+    if note.user_id != current_user.id and current_user.role != 'admin':
+        return jsonify({'error': 'Not authorized to delete this note'}), 403
+
+    note.deleted_at = datetime.utcnow()
+    db.session.commit()
+
+    logger.info(f'[donor_notes] Deleted note {note.id} by user {current_user.id}')
+
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/donors/<int:donor_id>/notes/<int:note_id>/pin', methods=['POST'])
+@admin_required
+def toggle_donor_note_pin(donor_id, note_id):
+    """Toggle pin status of a donor note."""
+    note = DonorNote.query.filter(
+        DonorNote.id == note_id,
+        DonorNote.donor_id == donor_id,
+        DonorNote.deleted_at.is_(None)
+    ).first_or_404()
+
+    note.is_pinned = not note.is_pinned
+    db.session.commit()
+
+    logger.info(f'[donor_notes] Note {note.id} pinned={note.is_pinned} by user {current_user.id}')
+
+    return jsonify({
+        'success': True,
+        'is_pinned': note.is_pinned
+    })
+
+
+@admin_bp.route('/donors/<int:id>/notes-list')
+@admin_required
+def donor_notes_list(id):
+    """Get all notes for a donor (AJAX endpoint)."""
+    donor = Donor.query.get_or_404(id)
+
+    notes = DonorNote.query.filter(
+        DonorNote.donor_id == donor.id,
+        DonorNote.deleted_at.is_(None)
+    ).order_by(DonorNote.is_pinned.desc(), DonorNote.created_at.desc()).all()
+
+    notes_data = []
+    for note in notes:
+        notes_data.append({
+            'id': note.id,
+            'content': note.content,
+            'is_pinned': note.is_pinned,
+            'created_at': note.created_at.isoformat(),
+            'updated_at': note.updated_at.isoformat() if note.updated_at else None,
+            'author': note.user.full_name if note.user else 'Unknown',
+            'author_id': note.user_id,
+            'can_edit': note.user_id == current_user.id or current_user.role == 'admin'
+        })
+
+    return jsonify({'notes': notes_data})
+
+
+@admin_bp.route('/donors/<int:id>/activity')
+@admin_required
+def donor_activity(id):
+    """Get activity feed for a donor (AJAX endpoint)."""
+    donor = Donor.query.get_or_404(id)
+
+    # Get all linked donor IDs
+    all_donors = donor.get_all_linked_donors()
+    donor_ids = [d.id for d in all_donors]
+
+    activities = []
+
+    # 1. Donations
+    donations = Donation.query.filter(
+        Donation.donor_id.in_(donor_ids),
+        Donation.deleted_at.is_(None)
+    ).all()
+
+    for d in donations:
+        activities.append({
+            'type': 'donation',
+            'icon': 'money',
+            'timestamp': d.created_at.isoformat(),
+            'title': f'Donation ${d.amount / 100:.2f}',
+            'description': f'{d.donation_type.replace("_", " ").title()} - {d.status}',
+            'link': url_for('admin.donation_detail', id=d.id),
+            'status': d.status
+        })
+
+    # 2. Receipts
+    receipts = Receipt.query.filter(
+        Receipt.donor_id.in_(donor_ids)
+    ).all()
+
+    for r in receipts:
+        activities.append({
+            'type': 'receipt',
+            'icon': 'receipt',
+            'timestamp': r.created_at.isoformat(),
+            'title': f'Receipt {r.receipt_number}',
+            'description': f'${r.amount / 100:.2f}',
+            'link': url_for('admin.download_receipt', id=r.id)
+        })
+
+    # 3. Emails sent
+    # Get donation IDs for this donor
+    donation_ids = [d.id for d in donations]
+
+    emails = MessageQueue.query.filter(
+        db.or_(
+            MessageQueue.recipient_id.in_(donor_ids),
+            MessageQueue.related_donation_id.in_(donation_ids) if donation_ids else False
+        ),
+        MessageQueue.channel == 'email'
+    ).all()
+
+    for e in emails:
+        # Determine email status description
+        if e.clicked_at:
+            status_desc = f'Clicked at {e.clicked_at.strftime("%Y-%m-%d %H:%M")}'
+            status = 'clicked'
+        elif e.opened_at:
+            status_desc = f'Opened at {e.opened_at.strftime("%Y-%m-%d %H:%M")}'
+            status = 'opened'
+        elif e.delivered_at:
+            status_desc = f'Delivered at {e.delivered_at.strftime("%Y-%m-%d %H:%M")}'
+            status = 'delivered'
+        elif e.sent_at:
+            status_desc = f'Sent at {e.sent_at.strftime("%Y-%m-%d %H:%M")}'
+            status = 'sent'
+        else:
+            status_desc = e.status
+            status = e.status
+
+        activities.append({
+            'type': 'email',
+            'icon': 'email',
+            'timestamp': e.created_at.isoformat(),
+            'title': f'Email: {e.subject or e.message_type}',
+            'description': status_desc,
+            'status': status
+        })
+
+    # 4. Notes
+    notes = DonorNote.query.filter(
+        DonorNote.donor_id.in_(donor_ids),
+        DonorNote.deleted_at.is_(None)
+    ).all()
+
+    for n in notes:
+        activities.append({
+            'type': 'note',
+            'icon': 'note',
+            'timestamp': n.created_at.isoformat(),
+            'title': 'Note added',
+            'description': f'By {n.user.full_name if n.user else "Unknown"}: {n.content[:100]}...' if len(n.content) > 100 else f'By {n.user.full_name if n.user else "Unknown"}: {n.content}',
+            'author': n.user.full_name if n.user else 'Unknown'
+        })
+
+    # Sort by timestamp (newest first)
+    activities.sort(key=lambda x: x['timestamp'], reverse=True)
+
+    return jsonify({'activities': activities})

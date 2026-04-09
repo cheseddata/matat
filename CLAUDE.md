@@ -16,6 +16,8 @@ This ensures all changes are documented for future sessions.
 - **Email:** Mailtrap API (production), SendGrid (fallback), SMTP (fallback)
 - **SMS:** Twilio
 - **Web Server:** Gunicorn (port 5050) behind Caddy reverse proxy
+- **Server:** 178.128.83.220 (DigitalOcean SGP1), deployed at `/var/www/matat`
+- **Database Admin:** Adminer at `db.matatmordechai.org` via Caddy + PHP-FPM
 
 ## Application Structure
 ```
@@ -61,6 +63,7 @@ app/
 - **Restart Server:** `sudo systemctl restart matat`
 - **Check Status:** `sudo systemctl status matat`
 - **View Logs:** `sudo journalctl -u matat -f`
+- **Reload Caddy:** `sudo systemctl reload caddy`
 - **Migrations:** `flask db migrate -m "description"` followed by `flask db upgrade`
 - **Seeding:** `python seed.py` to create initial admin and config
 - **Import Donors:** `flask import-donors unified_payments.csv` (creates Donor records)
@@ -89,6 +92,7 @@ STRIPE_WEBHOOK_SECRET=whsec_xxx
 - Main site: https://matatmordechai.org
 - Admin: https://matatmordechai.org/admin
 - Donation page: https://matatmordechai.org/donate
+- Database admin: https://db.matatmordechai.org
 
 ## Important Notes
 - **Site URL:** Use matatmordechai.org (NOT donate.matatmordechai.org)
@@ -123,7 +127,7 @@ Web interface for managing Claude coding sessions with embedded terminal.
 Token-protected file upload page for migration files (Access databases, spreadsheets, etc.).
 
 **Access:** Token required (`matat2026`)
-**Location:** Files saved to `/root/matat/uploads/`
+**Location:** Files saved to `/var/www/matat/uploads/`
 **Allowed types:** .accdb, .mdb, .xlsx, .csv, .sql, .zip, .pdf, .py, etc. (max 500MB)
 
 ## Email Templates
@@ -281,6 +285,49 @@ estimate_fee()        # Estimate processing fee
   - Link added to Settings page for easy access
 - **Multi-Platform Design:** Each platform/client can enable different processors based on their needs
 - **International Routing:** System routes by donor location for multi-country organizations with multiple merchant IDs
+
+### 2026-04-09
+- **Server Migration:** Migrated from compromised server (`/root/matat`) to new server (`/var/www/matat`, IP 178.128.83.220)
+  - Security audit: all MD files and codebase scanned for compromise — clean
+  - Updated all hardcoded `/root/matat` paths to `/var/www/matat` (routes, PDF templates, CLAUDE.md)
+  - Recreated Python venv (old shebang pointed to `/root/matat/venv/bin/python3`)
+  - Generated new cryptographic SECRET_KEY (replaced dev default)
+  - Fixed APP_DOMAIN to `https://matatmordechai.org`
+  - Restricted `.env` permissions to 0600
+- **Systemd Service:** Created `/etc/systemd/system/matat.service` for Gunicorn (port 5050, 3 workers)
+- **Caddy Reverse Proxy:** Installed and configured Caddy with auto-HTTPS
+  - `matatmordechai.org` → Matat app (Gunicorn 5050)
+  - `db.matatmordechai.org` → Adminer (PHP-FPM)
+  - Disabled Apache2 (was occupying port 80)
+  - Let's Encrypt SSL auto-provisioned for both domains
+- **Adminer Setup:** Configured `db.matatmordechai.org` for database management via PHP-FPM
+
+### 2026-03-29
+- **Donor Notes System:** Added `DonorNote` model for adding notes to donor records
+  - Admin can add, edit, delete, and pin notes on any donor
+  - Salespersons can add notes to donors they have donations from
+  - All notes visible to anyone with access to the donor
+  - Notes show author and timestamp
+- **Donor Activity History:** Added activity timeline showing all transactions and communications
+  - Donations, receipts, emails (with tracking status), notes in unified timeline
+  - Sorted chronologically with icons and status indicators
+- **Donor Detail Page Tabs:** Reorganized admin donor detail page with Overview, Notes, and Activity tabs
+- **Salesperson Donor View:** Added `/salesperson/donors` route for salespersons to see their donors
+  - Restricted to donors they have donations from
+  - Can view donor details and add notes
+  - Created `my_donors.html` and `donor_detail.html` templates
+- **Email Template Attachments:** Added attachment support to email templates
+  - `attachment_path` and `attachment_name` fields added to `EmailTemplate` model
+  - Upload files (PDF, DOC, XLSX, etc.) up to 10MB when creating/editing templates
+  - Attachments included when sending donation link emails using a template
+  - Attachment indicator shown in template list and email preview modal
+- **ActiveTrail Email Integration:** Added ActiveTrail as an email provider option
+  - Database-driven configuration via Admin Settings
+  - Fields: `activetrail_api_key`, `activetrail_from_email`, `activetrail_from_name`, `email_provider`
+  - Email provider dropdown: Mailtrap (default), ActiveTrail, SMTP
+  - ActiveTrail uses transactional API at `webapi.mymarketing.co.il/api/smtpapi/Message`
+  - Server IP whitelist displayed: 161.35.137.106
+  - Supports attachments via base64 encoding
 
 ### 2026-03-26
 - **Claude Session Tracking:** Added `/claude` blueprint with session management, embedded ttyd terminal, screenshot paste/upload

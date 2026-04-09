@@ -14,6 +14,7 @@ from .chat_message import ChatMessage
 from .chat_archive import ChatArchive
 from .payment_processor import PaymentProcessor
 from .payment_routing_rule import PaymentRoutingRule
+from .donor_note import DonorNote
 
 __all__ = [
     'User',
@@ -37,4 +38,5 @@ __all__ = [
     'ChatArchive',
     'PaymentProcessor',
     'PaymentRoutingRule',
+    'DonorNote',
 ]

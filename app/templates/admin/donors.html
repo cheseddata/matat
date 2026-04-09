@@ -232,6 +232,7 @@
             <input type="text" name="q" placeholder="{{ t('common.search') }}..." value="{{ search }}">
             <button type="submit">{{ t('common.search') }}</button>
         </form>
+        <a href="{{ url_for('admin.fix_unknown_donors') }}" class="btn" style="background: #e67e22;">Fix Unknown Names</a>
     </div>
 
     <div class="filter-tabs">

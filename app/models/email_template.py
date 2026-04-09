@@ -12,6 +12,10 @@ class EmailTemplate(db.Model):
     subject = db.Column(db.String(255), nullable=False)
     body = db.Column(db.Text, nullable=False)
 
+    # Attachment support
+    attachment_path = db.Column(db.String(500), nullable=True)  # File path to attachment
+    attachment_name = db.Column(db.String(255), nullable=True)  # Original filename for display
+
     # Who created it - if null, it's a system template
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
 

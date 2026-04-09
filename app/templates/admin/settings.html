@@ -246,18 +246,21 @@
                 </div>
             </div>
 
-            <!-- Mailtrap Settings -->
-            <div class="settings-card">
-                <h2>Email Configuration (Mailtrap)</h2>
+            <!-- Email Provider Selection -->
+            <div class="settings-card" style="border: 2px solid #27ae60;">
+                <h2>Email Provider</h2>
                 <p class="help-text" style="margin-bottom: 15px;">
-                    Mailtrap is the recommended email provider. If configured, it will be used instead of SMTP.
+                    Select which email provider to use for sending emails.
                 </p>
 
                 <div class="form-group">
-                    <label>Mailtrap API Token</label>
-                    <input type="password" name="mailtrap_token" value="{{ config.mailtrap_token or '' }}"
-                           placeholder="Your Mailtrap API token">
-                    <p class="help-text">Get your token from Mailtrap Dashboard > Email Sending > API.</p>
+                    <label>Active Email Provider</label>
+                    <select name="email_provider" id="email_provider" onchange="toggleEmailProviders()">
+                        <option value="mailtrap" {{ 'selected' if config.email_provider == 'mailtrap' or not config.email_provider else '' }}>Mailtrap (Recommended)</option>
+                        <option value="activetrail" {{ 'selected' if config.email_provider == 'activetrail' else '' }}>ActiveTrail</option>
+                        <option value="smtp" {{ 'selected' if config.email_provider == 'smtp' else '' }}>SMTP (Fallback)</option>
+                    </select>
+                    <p class="help-text">Email delivery will use the selected provider.</p>
                 </div>
 
                 <div class="form-group">
@@ -270,7 +273,7 @@
                     <label>From Email Address</label>
                     <input type="email" name="email_from_address" value="{{ config.email_from_address or '' }}"
                            placeholder="donations@matatmordechai.org">
-                    <p class="help-text">Must be a verified sender domain in Mailtrap.</p>
+                    <p class="help-text">Must be verified with your email provider.</p>
                 </div>
 
                 <div class="form-group" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
@@ -278,6 +281,63 @@
                         Manage Email Templates
                     </a>
                     <p class="help-text">Create custom email templates for donation link emails.</p>
+                </div>
+            </div>
+
+            <!-- Mailtrap Settings -->
+            <div class="settings-card" id="mailtrap-settings">
+                <h2>Mailtrap Configuration</h2>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    Mailtrap API settings for transactional emails.
+                </p>
+
+                <div class="form-group">
+                    <label>Mailtrap API Token</label>
+                    <input type="password" name="mailtrap_token" value="{{ config.mailtrap_token or '' }}"
+                           placeholder="Your Mailtrap API token">
+                    <p class="help-text">Get your token from Mailtrap Dashboard > Email Sending > API.</p>
+                </div>
+            </div>
+
+            <!-- ActiveTrail Settings -->
+            <div class="settings-card" id="activetrail-settings" style="border: 2px solid #9b59b6;">
+                <h2 style="color: #9b59b6;">ActiveTrail Configuration</h2>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    ActiveTrail transactional email API settings.
+                </p>
+
+                <div class="form-group">
+                    <label>ActiveTrail API Key</label>
+                    <input type="password" name="activetrail_api_key" value="{{ config.activetrail_api_key or '' }}"
+                           placeholder="Your ActiveTrail API key">
+                    <p class="help-text">Get your API key from ActiveTrail Dashboard > Settings > API.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Sending Profile ID</label>
+                    <input type="number" name="activetrail_profile_id" value="{{ config.activetrail_profile_id or '' }}"
+                           placeholder="e.g., 68981">
+                    <p class="help-text">Profile ID determines the From address. Current: 68981 = Matat Mordechai (support@matatmordechai.org)</p>
+                </div>
+
+                <div class="form-group">
+                    <label>ActiveTrail From Email (Optional Override)</label>
+                    <input type="email" name="activetrail_from_email" value="{{ config.activetrail_from_email or '' }}"
+                           placeholder="Leave blank to use default From Email above">
+                    <p class="help-text">Override the sender email for ActiveTrail only.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>ActiveTrail From Name (Optional Override)</label>
+                    <input type="text" name="activetrail_from_name" value="{{ config.activetrail_from_name or '' }}"
+                           placeholder="Leave blank to use default From Name above">
+                    <p class="help-text">Override the sender name for ActiveTrail only.</p>
+                </div>
+
+                <div style="background: #f5f0ff; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                    <strong style="color: #9b59b6;">Server IP for Whitelist:</strong>
+                    <code style="background: white; padding: 3px 8px; border-radius: 4px; margin-left: 10px;">161.35.137.106</code>
+                    <p class="help-text" style="margin-top: 8px; margin-bottom: 0;">Add this IP to your ActiveTrail authorized IPs list.</p>
                 </div>
             </div>
 
@@ -517,5 +577,31 @@ function clearTestData() {
 }
 
 updatePreview();
+toggleEmailProviders();
+
+function toggleEmailProviders() {
+    const provider = document.getElementById('email_provider').value;
+    const mailtrapCard = document.getElementById('mailtrap-settings');
+    const activetrailCard = document.getElementById('activetrail-settings');
+
+    // Show/hide based on selection
+    if (provider === 'mailtrap') {
+        mailtrapCard.style.display = 'block';
+        activetrailCard.style.display = 'block';
+        activetrailCard.style.opacity = '0.6';
+        mailtrapCard.style.opacity = '1';
+    } else if (provider === 'activetrail') {
+        mailtrapCard.style.display = 'block';
+        activetrailCard.style.display = 'block';
+        mailtrapCard.style.opacity = '0.6';
+        activetrailCard.style.opacity = '1';
+    } else {
+        // SMTP - show both at reduced opacity
+        mailtrapCard.style.display = 'block';
+        activetrailCard.style.display = 'block';
+        mailtrapCard.style.opacity = '0.6';
+        activetrailCard.style.opacity = '0.6';
+    }
+}
 </script>
 {% endblock %}

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Help Request #{{ request.id }} - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .request-card {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+
+    .request-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.in_progress { background: #cce5ff; color: #004085; }
+    .status-badge.resolved { background: #d4edda; color: #155724; }
+    .status-badge.referred { background: #e2e3e5; color: #383d41; }
+
+    .info-row {
+        display: flex;
+        margin-bottom: 15px;
+    }
+
+    .info-label {
+        width: 120px;
+        font-weight: 600;
+        color: #666;
+    }
+
+    .info-value {
+        flex: 1;
+    }
+
+    .issue-text {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        font-family: inherit;
+    }
+
+    .user-notes {
+        background: #fff3cd;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        white-space: pre-wrap;
+    }
+
+    .screenshot-preview {
+        max-width: 100%;
+        max-height: 400px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .resolve-form {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+    }
+
+    .resolve-form textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        min-height: 100px;
+        margin-bottom: 10px;
+    }
+
+    .resolve-form select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-right: 10px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .btn-primary { background: #3498db; color: white; }
+    .btn-success { background: #27ae60; color: white; }
+    .btn-secondary { background: #95a5a6; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="request-card">
+    <div class="request-header">
+        <div>
+            <h1 style="margin: 0 0 10px 0;">Help Request #{{ request.id }}</h1>
+            <span class="status-badge {{ request.status }}">{{ request.status|replace('_', ' ')|title }}</span>
+        </div>
+        <a href="{{ url_for('claude.list_help_requests') }}" class="btn btn-secondary">Back to List</a>
+    </div>
+
+    <div class="info-row">
+        <div class="info-label">From:</div>
+        <div class="info-value">
+            <strong>{{ request.user.full_name }}</strong>
+            ({{ request.user.username }})
+        </div>
+    </div>
+
+    <div class="info-row">
+        <div class="info-label">Submitted:</div>
+        <div class="info-value">{{ request.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+    </div>
+
+    {% if request.page_url %}
+    <div class="info-row">
+        <div class="info-label">Page:</div>
+        <div class="info-value"><a href="{{ request.page_url }}" target="_blank">{{ request.page_url }}</a></div>
+    </div>
+    {% endif %}
+
+    <div class="info-row">
+        <div class="info-label">Issue:</div>
+        <div class="info-value">
+            <div class="issue-text">{{ request.issue }}</div>
+        </div>
+    </div>
+
+    {% if request.screenshot %}
+    <div class="info-row">
+        <div class="info-label">Screenshot:</div>
+        <div class="info-value">
+            <a href="{{ request.screenshot.url }}" target="_blank">
+                <img src="{{ request.screenshot.url }}" class="screenshot-preview" alt="Screenshot">
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if request.user.claude_notes %}
+    <div class="user-notes">
+        <strong>User Context:</strong><br>
+        {{ request.user.claude_notes }}
+    </div>
+    {% endif %}
+
+    {% if request.resolution %}
+    <div class="info-row" style="margin-top: 20px;">
+        <div class="info-label">Resolution:</div>
+        <div class="info-value">
+            <div class="issue-text">{{ request.resolution }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if request.referred_to %}
+    <div class="info-row">
+        <div class="info-label">Referred to:</div>
+        <div class="info-value">{{ request.referred_to }}</div>
+    </div>
+    {% endif %}
+
+    {% if current_user.role == 'admin' and request.status == 'pending' %}
+    <div class="resolve-form">
+        <h3>Resolve Request</h3>
+        <form id="resolveForm">
+            <textarea name="resolution" placeholder="What was done to resolve this issue?"></textarea>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <select name="status">
+                    <option value="resolved">Resolved</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="referred">Referred to Developer</option>
+                </select>
+                <input type="text" name="referred_to" placeholder="Referred to (if applicable)" style="padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                <button type="submit" class="btn btn-success">Update Status</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% if current_user.role == 'admin' %}
+<script>
+document.getElementById('resolveForm')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    try {
+        const response = await fetch('{{ url_for("claude.resolve_help_request", id=request.id) }}', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert('Error updating request');
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

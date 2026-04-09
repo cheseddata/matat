@@ -9,7 +9,7 @@ from ...extensions import csrf
 logger = logging.getLogger(__name__)
 
 # Upload configuration
-UPLOAD_FOLDER = '/root/matat/uploads'
+UPLOAD_FOLDER = '/var/www/matat/uploads'
 UPLOAD_TOKEN = 'matat2026'  # Simple access token
 ALLOWED_EXTENSIONS = {
     'accdb', 'mdb',  # Access databases

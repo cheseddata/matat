@@ -59,6 +59,20 @@ class ConfigSettings(db.Model):
     email_from_address = db.Column(db.String(255), nullable=True)
     mailtrap_token = db.Column(db.String(255), nullable=True)
 
+    # ActiveTrail configuration
+    activetrail_api_key = db.Column(db.String(255), nullable=True)
+    activetrail_profile_id = db.Column(db.Integer, nullable=True)  # Sending profile ID
+    activetrail_group_id = db.Column(db.Integer, nullable=True)  # Group to add contacts to
+    activetrail_classification = db.Column(db.String(100), nullable=True)  # Company branding name
+    activetrail_from_email = db.Column(db.String(255), nullable=True)
+    activetrail_from_name = db.Column(db.String(255), nullable=True)
+
+    # Email provider selection: 'mailtrap', 'activetrail', 'smtp'
+    email_provider = db.Column(db.String(50), default='mailtrap')
+
+    # Claude AI API key
+    anthropic_api_key = db.Column(db.String(255), nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

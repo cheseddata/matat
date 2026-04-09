@@ -47,6 +47,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
     {% endif %}
     {% block extra_css %}{% endblock %}
+
+    <script>
+    // Prevent "Leave site?" warnings - MUST run early before other scripts
+    (function() {
+        // Block onbeforeunload property
+        Object.defineProperty(window, 'onbeforeunload', {
+            get: function() { return null; },
+            set: function() {}
+        });
+
+        // Intercept addEventListener to block beforeunload handlers
+        const origAdd = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function(type, fn, opts) {
+            if (type === 'beforeunload') return;
+            return origAdd.call(this, type, fn, opts);
+        };
+    })();
+    </script>
 </head>
 <body>
     {% if current_user.is_authenticated %}
@@ -63,6 +81,7 @@
         <a href="{{ url_for('admin.reports') }}">{{ t('nav.reports') }}</a>
         <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
         <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
+        <a href="{{ url_for('claude.chat_admin') }}" style="background: #9b59b6; color: white; padding: 4px 10px; border-radius: 4px;">User Chats</a>
         {% else %}
         <a href="{{ url_for('salesperson.my_donations') }}">{{ t('nav.donations') }}</a>
         <a href="{{ url_for('salesperson.send_link') }}">{{ t('nav.send_link') }}</a>
@@ -70,7 +89,6 @@
         <a href="{{ url_for('salesperson.my_links') }}">{{ t('nav.my_links') }}</a>
         {% endif %}
         <div class="nav-right">
-            <a href="{{ url_for('claude.chat') }}" style="background: #9b59b6; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; margin-right: 10px;">Help</a>
             <button class="lang-toggle" onclick="toggleLanguage()">
                 {% if lang == 'he' %}{{ t('nav.switch_to_english') }}{% else %}{{ t('nav.switch_to_hebrew') }}{% endif %}
             </button>
@@ -99,6 +117,11 @@
         document.cookie = 'lang=' + newLang + ';path=/;max-age=31536000';
         location.reload();
     }
+
     </script>
+
+    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    {% include 'components/claude_widget.html' %}
+    {% endif %}
 </body>
 </html>

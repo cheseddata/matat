@@ -6,12 +6,12 @@
     <style>
         @font-face {
             font-family: 'Assistant';
-            src: url('file:///root/matat/app/static/fonts/Assistant-Regular.ttf') format('truetype');
+            src: url('file:///var/www/matat/app/static/fonts/Assistant-Regular.ttf') format('truetype');
             font-weight: normal;
         }
         @font-face {
             font-family: 'Assistant';
-            src: url('file:///root/matat/app/static/fonts/Assistant-Bold.ttf') format('truetype');
+            src: url('file:///var/www/matat/app/static/fonts/Assistant-Bold.ttf') format('truetype');
             font-weight: bold;
         }
 
@@ -191,7 +191,7 @@
 </head>
 <body>
     <div class="header">
-        <img src="file:///root/matat/app/static/img/logo.png" alt="{{ org_name }}" class="logo">
+        <img src="file:///var/www/matat/app/static/img/logo.png" alt="{{ org_name }}" class="logo">
         <div class="org-name">{{ org_name }}</div>
         {% if config.org_address %}
         <div class="org-address">{{ config.org_address }}{% if config.org_city %}, {{ config.org_city }}{% endif %}{% if config.org_state %}, {{ config.org_state }}{% endif %} {{ config.org_zip or '' }}</div>

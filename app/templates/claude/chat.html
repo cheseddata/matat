@@ -3,111 +3,216 @@
 
 {% block extra_css %}
 <style>
-    .chat-container {
-        display: grid;
-        grid-template-columns: 1fr 300px;
-        gap: 20px;
-        height: calc(100vh - 150px);
-    }
-
-    @media (max-width: 900px) {
-        .chat-container {
-            grid-template-columns: 1fr;
-            height: auto;
-        }
-    }
-
-    .terminal-wrapper {
-        background: #1e1e1e;
-        border-radius: 8px;
+    body {
         overflow: hidden;
+    }
+
+    .claude-layout {
+        display: flex;
+        height: calc(100vh - 60px);
+        gap: 0;
+    }
+
+    /* Main content area with tabs */
+    .main-panel {
+        flex: 1;
         display: flex;
         flex-direction: column;
+        min-width: 0;
+        background: #f5f5f5;
     }
 
-    .terminal-header {
+    .tabs {
+        display: flex;
         background: #333;
-        padding: 10px 15px;
+        padding: 0 10px;
+    }
+
+    .tab {
+        padding: 12px 20px;
+        color: #aaa;
+        cursor: pointer;
+        border: none;
+        background: none;
+        font-size: 14px;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .tab:hover {
+        color: #fff;
+        background: #444;
+    }
+
+    .tab.active {
+        color: #fff;
+        border-bottom-color: #3498db;
+        background: #444;
+    }
+
+    .tab-content {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    /* Chat panel on the right */
+    .chat-panel {
+        width: 50%;
+        min-width: 380px;
+        max-width: 700px;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        border-left: 1px solid #e0e0e0;
+        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    .chat-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 15px 20px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-shrink: 0;
     }
 
-    .terminal-title {
+    .chat-title {
         color: #fff;
-        font-size: 14px;
+        font-size: 16px;
+        font-weight: 600;
         display: flex;
         align-items: center;
-        gap: 8px;
-    }
-
-    .terminal-title .dot {
-        width: 10px;
-        height: 10px;
-        background: #27ae60;
-        border-radius: 50%;
-    }
-
-    .terminal-actions {
-        display: flex;
         gap: 10px;
     }
 
-    .terminal-actions button {
-        padding: 5px 12px;
-        background: #555;
+    .chat-title .avatar {
+        width: 36px;
+        height: 36px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+    }
+
+    .chat-title .status {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-title .status small {
+        font-size: 11px;
+        font-weight: normal;
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .chat-title .status .dot {
+        width: 8px;
+        height: 8px;
+        background: #4ade80;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .chat-actions button {
+        padding: 6px 14px;
+        background: rgba(255,255,255,0.2);
         border: none;
-        border-radius: 4px;
+        border-radius: 20px;
         color: white;
         font-size: 12px;
         cursor: pointer;
+        margin-left: 8px;
+        transition: background 0.2s;
     }
 
-    .terminal-actions button:hover {
-        background: #666;
+    .chat-actions button:hover {
+        background: rgba(255,255,255,0.3);
+    }
+
+    .chat-body {
+        flex: 1;
+        background: #f0f2f5;
+        position: relative;
+        overflow: hidden;
     }
 
     .terminal-frame {
-        flex: 1;
         border: none;
         width: 100%;
-        min-height: 500px;
+        height: 100%;
+        background: #1a1a2e;
     }
 
-    .sidebar {
+    .chat-footer {
+        background: #fff;
+        padding: 12px 15px;
+        border-top: 1px solid #e0e0e0;
         display: flex;
-        flex-direction: column;
-        gap: 15px;
+        align-items: center;
+        gap: 10px;
     }
 
-    .sidebar-card {
+    .chat-hint {
+        flex: 1;
+        padding: 10px 15px;
+        background: #f0f2f5;
+        border-radius: 20px;
+        color: #666;
+        font-size: 13px;
+        cursor: pointer;
+    }
+
+    .chat-hint:hover {
+        background: #e4e6e9;
+    }
+
+    /* Cards for tab content */
+    .card {
         background: white;
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        padding: 15px;
+        padding: 20px;
+        margin-bottom: 15px;
     }
 
-    .sidebar-card h3 {
+    .card h3 {
         margin: 0 0 15px 0;
-        font-size: 14px;
-        color: #333;
         padding-bottom: 10px;
         border-bottom: 1px solid #eee;
     }
 
-    .session-info {
-        font-size: 13px;
-        color: #666;
-    }
-
+    /* Session info */
     .session-info p {
-        margin: 5px 0;
+        margin: 8px 0;
+        font-size: 14px;
     }
 
     .session-info strong {
         color: #333;
     }
 
+    .status-active {
+        color: #27ae60;
+        font-weight: 500;
+    }
+
+    /* Buttons */
     .btn {
         display: inline-block;
         padding: 8px 16px;
@@ -116,155 +221,97 @@
         font-size: 13px;
         cursor: pointer;
         text-decoration: none;
-        text-align: center;
     }
 
-    .btn-primary {
-        background: #3498db;
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #2980b9;
-    }
-
-    .btn-danger {
-        background: #e74c3c;
-        color: white;
-    }
-
-    .btn-danger:hover {
-        background: #c0392b;
-    }
-
-    .btn-secondary {
-        background: #ecf0f1;
-        color: #333;
-    }
-
-    .btn-block {
-        display: block;
-        width: 100%;
-        margin-top: 10px;
-    }
+    .btn-primary { background: #3498db; color: white; }
+    .btn-primary:hover { background: #2980b9; }
+    .btn-danger { background: #e74c3c; color: white; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-secondary { background: #ecf0f1; color: #333; }
+    .btn-secondary:hover { background: #ddd; }
 
     /* Screenshot paste area */
     .paste-area {
         border: 2px dashed #ddd;
         border-radius: 8px;
-        padding: 20px;
+        padding: 40px;
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
-        min-height: 80px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
     }
 
     .paste-area:hover, .paste-area.drag-over {
         border-color: #3498db;
-        background: #f8f9fa;
-    }
-
-    .paste-area p {
-        margin: 5px 0;
-        font-size: 13px;
-        color: #666;
+        background: #f0f8ff;
     }
 
     .paste-area .icon {
-        font-size: 24px;
-        margin-bottom: 5px;
+        font-size: 48px;
+        margin-bottom: 10px;
     }
 
-    .screenshot-preview {
-        max-width: 100%;
-        max-height: 100px;
-        border-radius: 4px;
-        margin-top: 10px;
+    .screenshot-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
     }
 
-    .screenshot-url {
-        font-size: 11px;
-        color: #3498db;
-        word-break: break-all;
-        margin-top: 10px;
-        padding: 8px;
+    .screenshot-item {
         background: #f8f9fa;
-        border-radius: 4px;
-    }
-
-    .screenshots-list {
-        max-height: 200px;
-        overflow-y: auto;
-    }
-
-    .screenshot-thumb {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px;
-        border-radius: 4px;
-        margin-bottom: 5px;
-        background: #f8f9fa;
+        border-radius: 8px;
+        overflow: hidden;
         cursor: pointer;
     }
 
-    .screenshot-thumb:hover {
-        background: #e8f4f8;
-    }
-
-    .screenshot-thumb img {
-        width: 40px;
-        height: 40px;
+    .screenshot-item img {
+        width: 100%;
+        height: 100px;
         object-fit: cover;
-        border-radius: 4px;
     }
 
-    .screenshot-thumb .info {
-        flex: 1;
+    .screenshot-item .info {
+        padding: 8px;
         font-size: 12px;
         color: #666;
     }
 
-    .recent-sessions {
-        max-height: 200px;
-        overflow-y: auto;
+    /* Sessions list */
+    .sessions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
     }
 
-    .session-item {
-        padding: 8px;
-        border-radius: 4px;
-        margin-bottom: 5px;
+    .session-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
         background: #f8f9fa;
-        font-size: 12px;
+        border-radius: 6px;
+        gap: 15px;
     }
 
-    .session-item:hover {
+    .session-row:hover {
         background: #e8f4f8;
     }
 
-    .session-item a {
+    .session-row .id {
+        font-weight: bold;
         color: #3498db;
-        text-decoration: none;
     }
 
-    .session-item .date {
-        color: #999;
+    .session-row .date {
+        color: #666;
+        font-size: 13px;
     }
 
-    .status-active {
-        color: #27ae60;
-        font-weight: 500;
+    .session-row .duration {
+        margin-left: auto;
+        font-size: 13px;
     }
 
-    .status-ended {
-        color: #999;
-    }
-
-    /* Modal for ending session */
+    /* Modal */
     .modal {
         display: none;
         position: fixed;
@@ -278,9 +325,7 @@
         justify-content: center;
     }
 
-    .modal.active {
-        display: flex;
-    }
+    .modal.active { display: flex; }
 
     .modal-content {
         background: white;
@@ -290,9 +335,7 @@
         width: 90%;
     }
 
-    .modal-content h3 {
-        margin: 0 0 15px 0;
-    }
+    .modal-content h3 { margin: 0 0 15px 0; }
 
     .modal-content textarea {
         width: 100%;
@@ -309,95 +352,140 @@
         gap: 10px;
         justify-content: flex-end;
     }
+
+    /* Resize handle */
+    .resize-handle {
+        width: 5px;
+        background: #333;
+        cursor: col-resize;
+        transition: background 0.2s;
+    }
+
+    .resize-handle:hover {
+        background: #3498db;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1 style="margin-bottom: 20px;">Claude Chat</h1>
-
-    <div class="chat-container">
-        <!-- Terminal -->
-        <div class="terminal-wrapper">
-            <div class="terminal-header">
-                <div class="terminal-title">
-                    <span class="dot"></span>
-                    tmux session: {{ tmux_session }}
-                </div>
-                <div class="terminal-actions">
-                    <button onclick="reloadTerminal()">Reload</button>
-                    {% if current_user.role == 'admin' %}
-                    <a href="{{ url_for('claude.config') }}" class="btn btn-secondary" style="padding: 5px 12px; font-size: 12px;">Config</a>
-                    {% endif %}
-                </div>
-            </div>
-            <iframe id="terminal" class="terminal-frame" src="/help"></iframe>
+<div class="claude-layout">
+    <!-- Main panel with tabs -->
+    <div class="main-panel">
+        <div class="tabs">
+            <button type="button" class="tab active" onclick="showTab(event, 'session')">Current Session</button>
+            <button type="button" class="tab" onclick="showTab(event, 'screenshots')">Screenshots</button>
+            <button type="button" class="tab" onclick="showTab(event, 'history')">History</button>
+            {% if current_user.role == 'admin' %}
+            <button type="button" class="tab" onclick="showTab(event, 'config')">Config</button>
+            {% endif %}
         </div>
 
-        <!-- Sidebar -->
-        <div class="sidebar">
-            <!-- Current Session -->
-            <div class="sidebar-card">
-                <h3>Current Session</h3>
+        <!-- Session Tab -->
+        <div class="tab-content active" id="tab-session">
+            <div class="card">
+                <h3>Session #{{ session.id }}</h3>
                 <div class="session-info">
-                    <p><strong>ID:</strong> #{{ session.id }}</p>
                     <p><strong>Started:</strong> {{ session.started_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                    <p><strong>Duration:</strong> {{ session.duration }} min</p>
+                    <p><strong>Duration:</strong> {{ session.duration }} minutes</p>
                     <p><strong>Status:</strong> <span class="status-active">Active</span></p>
                 </div>
-                <button class="btn btn-danger btn-block" onclick="showEndSessionModal()">End Session</button>
-                <form method="POST" action="{{ url_for('claude.start_session') }}" style="margin-top: 5px;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-secondary btn-block">New Session</button>
-                </form>
+                <div style="margin-top: 20px; display: flex; gap: 10px;">
+                    <button class="btn btn-danger" onclick="showEndSessionModal()">End Session</button>
+                    <form method="POST" action="{{ url_for('claude.start_session') }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-secondary">New Session</button>
+                    </form>
+                </div>
             </div>
 
-            <!-- Screenshot Paste -->
-            <div class="sidebar-card">
-                <h3>Paste Screenshot</h3>
+            <div class="card">
+                <h3>Quick Upload</h3>
                 <div class="paste-area" id="pasteArea" onclick="document.getElementById('fileInput').click()">
                     <div class="icon">📷</div>
-                    <p>Click to upload or<br>Ctrl+V to paste</p>
+                    <p>Click to upload or press Ctrl+V to paste a screenshot</p>
                 </div>
                 <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="uploadFile(this)">
                 <div id="uploadStatus"></div>
             </div>
+        </div>
 
-            <!-- Screenshots -->
-            {% if screenshots %}
-            <div class="sidebar-card">
+        <!-- Screenshots Tab -->
+        <div class="tab-content" id="tab-screenshots">
+            <div class="card">
                 <h3>Screenshots ({{ screenshots|length }})</h3>
-                <div class="screenshots-list">
+                <div class="paste-area" id="pasteArea2" onclick="document.getElementById('fileInput').click()">
+                    <div class="icon">📷</div>
+                    <p>Click to upload or Ctrl+V to paste</p>
+                </div>
+                <div class="screenshot-grid">
                     {% for s in screenshots %}
-                    <div class="screenshot-thumb" onclick="copyUrl('{{ s.url }}')">
+                    <div class="screenshot-item" onclick="copyUrl('{{ s.url }}')">
                         <img src="{{ s.url }}" alt="Screenshot">
-                        <div class="info">
-                            {{ s.created_at.strftime('%H:%M') }}<br>
-                            <span style="color: #999;">Click to copy URL</span>
-                        </div>
+                        <div class="info">{{ s.created_at.strftime('%H:%M') }} - Click to copy</div>
                     </div>
                     {% endfor %}
                 </div>
             </div>
-            {% endif %}
+        </div>
 
-            <!-- Recent Sessions -->
-            <div class="sidebar-card">
+        <!-- History Tab -->
+        <div class="tab-content" id="tab-history">
+            <div class="card">
                 <h3>Recent Sessions</h3>
-                <div class="recent-sessions">
+                <div class="sessions-list">
                     {% for s in recent_sessions %}
-                    <div class="session-item">
-                        <a href="{{ url_for('claude.view_session', id=s.id) }}">#{{ s.id }}</a>
-                        <span class="date">{{ s.started_at.strftime('%m/%d %H:%M') }}</span>
-                        {% if s.is_active %}
-                        <span class="status-active">(active)</span>
-                        {% else %}
-                        <span class="status-ended">{{ s.duration }}min</span>
-                        {% endif %}
-                    </div>
+                    <a href="{{ url_for('claude.view_session', id=s.id) }}" class="session-row">
+                        <span class="id">#{{ s.id }}</span>
+                        <span class="date">{{ s.started_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        <span class="duration">
+                            {% if s.is_active %}
+                            <span class="status-active">Active</span>
+                            {% else %}
+                            {{ s.duration }} min
+                            {% endif %}
+                        </span>
+                    </a>
                     {% endfor %}
                 </div>
-                <a href="{{ url_for('claude.list_sessions') }}" class="btn btn-secondary btn-block" style="margin-top: 10px;">View All</a>
+                <a href="{{ url_for('claude.list_sessions') }}" class="btn btn-secondary" style="margin-top: 15px;">View All Sessions</a>
+            </div>
+        </div>
+
+        <!-- Config Tab -->
+        {% if current_user.role == 'admin' %}
+        <div class="tab-content" id="tab-config">
+            <div class="card">
+                <h3>Terminal Configuration</h3>
+                <p>Current tmux session: <strong>{{ tmux_session }}</strong></p>
+                <a href="{{ url_for('claude.config') }}" class="btn btn-primary" style="margin-top: 10px;">Open Config</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Resize handle -->
+    <div class="resize-handle" id="resizeHandle"></div>
+
+    <!-- Chat panel on the right -->
+    <div class="chat-panel" id="terminalPanel">
+        <div class="chat-header">
+            <div class="chat-title">
+                <div class="avatar">🤖</div>
+                <div class="status">
+                    <span>Claude</span>
+                    <small><span class="dot"></span> Online</small>
+                </div>
+            </div>
+            <div class="chat-actions">
+                <button onclick="reloadTerminal()">↻ Refresh</button>
+            </div>
+        </div>
+        <div class="chat-body">
+            <iframe id="terminal" class="terminal-frame" src="/help"></iframe>
+        </div>
+        <div class="chat-footer">
+            <div class="chat-hint" onclick="document.getElementById('terminal').focus(); document.getElementById('terminal').contentWindow.focus();">
+                💬 Click here or in the chat to type...
             </div>
         </div>
     </div>
@@ -409,8 +497,8 @@
         <h3>End Session</h3>
         <form method="POST" action="{{ url_for('claude.end_session') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Session Notes (optional):</label>
-            <textarea name="notes" placeholder="What was accomplished? Any issues?"></textarea>
+            <label style="display: block; margin-bottom: 5px; font-weight: 500;">Session Notes:</label>
+            <textarea name="notes" placeholder="What was accomplished?"></textarea>
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary" onclick="hideEndSessionModal()">Cancel</button>
                 <button type="submit" class="btn btn-danger">End Session</button>
@@ -420,6 +508,20 @@
 </div>
 
 <script>
+// Tab switching
+function showTab(e, name) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+
+    e.target.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+
+    return false;
+}
+
 function reloadTerminal() {
     document.getElementById('terminal').src = document.getElementById('terminal').src;
 }
@@ -444,24 +546,23 @@ document.addEventListener('paste', async function(e) {
     }
 });
 
-// Drag and drop
-const pasteArea = document.getElementById('pasteArea');
-pasteArea.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    this.classList.add('drag-over');
-});
-
-pasteArea.addEventListener('dragleave', function(e) {
-    this.classList.remove('drag-over');
-});
-
-pasteArea.addEventListener('drop', async function(e) {
-    e.preventDefault();
-    this.classList.remove('drag-over');
-    const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].type.indexOf('image') !== -1) {
-        await uploadImage(files[0]);
-    }
+// Drag and drop on paste areas
+document.querySelectorAll('.paste-area').forEach(area => {
+    area.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+    });
+    area.addEventListener('dragleave', function(e) {
+        this.classList.remove('drag-over');
+    });
+    area.addEventListener('drop', async function(e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.indexOf('image') !== -1) {
+            await uploadImage(files[0]);
+        }
+    });
 });
 
 function uploadFile(input) {
@@ -472,7 +573,7 @@ function uploadFile(input) {
 
 async function uploadImage(file) {
     const status = document.getElementById('uploadStatus');
-    status.innerHTML = '<p style="color: #666;">Uploading...</p>';
+    status.innerHTML = '<p style="color: #666; margin-top: 10px;">Uploading...</p>';
 
     const formData = new FormData();
     formData.append('file', file);
@@ -488,31 +589,66 @@ async function uploadImage(file) {
         if (data.success) {
             const fullUrl = window.location.origin + data.url;
             status.innerHTML = `
-                <img src="${data.url}" class="screenshot-preview">
-                <div class="screenshot-url" onclick="copyUrl('${data.url}')" style="cursor: pointer;">
-                    ${fullUrl}<br><small>Click to copy</small>
+                <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 4px;">
+                    <strong>Uploaded!</strong><br>
+                    <a href="${data.url}" target="_blank" style="word-break: break-all;">${fullUrl}</a><br>
+                    <button onclick="copyUrl('${data.url}')" class="btn btn-secondary" style="margin-top: 5px;">Copy URL</button>
                 </div>
             `;
+            // Refresh page to show new screenshot
+            setTimeout(() => location.reload(), 2000);
         } else {
-            status.innerHTML = `<p style="color: #e74c3c;">Error: ${data.error}</p>`;
+            status.innerHTML = `<p style="color: #e74c3c; margin-top: 10px;">Error: ${data.error}</p>`;
         }
     } catch (err) {
-        status.innerHTML = `<p style="color: #e74c3c;">Upload failed: ${err.message}</p>`;
+        status.innerHTML = `<p style="color: #e74c3c; margin-top: 10px;">Upload failed: ${err.message}</p>`;
     }
 }
 
 function copyUrl(url) {
     const fullUrl = window.location.origin + url;
     navigator.clipboard.writeText(fullUrl).then(() => {
-        alert('URL copied to clipboard!');
+        alert('URL copied!');
     });
 }
+
+// Resize panel functionality
+const resizeHandle = document.getElementById('resizeHandle');
+const terminalPanel = document.getElementById('terminalPanel');
+let isResizing = false;
+
+resizeHandle.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    const newWidth = window.innerWidth - e.clientX;
+    if (newWidth >= 300 && newWidth <= window.innerWidth * 0.7) {
+        terminalPanel.style.width = newWidth + 'px';
+    }
+});
+
+document.addEventListener('mouseup', function() {
+    isResizing = false;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+});
 
 // Close modal on escape
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         hideEndSessionModal();
     }
+});
+
+// Focus terminal on load
+window.addEventListener('load', function() {
+    setTimeout(() => {
+        document.getElementById('terminal').focus();
+    }, 500);
 });
 </script>
 {% endblock %}

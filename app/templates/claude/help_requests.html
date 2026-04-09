@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Help Requests - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .requests-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .requests-table th, .requests-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .requests-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .requests-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .status-badge.pending { background: #fff3cd; color: #856404; }
+    .status-badge.in_progress { background: #cce5ff; color: #004085; }
+    .status-badge.resolved { background: #d4edda; color: #155724; }
+    .status-badge.referred { background: #e2e3e5; color: #383d41; }
+
+    .issue-preview {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .view-btn {
+        padding: 4px 12px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 12px;
+    }
+
+    .view-btn:hover {
+        background: #2980b9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1>Help Requests</h1>
+    <p style="color: #666; margin-bottom: 20px;">View and manage help requests from users.</p>
+
+    {% if requests %}
+    <table class="requests-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>User</th>
+                <th>Issue</th>
+                <th>Page</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr>
+                <td>{{ req.created_at.strftime('%m/%d/%Y %H:%M') }}</td>
+                <td>
+                    <strong>{{ req.user.full_name }}</strong>
+                    {% if req.user.claude_notes %}
+                    <br><small style="color: #666;">{{ req.user.claude_notes.split('\n')[0] }}</small>
+                    {% endif %}
+                </td>
+                <td class="issue-preview" title="{{ req.issue }}">{{ req.issue[:100] }}{% if req.issue|length > 100 %}...{% endif %}</td>
+                <td>
+                    {% if req.page_url %}
+                    <a href="{{ req.page_url }}" target="_blank" style="font-size: 12px;">{{ req.page_url|truncate(30) }}</a>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td><span class="status-badge {{ req.status }}">{{ req.status|replace('_', ' ')|title }}</span></td>
+                <td>
+                    <a href="{{ url_for('claude.view_help_request', id=req.id) }}" class="view-btn">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; color: #666; padding: 40px;">No help requests yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

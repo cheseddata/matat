@@ -426,6 +426,10 @@
                 <div class="char-count"><span id="charCount">0</span> characters</div>
             </div>
 
+            <div id="attachmentInfo" style="display: none; margin-top: 15px; padding: 10px 15px; background: #e8f4f8; border-radius: 6px; font-size: 13px;">
+                &#x1F4CE; <strong>Attachment:</strong> <span id="attachmentName"></span>
+            </div>
+
             <p style="font-size: 13px; color: #666; margin-top: 15px;">
                 <strong>Note:</strong> The donation link button will be automatically added below your message.
             </p>
@@ -449,6 +453,7 @@
     <input type="hidden" name="campaign_id" id="submit_campaign_id">
     <input type="hidden" name="email_subject" id="submit_email_subject">
     <input type="hidden" name="email_body" id="submit_email_body">
+    <input type="hidden" name="template_id" id="submit_template_id">
 </form>
 {% endblock %}
 
@@ -702,12 +707,16 @@ function displayCustomTemplates() {
     container.style.display = 'flex';
 }
 
+// Track selected template ID for attachment support
+let selectedTemplateId = null;
+
 // Select a custom template
 function selectCustomTemplate(id) {
     const template = customTemplates.find(t => t.id === id);
     if (!template) return;
 
     currentTemplate = 'custom_' + id;
+    selectedTemplateId = id;  // Store template ID for attachment
 
     // Update button states
     document.querySelectorAll('.template-btn').forEach(btn => {
@@ -732,11 +741,21 @@ function selectCustomTemplate(id) {
     document.getElementById('email_subject').value = subject;
     document.getElementById('email_body').value = body;
     document.getElementById('charCount').textContent = body.length;
+
+    // Show/hide attachment info
+    const attachmentInfo = document.getElementById('attachmentInfo');
+    if (template.has_attachment && template.attachment_name) {
+        document.getElementById('attachmentName').textContent = template.attachment_name;
+        attachmentInfo.style.display = 'block';
+    } else {
+        attachmentInfo.style.display = 'none';
+    }
 }
 
 // Select template
 function selectTemplate(templateName) {
     currentTemplate = templateName;
+    selectedTemplateId = null;  // Clear template ID for built-in templates (no attachment)
 
     // Update button states
     document.querySelectorAll('.template-btn').forEach(btn => {
@@ -754,6 +773,9 @@ function selectTemplate(templateName) {
     document.getElementById('email_subject').value = template.subject;
     document.getElementById('email_body').value = template.body;
     document.getElementById('charCount').textContent = template.body.length;
+
+    // Hide attachment info for built-in templates
+    document.getElementById('attachmentInfo').style.display = 'none';
 }
 
 // Show email preview modal
@@ -819,6 +841,7 @@ function sendEmail() {
     document.getElementById('submit_campaign_id').value = document.getElementById('campaign_id') ? document.getElementById('campaign_id').value : '';
     document.getElementById('submit_email_subject').value = subject;
     document.getElementById('submit_email_body').value = body;
+    document.getElementById('submit_template_id').value = selectedTemplateId || '';
 
     // Submit the hidden form
     document.getElementById('submitForm').submit();

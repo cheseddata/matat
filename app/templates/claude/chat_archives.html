@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Chat Archives - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .archive-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .archive-table th, .archive-table td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+    }
+
+    .archive-table th {
+        background: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .archive-table tr:hover {
+        background: #f8f9fa;
+    }
+
+    .view-btn {
+        padding: 6px 14px;
+        background: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 13px;
+    }
+
+    .view-btn:hover {
+        background: #2980b9;
+    }
+
+    .notes-preview {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: #666;
+        font-size: 13px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">Chat Archives</h1>
+        <a href="{{ url_for('claude.chat_admin') }}" class="btn" style="font-size: 14px;">Back to Active Chats</a>
+    </div>
+    <p style="color: #666; margin-bottom: 20px;">Previously cleared conversations are saved here for reference.</p>
+
+    {% if archives %}
+    <table class="archive-table">
+        <thead>
+            <tr>
+                <th>Date Archived</th>
+                <th>User</th>
+                <th>Messages</th>
+                <th>Resolution Notes</th>
+                <th>Archived By</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for archive in archives %}
+            <tr>
+                <td>{{ archive.archived_at.strftime('%m/%d/%Y %I:%M %p') }}</td>
+                <td><strong>{{ archive.user.full_name }}</strong></td>
+                <td>{{ archive.message_count }}</td>
+                <td class="notes-preview" title="{{ archive.resolution_notes or '' }}">
+                    {{ archive.resolution_notes or '-' }}
+                </td>
+                <td>{{ archive.archiver.full_name if archive.archiver else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('claude.view_archive', id=archive.id) }}" class="view-btn">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="text-align: center; color: #666; padding: 40px;">No archived conversations yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
