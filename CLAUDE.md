@@ -116,8 +116,10 @@ Web interface for managing Claude coding sessions with embedded terminal.
 - `ClaudeScreenshot` - Screenshots uploaded during sessions
 - `ClaudeConfig` - Key-value config storage
 
-**Service:**
-- `ttyd-matat.service` - Systemd service running ttyd on port 7681, attaching to tmux session `matat`
+**Services:**
+- `matat.service` - Gunicorn on port 5050 (3 workers, 120s timeout)
+- `ttyd-matat.service` - ttyd on port 7681 with `--base-path /help`, attaching to tmux session `matat`
+- `caddy.service` - Reverse proxy with auto-HTTPS
 
 **Widget:**
 - Floating chat widget included on all admin pages via `components/claude_widget.html`
