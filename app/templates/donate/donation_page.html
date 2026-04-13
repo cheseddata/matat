@@ -374,14 +374,20 @@
                 <h3>{{ t('donate.payment_details') }}</h3>
             </div>
 
-            <!-- Payment Method Tabs (only show if multiple methods available) -->
-            {% if processors.has_daf %}
+            <!-- Payment Method Tabs -->
+            {% if processors.has_daf or processors.has_nedarim %}
             <div class="payment-method-tabs">
                 {% if processors.has_stripe %}
                 <button type="button" class="payment-method-tab active" data-method="credit_card">
                     <div class="tab-icon">💳</div>
                     Credit Card
                 </button>
+                {% endif %}
+                {% if processors.has_nedarim %}
+                <a href="{{ url_for('donate.nedarim_donation_page', ref=request.args.get('ref',''), aff=request.args.get('aff',''), amt=request.args.get('amt',''), link_id=request.args.get('link_id','')) }}" class="payment-method-tab" style="text-decoration:none; color:inherit;">
+                    <div class="tab-icon">💳</div>
+                    Nedarim Plus
+                </a>
                 {% endif %}
                 {% if processors.has_chariot %}
                 <button type="button" class="payment-method-tab" data-method="dafpay">
