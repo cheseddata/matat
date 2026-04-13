@@ -110,6 +110,48 @@ def donation_page():
     )
 
 
+@donate_bp.route('/donate/nedarim')
+def nedarim_donation_page():
+    """Nedarim Plus donation page (ILS)."""
+    ref_code = request.args.get('ref')
+    aff_code = request.args.get('aff')
+    preset_amount = request.args.get('amt')
+    donor_name = request.args.get('name', '')
+    donor_email = request.args.get('email', '')
+    donor_address = request.args.get('addr', '')
+    lang = request.args.get('lang', 'he')  # Default to Hebrew for Israeli donors
+    donation_type = request.args.get('type', 'onetime')
+
+    # Nedarim must be enabled
+    nedarim_proc = PaymentProcessor.get_by_code('nedarim')
+    if not nedarim_proc or not nedarim_proc.enabled:
+        return redirect(url_for('donate.donation_page'))
+
+    nedarim_config = {
+        'mosad_id': nedarim_proc.config_json.get('mosad_id') if nedarim_proc.config_json else None,
+        'iframe_url': 'https://www.matara.pro/nedarimplus/iframe/',
+    }
+
+    # Resolve salesperson and campaign
+    salesperson = resolve_ref_code(ref_code) if ref_code else None
+    campaign = resolve_aff_code(aff_code) if aff_code else None
+
+    return render_template(
+        'donate/nedarim_page.html',
+        ref_code=ref_code,
+        aff_code=aff_code,
+        preset_amount=preset_amount,
+        donor_name=donor_name,
+        donor_email=donor_email,
+        donor_address=donor_address,
+        salesperson=salesperson,
+        campaign=campaign,
+        nedarim_config=nedarim_config,
+        donation_type=donation_type,
+        lang=lang,
+    )
+
+
 @donate_bp.route('/d/<short_code>')
 def resolve_short_link(short_code):
     """Resolve short link and redirect to donation page with usage tracking."""

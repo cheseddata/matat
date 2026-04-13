@@ -14,14 +14,52 @@
         }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 20px; }
-        .nav { background: #2c3e50; color: white; padding: 15px 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .nav a { color: white; text-decoration: none; {% if is_rtl %}margin-left: 15px;{% else %}margin-right: 15px;{% endif %} font-size: 14px; }
+        .nav { background: #2c3e50; color: white; padding: 0 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 0; min-height: 50px; }
+        .nav a { color: white; text-decoration: none; font-size: 14px; }
         .nav a:hover { text-decoration: underline; }
-        .nav .nav-right { {% if is_rtl %}margin-right: auto;{% else %}margin-left: auto;{% endif %} display: flex; align-items: center; gap: 15px; }
-        .nav .brand { font-weight: bold; font-size: 16px; }
+        .nav .nav-right { {% if is_rtl %}margin-right: auto;{% else %}margin-left: auto;{% endif %} display: flex; align-items: center; gap: 15px; padding: 10px 0; }
+        .nav .brand { font-weight: bold; font-size: 16px; padding: 10px 15px 10px 0; }
         .nav .nav-divider { border-left: 1px solid rgba(255,255,255,0.3); height: 20px; margin: 0 5px; }
         .lang-toggle { background: #3498db; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; }
         .lang-toggle:hover { background: #2980b9; }
+        /* Dropdown menu system */
+        .nav-menu { display: flex; align-items: stretch; gap: 0; height: 50px; }
+        .nav-dropdown { position: relative; }
+        .nav-dropdown > .nav-link {
+            display: flex; align-items: center; gap: 4px;
+            padding: 0 14px; height: 50px; line-height: 50px;
+            color: white; text-decoration: none; font-size: 14px;
+            cursor: pointer; border: none; background: none;
+            transition: background 0.15s;
+        }
+        .nav-dropdown > .nav-link:hover, .nav-dropdown:hover > .nav-link {
+            background: rgba(255,255,255,0.1); text-decoration: none;
+        }
+        .nav-dropdown > .nav-link .arrow { font-size: 10px; opacity: 0.7; }
+        .nav-dropdown .dropdown-menu {
+            display: none; position: absolute; top: 50px; left: 0;
+            background: #34495e; border-radius: 0 0 6px 6px;
+            min-width: 190px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 1000; padding: 4px 0;
+        }
+        {% if is_rtl %}
+        .nav-dropdown .dropdown-menu { left: auto; right: 0; }
+        {% endif %}
+        .nav-dropdown:hover .dropdown-menu { display: block; }
+        .dropdown-menu a {
+            display: block; padding: 9px 18px; color: white;
+            font-size: 13px; white-space: nowrap; margin: 0;
+        }
+        .dropdown-menu a:hover { background: rgba(255,255,255,0.1); text-decoration: none; }
+        .dropdown-menu .menu-divider { border-top: 1px solid rgba(255,255,255,0.15); margin: 4px 0; }
+        /* Direct nav links (no dropdown) */
+        .nav-direct {
+            display: flex; align-items: center;
+            padding: 0 14px; height: 50px; line-height: 50px;
+            color: white; text-decoration: none; font-size: 14px;
+            transition: background 0.15s;
+        }
+        .nav-direct:hover { background: rgba(255,255,255,0.1); text-decoration: none; }
         .btn { display: inline-block; padding: 10px 20px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; }
         .btn:hover { background: #2980b9; }
         .btn-success { background: #27ae60; }
@@ -70,23 +108,53 @@
     {% if current_user.is_authenticated %}
     <nav class="nav">
         <a href="/" class="brand"><img src="{{ url_for('static', filename='logo.png') }}" alt="Matat Mordechai" style="height: 32px; vertical-align: middle; margin-{% if is_rtl %}left{% else %}right{% endif %}: 8px;">מתת מרדכי | Matat</a>
-        <span class="nav-divider"></span>
+
         {% if current_user.role == 'admin' %}
-        <a href="{{ url_for('admin.dashboard') }}">{{ t('nav.dashboard') }}</a>
-        <a href="{{ url_for('admin.salespersons') }}">{{ t('nav.salespersons') }}</a>
-        <a href="{{ url_for('admin.commissions') }}">{{ t('nav.commissions') }}</a>
-        <a href="{{ url_for('admin.donations') }}">{{ t('nav.donations') }}</a>
-        <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
-        <a href="{{ url_for('admin.campaigns') }}">{{ t('nav.campaigns') }}</a>
-        <a href="{{ url_for('admin.reports') }}">{{ t('nav.reports') }}</a>
-        <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
-        <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
-        <a href="{{ url_for('claude.chat_admin') }}" style="background: #9b59b6; color: white; padding: 4px 10px; border-radius: 4px;">User Chats</a>
+        <div class="nav-menu">
+            <a href="{{ url_for('admin.dashboard') }}" class="nav-direct">{{ t('nav.dashboard') }}</a>
+
+            <div class="nav-dropdown">
+                <span class="nav-link">{{ t('nav.donations') }} <span class="arrow">&#9662;</span></span>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('admin.donations') }}">{{ t('nav.donations') }}</a>
+                    <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
+                    <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
+                    <div class="menu-divider"></div>
+                    <a href="{{ url_for('donate.donation_page') }}">Donation Page (USD)</a>
+                    <a href="{{ url_for('donate.nedarim_donation_page') }}">Donation Page (ILS)</a>
+                </div>
+            </div>
+
+            <div class="nav-dropdown">
+                <span class="nav-link">{{ t('nav.salespersons') }} <span class="arrow">&#9662;</span></span>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('admin.salespersons') }}">{{ t('nav.salespersons') }}</a>
+                    <a href="{{ url_for('admin.commissions') }}">{{ t('nav.commissions') }}</a>
+                </div>
+            </div>
+
+            <a href="{{ url_for('admin.campaigns') }}" class="nav-direct">{{ t('nav.campaigns') }}</a>
+            <a href="{{ url_for('admin.reports') }}" class="nav-direct">{{ t('nav.reports') }}</a>
+
+            <div class="nav-dropdown">
+                <span class="nav-link">{{ t('nav.settings') }} <span class="arrow">&#9662;</span></span>
+                <div class="dropdown-menu">
+                    <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
+                    <a href="{{ url_for('admin.payment_processors') }}">Payment Processors</a>
+                    <a href="{{ url_for('admin.email_templates') }}">Email Templates</a>
+                    <div class="menu-divider"></div>
+                    <a href="{{ url_for('admin.screenshots') }}">Screenshots</a>
+                    <a href="{{ url_for('claude.chat_admin') }}">User Chats</a>
+                </div>
+            </div>
+        </div>
         {% else %}
-        <a href="{{ url_for('salesperson.my_donations') }}">{{ t('nav.donations') }}</a>
-        <a href="{{ url_for('salesperson.send_link') }}">{{ t('nav.send_link') }}</a>
-        <a href="{{ url_for('salesperson.phone_entry') }}">{{ t('nav.phone_entry') }}</a>
-        <a href="{{ url_for('salesperson.my_links') }}">{{ t('nav.my_links') }}</a>
+        <div class="nav-menu">
+            <a href="{{ url_for('salesperson.my_donations') }}" class="nav-direct">{{ t('nav.donations') }}</a>
+            <a href="{{ url_for('salesperson.send_link') }}" class="nav-direct">{{ t('nav.send_link') }}</a>
+            <a href="{{ url_for('salesperson.phone_entry') }}" class="nav-direct">{{ t('nav.phone_entry') }}</a>
+            <a href="{{ url_for('salesperson.my_links') }}" class="nav-direct">{{ t('nav.my_links') }}</a>
+        </div>
         {% endif %}
         <div class="nav-right">
             <button class="lang-toggle" onclick="toggleLanguage()">
