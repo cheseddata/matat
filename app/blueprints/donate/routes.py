@@ -321,14 +321,17 @@ def prepare_nedarim_payment():
         if campaign:
             campaign_id = campaign.id
 
-    # Determine currency based on donor country
-    currency = 'ILS' if data.get('country') == 'IL' else 'USD'
+    # Use currency from frontend (ILS for Nedarim)
+    currency = data.get('currency', 'ILS').upper()
+    if currency not in ('ILS', 'USD'):
+        currency = 'ILS'
 
     # Build metadata for the iframe PostMessage
     metadata = {
         'donor_id': str(donor.id),
         'salesperson_id': str(salesperson_id) if salesperson_id else '',
         'link_id': data.get('link_id', ''),
+        'teudat_zehut': data.get('teudat_zehut', ''),
         'callback_url': '',
         'success_url': '',
         'fail_url': '',
@@ -345,9 +348,14 @@ def prepare_nedarim_payment():
     if not result.get('success'):
         return jsonify({'error': result.get('error', 'Failed to prepare payment')}), 400
 
+    # Add teudat zehut to iframe data if provided
+    iframe_data = result['iframe_data']
+    if data.get('teudat_zehut'):
+        iframe_data['Zeout'] = data['teudat_zehut']
+
     return jsonify({
         'success': True,
-        'iframe_data': result['iframe_data'],
+        'iframe_data': iframe_data,
         'donor_id': donor.id,
         'currency': currency,
     })

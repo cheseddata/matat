@@ -2243,3 +2243,78 @@ def donor_activity(id):
     activities.sort(key=lambda x: x['timestamp'], reverse=True)
 
     return jsonify({'activities': activities})
+
+
+# =============================================================================
+# ADMIN SCREENSHOTS
+# =============================================================================
+
+@admin_bp.route('/screenshots')
+@admin_required
+def screenshots():
+    """View and upload screenshots for sharing with Claude."""
+    from ...models.claude import ClaudeScreenshot
+    shots = ClaudeScreenshot.query.order_by(ClaudeScreenshot.created_at.desc()).limit(50).all()
+    return render_template('admin/screenshots.html', screenshots=shots)
+
+
+@admin_bp.route('/screenshots/upload', methods=['POST'])
+@admin_required
+def upload_screenshot():
+    """Upload a screenshot from admin."""
+    from ...models.claude import ClaudeScreenshot
+    import uuid
+    import os
+    from werkzeug.utils import secure_filename
+
+    SCREENSHOT_FOLDER = '/var/www/matat/uploads/screenshots'
+    os.makedirs(SCREENSHOT_FOLDER, exist_ok=True)
+
+    if 'file' not in request.files:
+        flash('No file selected.', 'danger')
+        return redirect(url_for('admin.screenshots'))
+
+    file = request.files['file']
+    if file.filename == '':
+        flash('No file selected.', 'danger')
+        return redirect(url_for('admin.screenshots'))
+
+    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'png'
+    if ext not in ('png', 'jpg', 'jpeg', 'gif', 'webp'):
+        flash('Invalid image type.', 'danger')
+        return redirect(url_for('admin.screenshots'))
+
+    filename = f'{uuid.uuid4().hex}.{ext}'
+    filepath = os.path.join(SCREENSHOT_FOLDER, filename)
+    file.save(filepath)
+
+    screenshot = ClaudeScreenshot(
+        user_id=current_user.id,
+        filename=filename,
+        original_filename=secure_filename(file.filename),
+        file_path=filepath,
+        file_size=os.path.getsize(filepath),
+        description=request.form.get('description', '')
+    )
+    db.session.add(screenshot)
+    db.session.commit()
+
+    logger.info(f'[admin] Screenshot {filename} uploaded by admin {current_user.id}')
+    flash('Screenshot uploaded.', 'success')
+    return redirect(url_for('admin.screenshots'))
+
+
+@admin_bp.route('/screenshots/<int:id>/delete', methods=['POST'])
+@admin_required
+def delete_screenshot(id):
+    """Delete a screenshot."""
+    from ...models.claude import ClaudeScreenshot
+    import os
+
+    shot = ClaudeScreenshot.query.get_or_404(id)
+    if shot.file_path and os.path.exists(shot.file_path):
+        os.remove(shot.file_path)
+    db.session.delete(shot)
+    db.session.commit()
+    flash('Screenshot deleted.', 'success')
+    return redirect(url_for('admin.screenshots'))

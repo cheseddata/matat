@@ -294,7 +294,7 @@
                 <h3>{{ t('donate.donation_amount') }}</h3>
             </div>
 
-            <div class="amount-buttons">
+            <div class="amount-buttons" id="amount-buttons-usd">
                 <button type="button" class="amount-btn" data-amount="36">$36</button>
                 <button type="button" class="amount-btn" data-amount="72">$72</button>
                 <button type="button" class="amount-btn" data-amount="180">$180</button>
@@ -302,8 +302,16 @@
                 <button type="button" class="amount-btn" data-amount="500">$500</button>
                 <button type="button" class="amount-btn" data-amount="1000">$1,000</button>
             </div>
+            <div class="amount-buttons" id="amount-buttons-ils" style="display: none;">
+                <button type="button" class="amount-btn ils-btn" data-amount="100">&#8362;100</button>
+                <button type="button" class="amount-btn ils-btn" data-amount="250">&#8362;250</button>
+                <button type="button" class="amount-btn ils-btn" data-amount="500">&#8362;500</button>
+                <button type="button" class="amount-btn ils-btn" data-amount="1000">&#8362;1,000</button>
+                <button type="button" class="amount-btn ils-btn" data-amount="1800">&#8362;1,800</button>
+                <button type="button" class="amount-btn ils-btn" data-amount="3600">&#8362;3,600</button>
+            </div>
             <div class="custom-amount">
-                <span style="font-size: 28px; font-weight: bold;">$</span>
+                <span style="font-size: 28px; font-weight: bold;" id="currency-symbol">$</span>
                 <input type="number" id="amount" name="amount" min="1" step="0.01"
                        value="{{ preset_amount or '' }}"
                        placeholder="{{ t('donate.other') }}" required>
@@ -335,6 +343,11 @@
                 <div class="form-group">
                     <label for="phone">{{ t('common.phone') }}</label>
                     <input type="tel" id="phone" name="phone" placeholder="({{ t('donate.optional') }})">
+                </div>
+                <div class="form-group" id="teudat-zehut-group" style="display: none;">
+                    <label for="teudat_zehut">Teudat Zehut (ת.ז.)</label>
+                    <input type="text" id="teudat_zehut" name="teudat_zehut" maxlength="9"
+                           placeholder="Israeli ID number" pattern="[0-9]{5,9}">
                 </div>
                 <div class="form-group full-width">
                     <label for="address_line1">{{ t('phone_entry.address') }} *</label>
@@ -611,7 +624,7 @@ monthlyTab.addEventListener('click', () => setDonationType('recurring'));
 setDonationType('recurring');
 {% endif %}
 
-// Amount buttons
+// Amount buttons (USD + ILS)
 document.querySelectorAll('.amount-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
@@ -641,6 +654,33 @@ document.getElementById('amount').addEventListener('input', function() {
 
 let currentPaymentMethod = 'credit_card';
 
+// Currency state
+let currentCurrency = 'USD';
+
+function switchCurrency(currency) {
+    currentCurrency = currency;
+    const usdButtons = document.getElementById('amount-buttons-usd');
+    const ilsButtons = document.getElementById('amount-buttons-ils');
+    const currencySymbol = document.getElementById('currency-symbol');
+    const tzGroup = document.getElementById('teudat-zehut-group');
+
+    if (currency === 'ILS') {
+        usdButtons.style.display = 'none';
+        ilsButtons.style.display = 'grid';
+        currencySymbol.innerHTML = '&#8362;';
+        tzGroup.style.display = '';
+    } else {
+        usdButtons.style.display = 'grid';
+        ilsButtons.style.display = 'none';
+        currencySymbol.textContent = '$';
+        tzGroup.style.display = 'none';
+    }
+
+    // Clear selected amount when switching currency
+    document.querySelectorAll('.amount-btn').forEach(b => b.classList.remove('selected'));
+    document.getElementById('amount').value = '';
+}
+
 // Payment method tabs
 document.querySelectorAll('.payment-method-tab').forEach(tab => {
     tab.addEventListener('click', function() {
@@ -656,6 +696,9 @@ document.querySelectorAll('.payment-method-tab').forEach(tab => {
         document.querySelectorAll('.payment-section').forEach(s => s.classList.remove('active'));
         const section = document.getElementById('payment-' + method);
         if (section) section.classList.add('active');
+
+        // Switch currency for Nedarim
+        switchCurrency(method === 'nedarim' ? 'ILS' : 'USD');
 
         // Update submit button text
         updateSubmitButton();
@@ -908,6 +951,13 @@ async function processNedarim(baseData) {
     const errorDisplay = document.getElementById('nedarim-errors');
     errorDisplay.textContent = '';
 
+    // Add Nedarim-specific fields
+    const nedarimData = {
+        ...baseData,
+        currency: 'ILS',
+        teudat_zehut: document.getElementById('teudat_zehut').value || '',
+    };
+
     // Step 1: Prepare payment data on the server (creates donor, gets API credentials)
     const response = await fetch('/donate/prepare-nedarim', {
         method: 'POST',
@@ -915,7 +965,7 @@ async function processNedarim(baseData) {
             'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token() }}'
         },
-        body: JSON.stringify(baseData)
+        body: JSON.stringify(nedarimData)
     });
 
     const data = await response.json();

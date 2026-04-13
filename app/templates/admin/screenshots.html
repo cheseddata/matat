@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Screenshots - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .screenshots-container { max-width: 900px; margin: 20px auto; }
+    .upload-form {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+        border: 2px dashed #ddd;
+    }
+    .upload-form:hover { border-color: #3498db; }
+    .upload-form input[type="file"] { margin-bottom: 10px; }
+    .upload-form .form-row { display: flex; gap: 10px; align-items: end; }
+    .upload-form .form-row .form-group { flex: 1; }
+    .screenshot-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+    }
+    .screenshot-card {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+        background: white;
+    }
+    .screenshot-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+        cursor: pointer;
+    }
+    .screenshot-card .info {
+        padding: 10px;
+        font-size: 13px;
+        color: #666;
+    }
+    .screenshot-card .info .desc { color: #333; font-weight: 500; margin-bottom: 5px; }
+    .screenshot-card .actions {
+        padding: 0 10px 10px;
+        display: flex;
+        gap: 8px;
+    }
+    .screenshot-card .actions a,
+    .screenshot-card .actions button {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .screenshot-card .actions a {
+        background: #3498db;
+        color: white;
+        border: none;
+    }
+    .screenshot-card .actions button {
+        background: #e74c3c;
+        color: white;
+        border: none;
+    }
+    /* Full-size overlay */
+    .overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.85);
+        z-index: 9999;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+    }
+    .overlay.active { display: flex; }
+    .overlay img { max-width: 95%; max-height: 95%; object-fit: contain; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="screenshots-container">
+    <h2>Screenshots</h2>
+    <p style="color: #666; margin-bottom: 20px;">Upload screenshots to share with Claude for debugging or UI review.</p>
+
+    <form action="{{ url_for('admin.upload_screenshot') }}" method="POST" enctype="multipart/form-data" class="upload-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Image File</label>
+                <input type="file" name="file" accept="image/*" required>
+            </div>
+            <div class="form-group">
+                <label>Description (optional)</label>
+                <input type="text" name="description" placeholder="e.g., Nedarim Plus payment form">
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Upload</button>
+            </div>
+        </div>
+    </form>
+
+    {% if screenshots %}
+    <div class="screenshot-grid">
+        {% for shot in screenshots %}
+        <div class="screenshot-card">
+            <img src="{{ url_for('claude.view_screenshot', filename=shot.filename) }}"
+                 alt="{{ shot.description or shot.original_filename }}"
+                 onclick="showOverlay(this.src)">
+            <div class="info">
+                {% if shot.description %}<div class="desc">{{ shot.description }}</div>{% endif %}
+                <div>{{ shot.original_filename }} &middot; {{ shot.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+            </div>
+            <div class="actions">
+                <a href="{{ url_for('claude.view_screenshot', filename=shot.filename) }}" target="_blank">Open</a>
+                <form method="POST" action="{{ url_for('admin.delete_screenshot', id=shot.id) }}" style="display:inline"
+                      onsubmit="return confirm('Delete this screenshot?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit">Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: #999; text-align: center; padding: 40px;">No screenshots uploaded yet.</p>
+    {% endif %}
+</div>
+
+<!-- Full-size overlay -->
+<div class="overlay" id="overlay" onclick="this.classList.remove('active')">
+    <img id="overlay-img" src="">
+</div>
+
+<script>
+function showOverlay(src) {
+    document.getElementById('overlay-img').src = src;
+    document.getElementById('overlay').classList.add('active');
+}
+</script>
+{% endblock %}
