@@ -364,6 +364,175 @@ def handle_invoice_paid(invoice):
 
 
 # =============================================================================
+# NEDARIM PLUS WEBHOOK
+# =============================================================================
+
+@webhook_bp.route('/nedarim/webhook', methods=['POST'])
+@csrf.exempt
+def nedarim_webhook():
+    """
+    Handle Nedarim Plus payment webhook.
+
+    IMPORTANT: Only accept from IP 18.194.219.73
+    """
+    from datetime import datetime
+    from ...models.payment_processor import PaymentProcessor
+    from ...services.payment.nedarim_processor import NedarimProcessor
+
+    logger.info('=' * 50)
+    logger.info('NEDARIM PLUS WEBHOOK RECEIVED')
+    logger.info('=' * 50)
+
+    # Verify source IP
+    remote_ip = request.headers.get('X-Forwarded-For', request.headers.get('X-Real-IP', request.remote_addr))
+    logger.info(f'Nedarim webhook from IP: {remote_ip}')
+
+    if remote_ip and '18.194.219.73' not in remote_ip:
+        logger.warning(f'Nedarim webhook from unauthorized IP: {remote_ip}')
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    # Get processor config
+    nedarim_db = PaymentProcessor.get_by_code('nedarim')
+    if not nedarim_db or not nedarim_db.enabled:
+        logger.warning('Nedarim webhook received but processor not enabled')
+        return jsonify({'error': 'Nedarim not enabled'}), 400
+
+    config = nedarim_db.config_json or {}
+    processor = NedarimProcessor(config=config)
+
+    payload = request.get_data()
+    headers = dict(request.headers)
+
+    try:
+        result = processor.process_webhook(payload, headers)
+
+        if not result.get('success'):
+            logger.error(f'Nedarim webhook parse error: {result.get("error")}')
+            return jsonify({'error': result.get('error')}), 400
+
+        logger.info(f'Nedarim webhook parsed: txn={result.get("transaction_id")}, amount={result.get("amount_cents")}')
+
+        handle_nedarim_payment(result)
+
+        return jsonify({'status': 'received'}), 200
+
+    except Exception as e:
+        logger.error(f'Nedarim webhook error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
+def handle_nedarim_payment(data):
+    """Process a successful Nedarim Plus payment."""
+    from datetime import datetime
+    from ...services.commission_service import calculate_commission, create_commission_record
+    from ...services.receipt_service import create_receipt_atomic
+    from ...services.email_service import send_receipt_email
+
+    transaction_id = data.get('transaction_id')
+    logger.info(f'[nedarim] Processing payment: {transaction_id}')
+
+    # Check for duplicate
+    existing = Donation.query.filter_by(
+        processor_transaction_id=str(transaction_id),
+        payment_processor='nedarim'
+    ).first()
+    if existing:
+        logger.info(f'[nedarim] Duplicate - donation {existing.id} already exists')
+        return
+
+    amount_cents = data.get('amount_cents', 0)
+    currency = data.get('currency', 'ILS')
+
+    # Find donor by Param1 (donor_id) or email
+    donor = None
+    donor_id = data.get('donor_id')
+    if donor_id:
+        donor = Donor.query.get(int(donor_id))
+
+    if not donor and data.get('donor_email'):
+        donor = Donor.query.filter_by(email=data['donor_email']).first()
+
+    if not donor:
+        # Create donor from webhook data
+        donor_name = data.get('donor_name', 'Unknown Donor')
+        name_parts = donor_name.split(' ', 1)
+        donor = Donor(
+            first_name=name_parts[0],
+            last_name=name_parts[1] if len(name_parts) > 1 else '',
+            email=data.get('donor_email', ''),
+            phone=data.get('donor_phone', ''),
+            test=False
+        )
+        db.session.add(donor)
+        db.session.flush()
+        logger.info(f'[nedarim] Created donor {donor.id}')
+
+    # Resolve salesperson from Param2
+    salesperson_id = data.get('salesperson_id')
+    if salesperson_id:
+        salesperson_id = int(salesperson_id)
+
+    # Resolve link_id from Comments
+    link_id = None
+    raw_data = data.get('raw_data', {})
+    comments = raw_data.get('Comments', '')
+    if comments and comments.startswith('link_id:'):
+        try:
+            link_id = int(comments.split(':')[1])
+        except (ValueError, IndexError):
+            pass
+
+    # Create donation record
+    donation = Donation(
+        donor_id=donor.id,
+        salesperson_id=salesperson_id,
+        link_id=link_id,
+        payment_processor='nedarim',
+        processor_transaction_id=str(transaction_id),
+        processor_confirmation=data.get('confirmation'),
+        amount=amount_cents,
+        currency=currency,
+        status='succeeded',
+        donation_type='recurring' if data.get('is_recurring') else 'one_time',
+        source='nedarim',
+        payment_method_last4=data.get('last4'),
+        processor_metadata=data.get('raw_data'),
+    )
+
+    if data.get('keva_id'):
+        donation.processor_recurring_id = data['keva_id']
+
+    db.session.add(donation)
+    db.session.flush()
+
+    logger.info(f'[nedarim] Created donation {donation.id}: {amount_cents} {currency}')
+
+    # Calculate commission
+    commission_data = calculate_commission(donation)
+    if commission_data:
+        create_commission_record(donation, commission_data)
+        logger.info(f'[nedarim] Commission created for donation {donation.id}')
+
+    # Generate receipt
+    receipt = None
+    try:
+        receipt = create_receipt_atomic(donation, donor)
+        logger.info(f'[nedarim] Receipt {receipt.receipt_number} generated')
+    except Exception as e:
+        logger.error(f'[nedarim] Receipt generation failed: {e}')
+
+    db.session.commit()
+
+    # Send receipt email
+    if receipt and donor.email:
+        try:
+            send_receipt_email(donor, donation, receipt)
+            logger.info(f'[nedarim] Receipt email sent to {donor.email}')
+        except Exception as e:
+            logger.error(f'[nedarim] Receipt email failed: {e}')
+
+
+# =============================================================================
 # MAILTRAP EMAIL TRACKING WEBHOOK
 # =============================================================================
 

@@ -238,7 +238,7 @@ estimate_fee()        # Estimate processing fee
 
 **Current Status:**
 - Stripe (enabled) - Ready
-- Nedarim Plus (disabled) - Awaiting credentials from office@nedar.im
+- Nedarim Plus (enabled) - MosadId configured, iframe integration on donate page
 - CardCom (disabled) - Awaiting credentials
 - Grow (disabled) - Awaiting credentials
 - Tranzila (disabled) - Awaiting credentials
@@ -287,6 +287,18 @@ estimate_fee()        # Estimate processing fee
   - Link added to Settings page for easy access
 - **Multi-Platform Design:** Each platform/client can enable different processors based on their needs
 - **International Routing:** System routes by donor location for multi-country organizations with multiple merchant IDs
+
+### 2026-04-13
+- **Nedarim Plus Integration:** Full payment processor integration on donation page
+  - Iframe-based payment form with PostMessage communication
+  - `/donate/prepare-nedarim` backend route to prepare payment data and create donor
+  - Nedarim webhook at `/webhook/nedarim/webhook` with IP verification (18.194.219.73)
+  - Webhook creates donation, commission, receipt, and sends receipt email
+  - Tab on donation page alongside Stripe credit card option
+- **Fix: Payment Processor Config Save:** SQLAlchemy JSON column mutation detection
+  - Added `MutableDict.as_mutable()` on `config_json` column in `PaymentProcessor` model
+  - Added `MutableList.as_mutable()` on `supported_currencies` and `supported_countries`
+  - Credentials now persist correctly when saved via admin UI
 
 ### 2026-04-09
 - **Server Migration:** Migrated from compromised server (`/root/matat`) to new server (`/var/www/matat`, IP 178.128.83.220)

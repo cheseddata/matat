@@ -21,6 +21,7 @@ def get_enabled_processors():
         'credit_card': [],
         'daf': [],
         'has_stripe': False,
+        'has_nedarim': False,
         'has_daf': False,
         'has_donors_fund': False,
         'has_matbia': False,
@@ -43,6 +44,8 @@ def get_enabled_processors():
             result['credit_card'].append(p)
             if p.code == 'stripe':
                 result['has_stripe'] = True
+            elif p.code == 'nedarim':
+                result['has_nedarim'] = True
 
     return result
 
@@ -69,6 +72,16 @@ def donation_page():
     # Get enabled payment processors
     processors = get_enabled_processors()
 
+    # Get Nedarim config if enabled
+    nedarim_config = None
+    if processors['has_nedarim']:
+        nedarim_proc = PaymentProcessor.get_by_code('nedarim')
+        if nedarim_proc and nedarim_proc.config_json:
+            nedarim_config = {
+                'mosad_id': nedarim_proc.config_json.get('mosad_id'),
+                'iframe_url': 'https://www.matara.pro/nedarimplus/iframe/',
+            }
+
     # Get Chariot connect_id if enabled
     chariot_connect_id = None
     if processors['has_chariot']:
@@ -92,6 +105,7 @@ def donation_page():
         lang=lang,
         # Payment processor flags
         processors=processors,
+        nedarim_config=nedarim_config,
         chariot_connect_id=chariot_connect_id,
     )
 
@@ -236,6 +250,107 @@ def create_payment_intent_route():
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+
+
+@donate_bp.route('/donate/prepare-nedarim', methods=['POST'])
+def prepare_nedarim_payment():
+    """Prepare payment data for Nedarim Plus iframe PostMessage."""
+    from ...services.payment.nedarim_processor import NedarimProcessor
+
+    data = request.get_json()
+
+    amount_dollars = float(data.get('amount', 0))
+    if amount_dollars <= 0:
+        return jsonify({'error': 'Invalid amount'}), 400
+
+    amount_cents = int(amount_dollars * 100)
+
+    # Get processor config
+    processor_db = PaymentProcessor.get_by_code('nedarim')
+    if not processor_db or not processor_db.enabled:
+        return jsonify({'error': 'Nedarim Plus not enabled'}), 400
+
+    config = processor_db.config_json or {}
+    processor = NedarimProcessor(config=config)
+
+    if not processor.initialize():
+        return jsonify({'error': 'Nedarim Plus not configured'}), 400
+
+    # Get or create donor
+    donor = Donor.query.filter_by(email=data.get('email')).first()
+    if not donor:
+        donor = Donor(
+            first_name=data.get('first_name', ''),
+            last_name=data.get('last_name', ''),
+            email=data.get('email'),
+            phone=data.get('phone'),
+            address_line1=data.get('address_line1'),
+            city=data.get('city'),
+            state=data.get('state'),
+            zip=data.get('zip'),
+            country=data.get('country', 'US'),
+            language_pref=data.get('language', 'en'),
+            test=False
+        )
+        db.session.add(donor)
+        db.session.flush()
+    else:
+        if data.get('first_name'):
+            donor.first_name = data.get('first_name')
+        if data.get('last_name'):
+            donor.last_name = data.get('last_name')
+        if data.get('address_line1'):
+            donor.address_line1 = data.get('address_line1')
+        if data.get('phone'):
+            donor.phone = data.get('phone')
+
+    db.session.commit()
+
+    # Resolve salesperson and campaign
+    salesperson_id = None
+    ref_code = data.get('ref_code')
+    if ref_code:
+        salesperson = resolve_ref_code(ref_code)
+        if salesperson:
+            salesperson_id = salesperson.id
+
+    campaign_id = None
+    aff_code = data.get('aff_code')
+    if aff_code:
+        campaign = resolve_aff_code(aff_code)
+        if campaign:
+            campaign_id = campaign.id
+
+    # Determine currency based on donor country
+    currency = 'ILS' if data.get('country') == 'IL' else 'USD'
+
+    # Build metadata for the iframe PostMessage
+    metadata = {
+        'donor_id': str(donor.id),
+        'salesperson_id': str(salesperson_id) if salesperson_id else '',
+        'link_id': data.get('link_id', ''),
+        'callback_url': '',
+        'success_url': '',
+        'fail_url': '',
+    }
+
+    result = processor.create_payment(
+        amount_cents=amount_cents,
+        currency=currency,
+        donor_email=donor.email or '',
+        donor_name=f"{donor.first_name} {donor.last_name}",
+        metadata=metadata
+    )
+
+    if not result.get('success'):
+        return jsonify({'error': result.get('error', 'Failed to prepare payment')}), 400
+
+    return jsonify({
+        'success': True,
+        'iframe_data': result['iframe_data'],
+        'donor_id': donor.id,
+        'currency': currency,
+    })
 
 
 @donate_bp.route('/donate/success')

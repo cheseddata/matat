@@ -375,12 +375,18 @@
             </div>
 
             <!-- Payment Method Tabs (only show if multiple methods available) -->
-            {% if processors.has_daf %}
+            {% if processors.has_daf or processors.has_nedarim %}
             <div class="payment-method-tabs">
                 {% if processors.has_stripe %}
                 <button type="button" class="payment-method-tab active" data-method="credit_card">
                     <div class="tab-icon">💳</div>
                     Credit Card
+                </button>
+                {% endif %}
+                {% if processors.has_nedarim %}
+                <button type="button" class="payment-method-tab" data-method="nedarim">
+                    <div class="tab-icon">💳</div>
+                    Nedarim Plus
                 </button>
                 {% endif %}
                 {% if processors.has_chariot %}
@@ -409,6 +415,24 @@
                 <div id="payment-element"></div>
                 <div id="payment-errors" role="alert"></div>
             </div>
+
+            {% if processors.has_nedarim %}
+            <!-- Nedarim Plus Section -->
+            <div class="payment-section" id="payment-nedarim">
+                <div id="nedarim-iframe-container" style="min-height: 320px; background: #f8f9fa; border-radius: 8px; overflow: hidden;">
+                    <iframe id="nedarim-iframe"
+                            src="{{ nedarim_config.iframe_url if nedarim_config else '' }}"
+                            style="width: 100%; height: 320px; border: none;"
+                            allow="payment"></iframe>
+                </div>
+                <div id="nedarim-errors" role="alert" style="color: #e74c3c; margin-top: 10px; font-size: 14px;"></div>
+                <div id="nedarim-success" style="display: none; color: #27ae60; text-align: center; padding: 20px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">&#10003;</div>
+                    <strong>Payment successful!</strong>
+                    <p>Redirecting...</p>
+                </div>
+            </div>
+            {% endif %}
 
             {% if processors.has_chariot %}
             <!-- DAFpay Section (Chariot) -->
@@ -656,7 +680,9 @@ document.querySelectorAll('.daf-auth-tab').forEach(tab => {
 
 function updateSubmitButton() {
     const btn = document.getElementById('submit-btn');
-    if (donationType === 'recurring') {
+    if (currentPaymentMethod === 'nedarim') {
+        btn.textContent = 'Donate via Nedarim Plus';
+    } else if (donationType === 'recurring') {
         btn.textContent = '{{ t("donate.donate_monthly") }}';
     } else if (currentPaymentMethod === 'dafpay') {
         btn.textContent = 'Complete with DAFpay';
@@ -764,7 +790,9 @@ document.getElementById('donation-form').addEventListener('submit', async functi
         };
 
         // Route to appropriate processor
-        if (currentPaymentMethod === 'donors_fund') {
+        if (currentPaymentMethod === 'nedarim') {
+            await processNedarim(baseData);
+        } else if (currentPaymentMethod === 'donors_fund') {
             await processDonorsFund(baseData);
         } else if (currentPaymentMethod === 'matbia') {
             await processMatbia(baseData);
@@ -868,6 +896,103 @@ async function processDonorsFund(baseData) {
     // Redirect to success page
     window.location.href = '/donate/success?daf_confirmation=' + data.confirmation + '&daf_provider=The%20Donors%20Fund';
 }
+
+// =============================================================================
+// NEDARIM PLUS PAYMENT
+// =============================================================================
+
+{% if processors.has_nedarim and nedarim_config %}
+let nedarimPaymentPending = false;
+
+async function processNedarim(baseData) {
+    const errorDisplay = document.getElementById('nedarim-errors');
+    errorDisplay.textContent = '';
+
+    // Step 1: Prepare payment data on the server (creates donor, gets API credentials)
+    const response = await fetch('/donate/prepare-nedarim', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify(baseData)
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+        throw new Error(data.error);
+    }
+
+    // Step 2: Send payment command to Nedarim iframe via PostMessage
+    const iframe = document.getElementById('nedarim-iframe');
+    if (!iframe || !iframe.contentWindow) {
+        throw new Error('Payment form not loaded. Please refresh and try again.');
+    }
+
+    nedarimPaymentPending = true;
+
+    // Nedarim expects PostMessage with the payment data
+    const iframeData = data.iframe_data;
+    iframe.contentWindow.postMessage(
+        JSON.stringify({
+            Name: 'FinishTransaction2',
+            Value: JSON.stringify(iframeData)
+        }),
+        'https://www.matara.pro'
+    );
+
+    // Wait for response from PostMessage listener (handled below)
+    // The listener will redirect on success or show error
+}
+
+// Listen for PostMessage responses from Nedarim iframe
+window.addEventListener('message', function(event) {
+    // Only accept messages from Nedarim
+    if (event.origin !== 'https://www.matara.pro') return;
+
+    console.log('Nedarim PostMessage received:', event.data);
+
+    let msgData;
+    try {
+        msgData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    } catch (e) {
+        console.log('Non-JSON message from Nedarim:', event.data);
+        return;
+    }
+
+    const form = document.getElementById('donation-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorDisplay = document.getElementById('nedarim-errors');
+
+    if (msgData.Name === 'TransactionResponse' || msgData.Status === 'OK' || msgData.Status === 'Success') {
+        // Payment succeeded
+        console.log('Nedarim payment succeeded:', msgData);
+        document.getElementById('nedarim-iframe-container').style.display = 'none';
+        document.getElementById('nedarim-success').style.display = 'block';
+        nedarimPaymentPending = false;
+
+        // Redirect to success page
+        const confirmation = msgData.TransactionId || msgData.Shovar || msgData.Value || '';
+        setTimeout(function() {
+            window.location.href = '/donate/success?payment_intent=nedarim_' + confirmation;
+        }, 1500);
+
+    } else if (msgData.Name === 'TransactionError' || msgData.Status === 'Error' || msgData.Status === 'Fail') {
+        // Payment failed
+        console.error('Nedarim payment failed:', msgData);
+        errorDisplay.textContent = msgData.Message || msgData.ErrorMessage || 'Payment failed. Please try again.';
+        nedarimPaymentPending = false;
+        form.classList.remove('processing');
+        submitBtn.disabled = false;
+        updateSubmitButton();
+    }
+});
+{% else %}
+async function processNedarim() {
+    throw new Error('Nedarim Plus is not configured');
+}
+{% endif %}
 
 async function processMatbia(baseData) {
     const cardNumber = document.getElementById('matbia_card').value;

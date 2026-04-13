@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.ext.mutable import MutableDict, MutableList
 from ..extensions import db
 
 
@@ -14,11 +15,11 @@ class PaymentProcessor(db.Model):
     processor_type = db.Column(db.String(50), default='credit_card')  # 'credit_card', 'daf', 'daf_aggregator'
 
     # Credentials (stored in DB, consider encryption for production)
-    config_json = db.Column(db.JSON, nullable=True)  # API keys, mosad_id, etc.
+    config_json = db.Column(MutableDict.as_mutable(db.JSON), nullable=True)  # API keys, mosad_id, etc.
 
     # Capabilities
-    supported_currencies = db.Column(db.JSON, nullable=True)   # ['USD', 'ILS']
-    supported_countries = db.Column(db.JSON, nullable=True)    # ['US', 'IL', '*'] (* = all)
+    supported_currencies = db.Column(MutableList.as_mutable(db.JSON), nullable=True)   # ['USD', 'ILS']
+    supported_countries = db.Column(MutableList.as_mutable(db.JSON), nullable=True)    # ['US', 'IL', '*'] (* = all)
     supports_recurring = db.Column(db.Boolean, default=True)
     supports_refunds = db.Column(db.Boolean, default=True)
 
