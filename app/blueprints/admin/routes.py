@@ -2253,7 +2253,7 @@ def donor_activity(id):
 @admin_required
 def screenshots():
     """View and upload screenshots for sharing with Claude."""
-    from ...models.claude import ClaudeScreenshot
+    from ...models.claude_session import ClaudeScreenshot
     shots = ClaudeScreenshot.query.order_by(ClaudeScreenshot.created_at.desc()).limit(50).all()
     return render_template('admin/screenshots.html', screenshots=shots)
 
@@ -2262,7 +2262,7 @@ def screenshots():
 @admin_required
 def upload_screenshot():
     """Upload a screenshot from admin."""
-    from ...models.claude import ClaudeScreenshot
+    from ...models.claude_session import ClaudeScreenshot
     import uuid
     import os
     from werkzeug.utils import secure_filename
@@ -2308,7 +2308,7 @@ def upload_screenshot():
 @admin_required
 def delete_screenshot(id):
     """Delete a screenshot."""
-    from ...models.claude import ClaudeScreenshot
+    from ...models.claude_session import ClaudeScreenshot
     import os
 
     shot = ClaudeScreenshot.query.get_or_404(id)
