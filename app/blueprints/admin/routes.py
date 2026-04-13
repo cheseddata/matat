@@ -2258,6 +2258,53 @@ def screenshots():
     return render_template('admin/screenshots.html', screenshots=shots)
 
 
+@admin_bp.route('/screenshots/paste', methods=['POST'])
+@admin_required
+def paste_screenshot():
+    """Upload a screenshot from clipboard paste (base64)."""
+    from ...models.claude_session import ClaudeScreenshot
+    import uuid, os, base64
+
+    SCREENSHOT_FOLDER = '/var/www/matat/uploads/screenshots'
+    os.makedirs(SCREENSHOT_FOLDER, exist_ok=True)
+
+    data = request.get_json()
+    image_data = data.get('image', '')
+    description = data.get('description', '')
+
+    if not image_data:
+        return jsonify({'error': 'No image data'}), 400
+
+    # Strip data URL prefix
+    if ',' in image_data:
+        image_data = image_data.split(',')[1]
+
+    try:
+        image_bytes = base64.b64decode(image_data)
+    except Exception:
+        return jsonify({'error': 'Invalid image data'}), 400
+
+    filename = f'{uuid.uuid4().hex}.png'
+    filepath = os.path.join(SCREENSHOT_FOLDER, filename)
+
+    with open(filepath, 'wb') as f:
+        f.write(image_bytes)
+
+    screenshot = ClaudeScreenshot(
+        user_id=current_user.id,
+        filename=filename,
+        original_filename='pasted_image.png',
+        file_path=filepath,
+        file_size=len(image_bytes),
+        description=description
+    )
+    db.session.add(screenshot)
+    db.session.commit()
+
+    logger.info(f'[admin] Screenshot pasted by admin {current_user.id}')
+    return jsonify({'success': True, 'id': screenshot.id})
+
+
 @admin_bp.route('/screenshots/upload', methods=['POST'])
 @admin_required
 def upload_screenshot():

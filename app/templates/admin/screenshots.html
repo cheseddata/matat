@@ -4,17 +4,46 @@
 {% block extra_css %}
 <style>
     .screenshots-container { max-width: 900px; margin: 20px auto; }
-    .upload-form {
+    .upload-area {
         background: #f8f9fa;
-        padding: 20px;
         border-radius: 8px;
         margin-bottom: 25px;
-        border: 2px dashed #ddd;
+        border: 2px dashed #ccc;
+        transition: border-color 0.2s, background 0.2s;
     }
-    .upload-form:hover { border-color: #3498db; }
-    .upload-form input[type="file"] { margin-bottom: 10px; }
-    .upload-form .form-row { display: flex; gap: 10px; align-items: end; }
-    .upload-form .form-row .form-group { flex: 1; }
+    .upload-area.drag-over { border-color: #3498db; background: #e8f4f8; }
+    .upload-tabs { display: flex; border-bottom: 1px solid #ddd; }
+    .upload-tab {
+        flex: 1; padding: 12px; text-align: center;
+        cursor: pointer; font-size: 14px; font-weight: 500;
+        background: none; border: none; color: #666;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s;
+    }
+    .upload-tab.active { color: #3498db; border-bottom-color: #3498db; }
+    .upload-tab:hover { color: #3498db; }
+    .upload-panel { display: none; padding: 20px; }
+    .upload-panel.active { display: block; }
+    .paste-zone {
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #999;
+        font-size: 14px;
+    }
+    .paste-zone .paste-icon { font-size: 36px; margin-bottom: 8px; }
+    .paste-zone.has-preview { min-height: auto; }
+    .paste-preview {
+        max-width: 100%; max-height: 300px;
+        border-radius: 6px; margin-bottom: 10px;
+    }
+    .file-form .form-row { display: flex; gap: 10px; align-items: end; }
+    .file-form .form-row .form-group { flex: 1; }
+    .desc-row { display: flex; gap: 10px; align-items: end; margin-top: 12px; }
+    .desc-row .form-group { flex: 1; }
     .screenshot-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -51,17 +80,8 @@
         text-decoration: none;
         cursor: pointer;
     }
-    .screenshot-card .actions a {
-        background: #3498db;
-        color: white;
-        border: none;
-    }
-    .screenshot-card .actions button {
-        background: #e74c3c;
-        color: white;
-        border: none;
-    }
-    /* Full-size overlay */
+    .screenshot-card .actions a { background: #3498db; color: white; border: none; }
+    .screenshot-card .actions button { background: #e74c3c; color: white; border: none; }
     .overlay {
         display: none;
         position: fixed;
@@ -74,30 +94,64 @@
     }
     .overlay.active { display: flex; }
     .overlay img { max-width: 95%; max-height: 95%; object-fit: contain; }
+    .upload-status { margin-top: 10px; font-size: 13px; text-align: center; }
+    .upload-status.success { color: #27ae60; }
+    .upload-status.error { color: #e74c3c; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="screenshots-container">
     <h2>Screenshots</h2>
-    <p style="color: #666; margin-bottom: 20px;">Upload screenshots to share with Claude for debugging or UI review.</p>
+    <p style="color: #666; margin-bottom: 20px;">Upload screenshots to share with Claude. Paste from clipboard (Ctrl+V) or select a file.</p>
 
-    <form action="{{ url_for('admin.upload_screenshot') }}" method="POST" enctype="multipart/form-data" class="upload-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="form-row">
-            <div class="form-group">
-                <label>Image File</label>
-                <input type="file" name="file" accept="image/*" required>
-            </div>
-            <div class="form-group">
-                <label>Description (optional)</label>
-                <input type="text" name="description" placeholder="e.g., Nedarim Plus payment form">
-            </div>
-            <div>
-                <button type="submit" class="btn btn-primary">Upload</button>
-            </div>
+    <div class="upload-area" id="upload-area">
+        <div class="upload-tabs">
+            <button class="upload-tab active" data-panel="paste">Paste (Ctrl+V)</button>
+            <button class="upload-tab" data-panel="file">Select File</button>
         </div>
-    </form>
+
+        <!-- Paste panel -->
+        <div class="upload-panel active" id="panel-paste">
+            <div class="paste-zone" id="paste-zone" tabindex="0">
+                <div class="paste-icon">&#128203;</div>
+                <div>Click here and press <strong>Ctrl+V</strong> to paste a screenshot</div>
+                <div style="font-size: 12px; margin-top: 4px; color: #bbb;">or paste anywhere on the page</div>
+            </div>
+            <div id="paste-preview-area" style="display:none; text-align:center;">
+                <img id="paste-preview" class="paste-preview">
+                <div class="desc-row">
+                    <div class="form-group">
+                        <input type="text" id="paste-description" placeholder="Description (optional)">
+                    </div>
+                    <div>
+                        <button class="btn btn-primary" id="paste-upload-btn" onclick="submitPaste()">Upload</button>
+                    </div>
+                </div>
+            </div>
+            <div class="upload-status" id="paste-status"></div>
+        </div>
+
+        <!-- File panel -->
+        <div class="upload-panel" id="panel-file">
+            <form action="{{ url_for('admin.upload_screenshot') }}" method="POST" enctype="multipart/form-data" class="file-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Image File</label>
+                        <input type="file" name="file" accept="image/*" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description (optional)</label>
+                        <input type="text" name="description" placeholder="e.g., Nedarim Plus payment form">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-primary">Upload</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     {% if screenshots %}
     <div class="screenshot-grid">
@@ -130,11 +184,98 @@
 <div class="overlay" id="overlay" onclick="this.classList.remove('active')">
     <img id="overlay-img" src="">
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
+// Tab switching
+document.querySelectorAll('.upload-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.upload-panel').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('panel-' + this.dataset.panel).classList.add('active');
+    });
+});
+
+// Overlay
 function showOverlay(src) {
     document.getElementById('overlay-img').src = src;
     document.getElementById('overlay').classList.add('active');
 }
+
+// Paste handling
+let pastedImageData = null;
+
+document.addEventListener('paste', function(e) {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            e.preventDefault();
+            const blob = items[i].getAsFile();
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                pastedImageData = ev.target.result;
+                document.getElementById('paste-preview').src = pastedImageData;
+                document.getElementById('paste-zone').style.display = 'none';
+                document.getElementById('paste-preview-area').style.display = 'block';
+                document.getElementById('paste-status').textContent = '';
+
+                // Switch to paste tab
+                document.querySelectorAll('.upload-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.upload-panel').forEach(p => p.classList.remove('active'));
+                document.querySelector('[data-panel="paste"]').classList.add('active');
+                document.getElementById('panel-paste').classList.add('active');
+            };
+            reader.readAsDataURL(blob);
+            break;
+        }
+    }
+});
+
+function submitPaste() {
+    if (!pastedImageData) return;
+
+    const btn = document.getElementById('paste-upload-btn');
+    const status = document.getElementById('paste-status');
+    btn.disabled = true;
+    btn.textContent = 'Uploading...';
+    status.textContent = '';
+
+    fetch('{{ url_for("admin.paste_screenshot") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            image: pastedImageData,
+            description: document.getElementById('paste-description').value
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            status.className = 'upload-status success';
+            status.textContent = 'Uploaded! Reloading...';
+            setTimeout(() => location.reload(), 500);
+        } else {
+            throw new Error(data.error || 'Upload failed');
+        }
+    })
+    .catch(err => {
+        status.className = 'upload-status error';
+        status.textContent = err.message;
+        btn.disabled = false;
+        btn.textContent = 'Upload';
+    });
+}
+
+// Click paste zone to focus for keyboard paste
+document.getElementById('paste-zone').addEventListener('click', function() {
+    this.focus();
+});
 </script>
 {% endblock %}
