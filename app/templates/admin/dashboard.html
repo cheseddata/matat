@@ -124,19 +124,6 @@
 <div class="container">
     <h1 style="margin-bottom: 20px;">{{ t('admin.title') }}</h1>
 
-    <!-- Admin Navigation -->
-    <div class="admin-nav">
-        <a href="{{ url_for('admin.dashboard') }}" class="active">{{ t('nav.dashboard') }}</a>
-        <a href="{{ url_for('admin.salespersons') }}">{{ t('nav.salespersons') }}</a>
-        <a href="{{ url_for('admin.commissions') }}">{{ t('nav.commissions') }}</a>
-        <a href="{{ url_for('admin.donations') }}">{{ t('nav.donations') }}</a>
-        <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
-        <a href="{{ url_for('admin.campaigns') }}">{{ t('nav.campaigns') }}</a>
-        <a href="{{ url_for('admin.reports') }}">{{ t('nav.reports') }}</a>
-        <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
-        <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
-    </div>
-
     <!-- Stats Grid -->
     <div class="stats-grid">
         <div class="stat-card primary">
@@ -169,6 +156,44 @@
         </div>
     </div>
 
+    <!-- Processor Breakdown -->
+    {% if processor_breakdown %}
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="section-header">
+            <h2>Donations by Payment Processor</h2>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Processor</th>
+                    <th>Currency</th>
+                    <th>Donations</th>
+                    <th style="text-align:right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for proc, curr, count, total %}
+                <tr>
+                    <td>
+                        <span style="display:inline-block; padding:3px 10px; border-radius:12px; font-size:12px; font-weight:500;
+                            {% if proc == 'stripe' %}background:#e8f4f8; color:#1a73e8;
+                            {% elif proc == 'nedarim' %}background:#e8f5e9; color:#2e7d32;
+                            {% else %}background:#f3e5f5; color:#7b1fa2;{% endif %}">
+                            {{ proc or 'stripe' }}
+                        </span>
+                    </td>
+                    <td>{{ (curr or 'usd')|upper }}</td>
+                    <td>{{ count }}</td>
+                    <td style="text-align:right; font-weight:600;">
+                        {% if (curr or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format((total or 0) / 100) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
     <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
         <!-- Recent Donations -->
         <div class="card">
@@ -184,7 +209,7 @@
                         <th>{{ t('common.date') }}</th>
                         <th>{{ t('my_links.donor') }}</th>
                         <th>{{ t('common.amount') }}</th>
-                        <th>{{ t('nav.salespersons') }}</th>
+                        <th>Processor</th>
                         <th>{{ t('common.status') }}</th>
                     </tr>
                 </thead>
@@ -193,8 +218,15 @@
                     <tr>
                         <td>{{ donation.created_at.strftime('%m/%d %H:%M') }}</td>
                         <td>{{ donation.donor.full_name if donation.donor else 'Unknown' }}</td>
-                        <td>${{ "%.2f"|format(donation.amount_dollars) }}</td>
-                        <td>{{ donation.salesperson.full_name if donation.salesperson else '-' }}</td>
+                        <td>{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.amount_dollars) }}</td>
+                        <td>
+                            <span style="font-size:12px; padding:2px 8px; border-radius:10px;
+                                {% if donation.payment_processor == 'stripe' %}background:#e8f4f8; color:#1a73e8;
+                                {% elif donation.payment_processor == 'nedarim' %}background:#e8f5e9; color:#2e7d32;
+                                {% else %}background:#f3e5f5; color:#7b1fa2;{% endif %}">
+                                {{ donation.payment_processor or 'stripe' }}
+                            </span>
+                        </td>
                         <td><span class="status-badge {{ donation.status }}">{{ donation.status }}</span></td>
                     </tr>
                     {% endfor %}

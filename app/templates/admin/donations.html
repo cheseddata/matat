@@ -258,6 +258,7 @@
                 <th>{{ t('common.date') }}</th>
                 <th>{{ t('my_links.donor') }}</th>
                 <th>{{ t('common.amount') }}</th>
+                <th>Processor</th>
                 <th>{{ t('common.type') }}</th>
                 <th>{{ t('admin.salesperson_info') }}</th>
                 <th>{{ t('common.source') }}</th>
@@ -278,10 +279,18 @@
                     {% endif %}
                 </td>
                 <td>
-                    <strong>${{ "%.2f"|format(donation.amount_dollars) }}</strong>
+                    <strong>{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.amount_dollars) }}</strong>
                     {% if donation.stripe_fee %}
                     <br><span style="font-size: 11px; color: #999;">{{ t('common.fee') }}: ${{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
                     {% endif %}
+                </td>
+                <td>
+                    <span style="font-size:12px; padding:2px 8px; border-radius:10px;
+                        {% if donation.payment_processor == 'stripe' %}background:#e8f4f8; color:#1a73e8;
+                        {% elif donation.payment_processor == 'nedarim' %}background:#e8f5e9; color:#2e7d32;
+                        {% else %}background:#f3e5f5; color:#7b1fa2;{% endif %}">
+                        {{ donation.payment_processor or 'stripe' }}
+                    </span>
                 </td>
                 <td>
                     <span class="type-badge">{{ donation.donation_type|replace('_', ' ')|title }}</span>

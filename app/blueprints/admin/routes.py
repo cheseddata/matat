@@ -93,6 +93,17 @@ def dashboard():
         Donation.created_at < today_start
     ).count()
 
+    # Breakdown by processor and currency
+    processor_breakdown = db.session.query(
+        Donation.payment_processor,
+        Donation.currency,
+        func.count(Donation.id).label('count'),
+        func.sum(Donation.amount).label('total')
+    ).filter(
+        Donation.status == 'succeeded',
+        Donation.deleted_at.is_(None)
+    ).group_by(Donation.payment_processor, Donation.currency).all()
+
     # Recent donations
     recent_donations = Donation.query.filter(
         Donation.deleted_at.is_(None)
@@ -122,7 +133,8 @@ def dashboard():
         yesterday_income=yesterday_income / 100,
         yesterday_count=yesterday_count,
         recent_donations=recent_donations,
-        top_salespersons=top_salespersons
+        top_salespersons=top_salespersons,
+        processor_breakdown=processor_breakdown
     )
 
 
