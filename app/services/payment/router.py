@@ -3,6 +3,9 @@ Payment processor router.
 User selects which processor to use. System manages available processors.
 """
 from .shva_processor import ShvaProcessor
+from .creditguard_processor import CreditGuardProcessor
+from .yaad_processor import YaadProcessor
+from .pelecard_processor import PelecardProcessor
 
 
 # Registry of all available processors
@@ -18,11 +21,39 @@ PROCESSOR_REGISTRY = {
         'icon': 'fa-credit-card',
         'color': '#2E5090',
     },
-    # These will be added when we integrate from Matat server:
-    # 'stripe': Stripe (international)
-    # 'nedarim': Nedarim Plus (Israeli nonprofits)
-    # 'cardcom': CardCom (auto Section 46 receipts)
-    # 'grow': Grow/Meshulam (most popular Israel)
+    'creditguard': {
+        'class': CreditGuardProcessor,
+        'name': 'CreditGuard (Hyp)',
+        'name_he': 'קרדיטגארד (Hyp)',
+        'description': 'Leading Israeli payment gateway, XML API',
+        'description_he': 'שער תשלומים ישראלי מוביל, ממשק XML',
+        'country': 'IL',
+        'type': 'credit_card',
+        'icon': 'fa-shield-halved',
+        'color': '#1B5E20',
+    },
+    'yaad': {
+        'class': YaadProcessor,
+        'name': 'Yaad (iCard)',
+        'name_he': 'יעד (iCard)',
+        'description': 'Simple REST API, popular with Israeli nonprofits',
+        'description_he': 'ממשק REST פשוט, פופולרי בעמותות',
+        'country': 'IL',
+        'type': 'credit_card',
+        'icon': 'fa-credit-card',
+        'color': '#FF6F00',
+    },
+    'pelecard': {
+        'class': PelecardProcessor,
+        'name': 'Pelecard',
+        'name_he': 'פלאקארד',
+        'description': 'Israeli processor with 35+ years, JSON REST API',
+        'description_he': 'מעבד ישראלי ותיק, ממשק JSON REST',
+        'country': 'IL',
+        'type': 'credit_card',
+        'icon': 'fa-building-columns',
+        'color': '#4A148C',
+    },
 }
 
 
