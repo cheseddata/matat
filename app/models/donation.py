@@ -38,6 +38,11 @@ class Donation(db.Model):
     nedarim_confirmation = db.Column(db.String(255), nullable=True)
     nedarim_keva_id = db.Column(db.String(255), nullable=True)  # Standing order ID for recurring
 
+    # YeshInvoice fields
+    yeshinvoice_doc_id = db.Column(db.String(255), nullable=True)
+    yeshinvoice_doc_number = db.Column(db.String(100), nullable=True)
+    yeshinvoice_pdf_url = db.Column(db.String(500), nullable=True)
+
     # DAF (Donor-Advised Fund) fields
     is_daf_donation = db.Column(db.Boolean, default=False)  # True for DAF/charity card donations
     daf_provider = db.Column(db.String(100), nullable=True)  # "The Donors Fund", "OJC Fund", "JCF", "Matbia", etc.

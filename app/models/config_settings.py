@@ -70,6 +70,13 @@ class ConfigSettings(db.Model):
     # Email provider selection: 'mailtrap', 'activetrail', 'smtp'
     email_provider = db.Column(db.String(50), default='mailtrap')
 
+    # YeshInvoice configuration
+    yeshinvoice_user_key = db.Column(db.String(255), nullable=True)
+    yeshinvoice_secret_key = db.Column(db.String(255), nullable=True)
+    yeshinvoice_account_id = db.Column(db.String(100), nullable=True)
+    yeshinvoice_enabled = db.Column(db.Boolean, default=False)
+    yeshinvoice_default_doc_type = db.Column(db.String(50), default='receipt')
+
     # Claude AI API key
     anthropic_api_key = db.Column(db.String(255), nullable=True)
 

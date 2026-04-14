@@ -1351,6 +1351,13 @@ def settings():
         config.activetrail_from_email = request.form.get('activetrail_from_email', '').strip() or None
         config.activetrail_from_name = request.form.get('activetrail_from_name', '').strip() or None
 
+        # YeshInvoice settings
+        config.yeshinvoice_enabled = request.form.get('yeshinvoice_enabled') == 'on'
+        config.yeshinvoice_user_key = request.form.get('yeshinvoice_user_key', '').strip() or None
+        config.yeshinvoice_secret_key = request.form.get('yeshinvoice_secret_key', '').strip() or None
+        config.yeshinvoice_account_id = request.form.get('yeshinvoice_account_id', '').strip() or None
+        config.yeshinvoice_default_doc_type = request.form.get('yeshinvoice_default_doc_type', 'receipt').strip()
+
         # Email/SMTP settings (fallback)
         config.smtp_host = request.form.get('smtp_host', '').strip() or None
         smtp_port = request.form.get('smtp_port', '').strip()
@@ -1439,6 +1446,27 @@ def clear_test_data():
         print(f"Error clearing test data: {e}")
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/settings/test-yeshinvoice', methods=['POST'])
+@admin_required
+def test_yeshinvoice():
+    """Test YeshInvoice API connection."""
+    from ...services.yeshinvoice_service import test_connection
+
+    data = request.get_json() or {}
+    config = {
+        'user_key': data.get('user_key', ''),
+        'secret_key': data.get('secret_key', ''),
+        'account_id': data.get('account_id', ''),
+        'default_doc_type': 'receipt',
+    }
+
+    if not config['user_key'] or not config['secret_key']:
+        return jsonify({'success': False, 'error': 'User Key and Secret Key are required'})
+
+    result = test_connection(config=config)
+    return jsonify(result)
 
 
 # =============================================================================

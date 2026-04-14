@@ -334,6 +334,15 @@ estimate_fee()        # Estimate processing fee
   - Added `MutableList.as_mutable()` on `supported_currencies` and `supported_countries`
   - Credentials now persist correctly when saved via admin UI
 
+### 2026-04-14
+- **YeshInvoice Integration (Built, Not Activated):** Israeli invoicing API integration
+  - Added `yeshinvoice_user_key`, `yeshinvoice_secret_key`, `yeshinvoice_account_id`, `yeshinvoice_enabled`, `yeshinvoice_default_doc_type` to `ConfigSettings` model
+  - Added `yeshinvoice_doc_id`, `yeshinvoice_doc_number`, `yeshinvoice_pdf_url` to `Donation` model
+  - Created `app/services/yeshinvoice_service.py` with full API client: `create_receipt()`, `create_credit_note()`, `find_or_create_customer()`, `get_document()`, `test_connection()`
+  - Added YeshInvoice settings section to admin settings page with enable toggle, credentials, document type selector, and Test Connection button
+  - Added `/admin/settings/test-yeshinvoice` API endpoint for connection testing
+  - Disabled by default; not wired into any donation flow
+
 ### 2026-04-09
 - **Server Migration:** Migrated from compromised server (`/root/matat`) to new server (`/var/www/matat`, IP 178.128.83.220)
   - Security audit: all MD files and codebase scanned for compromise — clean

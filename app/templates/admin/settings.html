@@ -472,6 +472,62 @@
                 </div>
             </div>
 
+            <!-- YeshInvoice Settings -->
+            <div class="settings-card" id="yeshinvoice-settings" style="border: 2px solid #2ecc71;">
+                <h2 style="color: #2ecc71;">YeshInvoice (Israeli Invoicing)</h2>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    Generate Israeli tax receipts and invoices via YeshInvoice API.
+                </p>
+
+                <div class="form-group">
+                    <div class="checkbox-group" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" name="yeshinvoice_enabled" id="yeshinvoice_enabled"
+                               {{ 'checked' if config.yeshinvoice_enabled else '' }} style="width: auto;">
+                        <label for="yeshinvoice_enabled" style="margin: 0; font-weight: 600;">Enable YeshInvoice</label>
+                    </div>
+                    <p class="help-text">When enabled, receipts can be generated through YeshInvoice.</p>
+                </div>
+
+                <div class="form-group">
+                    <label>User Key</label>
+                    <input type="text" name="yeshinvoice_user_key" id="yeshinvoice_user_key"
+                           value="{{ config.yeshinvoice_user_key or '' }}"
+                           placeholder="Your YeshInvoice User Key">
+                </div>
+
+                <div class="form-group">
+                    <label>Secret Key</label>
+                    <input type="password" name="yeshinvoice_secret_key" id="yeshinvoice_secret_key"
+                           value="{{ config.yeshinvoice_secret_key or '' }}"
+                           placeholder="Your YeshInvoice Secret Key">
+                </div>
+
+                <div class="form-group">
+                    <label>Account ID</label>
+                    <input type="text" name="yeshinvoice_account_id" id="yeshinvoice_account_id"
+                           value="{{ config.yeshinvoice_account_id or '' }}"
+                           placeholder="Optional - Your YeshInvoice Account ID">
+                </div>
+
+                <div class="form-group">
+                    <label>Default Document Type</label>
+                    <select name="yeshinvoice_default_doc_type">
+                        <option value="receipt" {{ 'selected' if (config.yeshinvoice_default_doc_type or 'receipt') == 'receipt' else '' }}>Receipt (Kabala)</option>
+                        <option value="tax_invoice" {{ 'selected' if config.yeshinvoice_default_doc_type == 'tax_invoice' else '' }}>Tax Invoice (Heshbonit Mas)</option>
+                        <option value="tax_invoice_receipt" {{ 'selected' if config.yeshinvoice_default_doc_type == 'tax_invoice_receipt' else '' }}>Tax Invoice Receipt (Heshbonit Mas / Kabala)</option>
+                    </select>
+                    <p class="help-text">Default document type when generating invoices for donations.</p>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <button type="button" class="btn btn-success" onclick="testYeshInvoice()"
+                            id="yeshinvoice-test-btn" style="background: #2ecc71;">
+                        Test Connection
+                    </button>
+                    <span id="yeshinvoice-test-result" style="margin-left: 10px; font-size: 14px;"></span>
+                </div>
+            </div>
+
             <!-- Test Data Management -->
             <div class="settings-card" style="border: 2px solid #e74c3c;">
                 <h2 style="color: #e74c3c;">Test Data Management</h2>
@@ -578,6 +634,51 @@ function clearTestData() {
 
 updatePreview();
 toggleEmailProviders();
+
+function testYeshInvoice() {
+    const btn = document.getElementById('yeshinvoice-test-btn');
+    const result = document.getElementById('yeshinvoice-test-result');
+    const userKey = document.getElementById('yeshinvoice_user_key').value.trim();
+    const secretKey = document.getElementById('yeshinvoice_secret_key').value.trim();
+    const accountId = document.getElementById('yeshinvoice_account_id').value.trim();
+
+    if (!userKey || !secretKey) {
+        result.innerHTML = '<span style="color: #e74c3c;">Please enter User Key and Secret Key first.</span>';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Testing...';
+    result.innerHTML = '';
+
+    fetch('/admin/settings/test-yeshinvoice', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({
+            user_key: userKey,
+            secret_key: secretKey,
+            account_id: accountId
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            result.innerHTML = '<span style="color: #27ae60;">' + (data.message || 'Connection successful!') + '</span>';
+        } else {
+            result.innerHTML = '<span style="color: #e74c3c;">Failed: ' + (data.error || 'Unknown error') + '</span>';
+        }
+        btn.disabled = false;
+        btn.textContent = 'Test Connection';
+    })
+    .catch(err => {
+        result.innerHTML = '<span style="color: #e74c3c;">Error testing connection</span>';
+        btn.disabled = false;
+        btn.textContent = 'Test Connection';
+    });
+}
 
 function toggleEmailProviders() {
     const provider = document.getElementById('email_provider').value;
