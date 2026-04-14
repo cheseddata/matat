@@ -237,6 +237,7 @@ def nedarim_success_callback():
         status='succeeded',
         donation_type=donation_type,
         source='nedarim_web',
+        donor_comment=data.get('comments') or None,
     )
     db.session.add(donation)
     db.session.flush()

@@ -335,6 +335,7 @@ def sync_nedarim_cmd(with_receipts):
                 donation_type='recurring' if is_keva else 'one_time',
                 source='nedarim_sync',
                 payment_method_last4=txn.get('LastNum'),
+                donor_comment=txn.get('Comments') or None,
                 processor_metadata=txn,
             )
 

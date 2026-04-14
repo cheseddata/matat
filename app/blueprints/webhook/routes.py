@@ -496,6 +496,7 @@ def handle_nedarim_payment(data):
         donation_type='recurring' if data.get('is_recurring') else 'one_time',
         source='nedarim',
         payment_method_last4=data.get('last4'),
+        donor_comment=data.get('raw_data', {}).get('Comments') or None,
         processor_metadata=data.get('raw_data'),
     )
 

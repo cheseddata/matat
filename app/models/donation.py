@@ -57,6 +57,9 @@ class Donation(db.Model):
     payment_method_brand = db.Column(db.String(50), nullable=True)  # visa/mastercard/amex
     bank_name = db.Column(db.String(255), nullable=True)  # For ACH
     
+    # Donor message / dedication
+    donor_comment = db.Column(db.Text, nullable=True)  # Comments, dedication, or message from donor
+
     # Status and type
     status = db.Column(db.String(20), default='pending')  # pending/succeeded/failed/refunded
     donation_type = db.Column(db.String(20), default='one_time')  # one_time/recurring
