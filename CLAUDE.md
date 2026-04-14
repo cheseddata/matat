@@ -238,7 +238,7 @@ estimate_fee()        # Estimate processing fee
 
 **Current Status:**
 - Stripe (enabled) - Ready
-- Nedarim Plus (enabled) - MosadId configured, iframe integration on donate page
+- Nedarim Plus (enabled) - MosadId 7007385, API sync every 10min, iframe auth issue pending
 - CardCom (disabled) - Awaiting credentials
 - Grow (disabled) - Awaiting credentials
 - Tranzila (disabled) - Awaiting credentials
@@ -288,13 +288,47 @@ estimate_fee()        # Estimate processing fee
 - **Multi-Platform Design:** Each platform/client can enable different processors based on their needs
 - **International Routing:** System routes by donor location for multi-country organizations with multiple merchant IDs
 
+### 2026-04-14
+- **Nedarim Plus Transaction Sync:** Automatic polling of Nedarim API every 10 minutes
+  - `flask sync-nedarim` CLI command polls `GetHistoryJson` for new transactions
+  - Cron job runs every 10 minutes (`/var/log/nedarim-sync.log`)
+  - No receipts generated (Nedarim provides their own) — `--with-receipts` flag to opt in
+  - Imported 1,375 historical transactions from Nedarim Plus
+  - Donor matching: email first, phone fallback, updates missing info
+- **Donor Model Enhancements:**
+  - `teudat_zehut` field on Donor model (Israeli ID from Nedarim `Zeout`)
+  - `donor_comment` field on Donation model (comments/dedications from donors)
+  - Backfilled 184 teudat zehut values and 546 comments from existing data
+- **Nedarim Plus Donation Page** (`/donate/nedarim`):
+  - Two-step flow: payment method selection → donation form
+  - Payment methods: credit card, standing order, bank standing order, BIT, bank transfer
+  - Our form (amount presets ₪100-₪3,600, name, ת.ז., phone, email, comments)
+  - Nedarim `/iframe/` for PCI-compliant card entry via PostMessage
+  - Currently redirects to Nedarim standalone page (iframe API auth issue pending)
+  - Test page at `/donate/nedarim-test` for debugging with Nedarim support
+- **Dynamic Donation Page Tabs:** Payment method tabs auto-generated from enabled processors
+  - Enabling a processor in admin automatically adds its tab to `/donate`
+  - Nedarim tab links to separate `/donate/nedarim` page
+- **Dashboard Processor Breakdown:** Table showing donations by processor and currency
+  - Stripe USD, Nedarim ILS, Nedarim USD with counts and totals
+  - Processor column with colored badges on donations list and recent donations
+  - Currency-aware amounts (₪ for ILS, $ for USD)
+- **Admin Navigation Overhaul:** Dropdown menus replacing flat link bar
+  - Donations: Donations, Donors, Receipts, Donation Pages (USD/ILS)
+  - Salespersons: Salespersons, Commissions
+  - Settings: Settings, Payment Processors, Email Templates, Screenshots, User Chats
+- **Admin Screenshots** (`/admin/screenshots`): Upload and paste screenshots for Claude review
+  - Paste (Ctrl+V) or file select with preview before upload
+- **Email Campaign Tracking** (`/admin/campaign-track/apology`):
+  - Tracks donations from apology email recipients
+  - Stats: emails sent, donors who donated, total donated, conversion rate
+- **Apology Email Sent:** 30 donors notified about erroneous receipt (system migration glitch)
+  - Bilingual English/Hebrew with donate link to Nedarim Plus
+  - Sent via Mailtrap, ActiveTrail also configured and tested
+- **Nedarim Webhook** (`/webhook/nedarim/webhook`): IP-verified endpoint for payment notifications
+  - No receipts for Nedarim donations (Nedarim provides their own)
+
 ### 2026-04-13
-- **Nedarim Plus Integration:** Full payment processor integration on donation page
-  - Iframe-based payment form with PostMessage communication
-  - `/donate/prepare-nedarim` backend route to prepare payment data and create donor
-  - Nedarim webhook at `/webhook/nedarim/webhook` with IP verification (18.194.219.73)
-  - Webhook creates donation, commission, receipt, and sends receipt email
-  - Tab on donation page alongside Stripe credit card option
 - **Fix: Payment Processor Config Save:** SQLAlchemy JSON column mutation detection
   - Added `MutableDict.as_mutable()` on `config_json` column in `PaymentProcessor` model
   - Added `MutableList.as_mutable()` on `supported_currencies` and `supported_countries`
