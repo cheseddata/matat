@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ZTorm - מערכת ניהול תרומות{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Access 2003 lookalike theme */
+        :root {
+            --access-blue: #4472C4;
+            --access-dark-blue: #2F5597;
+            --access-light-blue: #D6E4F0;
+            --access-cyan: #5B9BD5;
+            --access-toolbar-bg: #D4D0C8;
+            --access-form-bg: #ECE9D8;
+            --access-grid-header: #4472C4;
+            --access-grid-alt: #F2F2F2;
+            --access-tab-active: #FFFFFF;
+            --access-tab-inactive: #D4D0C8;
+            --access-border: #808080;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Arial, sans-serif;
+            font-size: 13px;
+            background-color: #7B8FA1;
+            margin: 0;
+            direction: rtl;
+        }
+        /* Toolbar mimicking Access */
+        .access-toolbar {
+            background: linear-gradient(to bottom, #E8E4DC, #D4D0C8);
+            border-bottom: 1px solid #808080;
+            padding: 3px 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .access-toolbar .btn {
+            font-size: 12px;
+            padding: 2px 8px;
+            border: 1px solid #808080;
+            background: linear-gradient(to bottom, #FFFFFF, #E0DCD4);
+            color: #000;
+        }
+        .access-toolbar .btn:hover {
+            background: linear-gradient(to bottom, #FFF8E1, #E0DCD4);
+        }
+        /* Main window area */
+        .access-window {
+            background: var(--access-form-bg);
+            border: 2px solid #808080;
+            margin: 4px;
+            min-height: calc(100vh - 80px);
+        }
+        .access-title-bar {
+            background: linear-gradient(to left, var(--access-blue), var(--access-dark-blue));
+            color: white;
+            padding: 4px 10px;
+            font-weight: bold;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+        }
+        /* Form styling */
+        .access-form-group {
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+        }
+        .access-form-group label {
+            min-width: 120px;
+            font-size: 12px;
+            text-align: left;
+            padding-left: 8px;
+        }
+        .access-form-group input,
+        .access-form-group select {
+            border: 1px solid #808080;
+            padding: 2px 4px;
+            font-size: 12px;
+            background: white;
+        }
+        .access-form-group input:focus,
+        .access-form-group select:focus {
+            border-color: var(--access-blue);
+            outline: none;
+            box-shadow: 0 0 2px var(--access-cyan);
+        }
+        /* Tab strip */
+        .access-tabs {
+            display: flex;
+            border-bottom: 1px solid #808080;
+            background: var(--access-toolbar-bg);
+            padding: 0 4px;
+        }
+        .access-tab {
+            padding: 4px 16px;
+            font-size: 12px;
+            border: 1px solid #808080;
+            border-bottom: none;
+            margin-right: 2px;
+            background: var(--access-tab-inactive);
+            cursor: pointer;
+            text-decoration: none;
+            color: #000;
+            border-radius: 3px 3px 0 0;
+        }
+        .access-tab.active {
+            background: var(--access-tab-active);
+            font-weight: bold;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+        .access-tab:hover:not(.active) {
+            background: #E8E4DC;
+        }
+        /* Grid/table */
+        .access-grid {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .access-grid th {
+            background: var(--access-grid-header);
+            color: white;
+            padding: 4px 8px;
+            text-align: right;
+            border: 1px solid #3A5A8C;
+            font-weight: normal;
+            position: sticky;
+            top: 0;
+        }
+        .access-grid td {
+            padding: 3px 8px;
+            border: 1px solid #D0D0D0;
+        }
+        .access-grid tr:nth-child(even) {
+            background: var(--access-grid-alt);
+        }
+        .access-grid tr:hover {
+            background: #D6E4F0;
+        }
+        .access-grid tr.selected {
+            background: var(--access-blue);
+            color: white;
+        }
+        /* Button bar at bottom */
+        .access-button-bar {
+            background: var(--access-toolbar-bg);
+            border-top: 1px solid #808080;
+            padding: 4px 8px;
+            display: flex;
+            gap: 4px;
+        }
+        .access-button-bar .btn {
+            font-size: 12px;
+            padding: 3px 12px;
+        }
+        /* Status bar */
+        .access-status-bar {
+            background: var(--access-toolbar-bg);
+            border-top: 1px solid #808080;
+            padding: 2px 8px;
+            font-size: 11px;
+            color: #333;
+        }
+        /* Switchboard buttons */
+        .switchboard-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 16px;
+            margin: 4px 0;
+            text-align: right;
+            font-size: 14px;
+            border: 1px solid #808080;
+            background: linear-gradient(to bottom, #FFFFFF, #E0DCD4);
+            color: #000;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        .switchboard-btn:hover {
+            background: linear-gradient(to bottom, #D6E4F0, #B8CCE4);
+            border-color: var(--access-blue);
+        }
+        .switchboard-btn i {
+            margin-left: 8px;
+            color: var(--access-blue);
+        }
+        /* Flash messages */
+        .flash-msg {
+            padding: 8px 16px;
+            margin: 4px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .flash-success { background: #D4EDDA; color: #155724; border: 1px solid #C3E6CB; }
+        .flash-error { background: #F8D7DA; color: #721C24; border: 1px solid #F5C6CB; }
+        /* Pagination */
+        .pagination { font-size: 12px; }
+        .page-link { padding: 3px 8px; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Access-style toolbar -->
+    <div class="access-toolbar">
+        <a href="{{ url_for('ztorm.switchboard') }}" class="btn"><i class="fas fa-home"></i> ראשי</a>
+        <a href="{{ url_for('ztorm.donors') }}" class="btn"><i class="fas fa-users"></i> תורמים</a>
+        <a href="{{ url_for('ztorm.klita') }}" class="btn"><i class="fas fa-plus"></i> קליטה</a>
+        <a href="{{ url_for('ztorm.donations') }}" class="btn"><i class="fas fa-hand-holding-heart"></i> תרומות</a>
+        <a href="{{ url_for('ztorm.payments') }}" class="btn"><i class="fas fa-shekel-sign"></i> תשלומים</a>
+        <a href="{{ url_for('ztorm.agreements') }}" class="btn"><i class="fas fa-file-contract"></i> הסכמים</a>
+        <a href="{{ url_for('ztorm.reports') }}" class="btn"><i class="fas fa-chart-bar"></i> דוחות</a>
+        <div style="flex-grow:1"></div>
+        <span style="font-size:11px; color:#666">{{ current_user.full_name if current_user.is_authenticated else '' }}</span>
+        {% if current_user.is_authenticated %}
+        <a href="/logout" class="btn"><i class="fas fa-sign-out-alt"></i></a>
+        {% endif %}
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="flash-msg flash-{{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+    <!-- Status bar -->
+    <div class="access-status-bar">
+        <span>ZTorm - מערכת ניהול תרומות | מתת מרדכי</span>
+        <span style="float:left">{% block status %}מוכן{% endblock %}</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

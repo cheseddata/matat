@@ -29,9 +29,12 @@ app/
 │   ├── donate/      # Public donation pages
 │   ├── salesperson/ # Salesperson dashboard, phone entry, links, commissions
 │   ├── upload/      # File upload tool for migrations
-│   └── webhook/     # Stripe webhook handlers
+│   ├── webhook/     # Stripe webhook handlers
+│   └── ztorm/       # ZTorm Portal (Access-lookalike donation management)
 ├── models/          # SQLAlchemy models
 ├── services/        # Business logic (payment/, email, pdf, receipts)
+│   ├── ztorm/       # ZTorm business logic (donation, payment, receipt, accounting, validation, email, ezcount)
+│   └── payment/     # Payment processors (shva, base, router)
 ├── templates/       # Jinja2 templates
 ├── i18n/           # Translation files (en.json, he.json)
 └── utils/          # Helpers (i18n, etc.)
@@ -261,6 +264,48 @@ estimate_fee()        # Estimate processing fee
 ---
 
 ## Changelog
+
+
+### 2026-04-14 (ZTorm Integration)
+- **ZTorm Portal:** Full Access-lookalike donation management system integrated at 
+  - Switchboard (main menu), Donor browser with search, Donor detail with 8 tabs
+  - Data entry (Klita) form, Donation/Payment/Agreement management
+  - Reports with filters and Excel export
+  - Receipt generation via EZCount API (type 400 - קבלה על תרומה)
+  - Credit card charging via Shva/Ashrait SOAP API (production)
+  - Email sending via Mailtrap with receipt PDF attachment
+  - Hebrew RTL UI mimicking Access 2003 styling
+- **14 New Database Tables:** agreements, payments, addresses, phones, classifications,
+  memorial_names, communications, donation_events, accounts, account_allocations,
+  accounting_credits, collection_batches, credit_card_recurring, credit_card_charges,
+  standing_orders
+- **30+ New Donor Fields:** title, suffix, gender, spouse, parents, classifications,
+  receipt preferences, letter name overrides, bookmark, follow-up frequency
+- **20+ New Donation Fields:** agreement_id, paid_nis/usd, expected_nis/usd, payment dates,
+  cancellation tracking, receipt preferences, ZTorm ID mapping
+- **ZTorm Data Import:** 1,764 donors imported from Access MDB with smart merge
+  - Matched by TZ (Israeli ID), email, or name against existing 770 Matat donors
+  - Each donor has  linking back to Access 
+  - Total donors: 2,480 (merged + new + existing)
+- **Shva/Ashrait Credit Card Processor:** ()
+  - SOAP API at 
+  - Terminal: 2481062014, Username: MXRCX
+  - Supports regular charges, installments, card validation
+  - Processor selection UI for user to choose CC provider
+- **EZCount Receipt API:** ()
+  - API Key configured, prefix Z2
+  - Creates official Section 46 tax receipts (type 400)
+  - Downloads PDFs, sends via email
+- **Business Logic Services:** ()
+  -  - Donation lifecycle (activate, cancel, complete, recalculate)
+  -  - Payment CRUD with auto-recalculation
+  -  - Sequential numbering, PDF generation, batch preparation
+  -  - Account allocations, credit entries
+  -  - Israeli TZ validation, bank account checksum, duplicate detection
+  -  - Mailtrap integration with receipt PDF attachment
+  -  - EZCount API for official Israeli tax receipts
+- **Navigation:** Gold "🏛 ZTorm" link added to both admin and salesperson nav bars
+- **Authentication:** ZTorm uses same Matat login session - no separate credentials needed
 
 ### 2026-03-27
 - **Multi-Processor Payment System (Complete):** Built table-driven payment routing supporting 11 processors

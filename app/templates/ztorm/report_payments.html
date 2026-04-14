@@ -1,0 +1,54 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - דוח תשלומים{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-shekel-sign"></i> דוח תשלומים</span><span>{{ payments|length }} רשומות</span></div>
+    <div style="padding: 8px; background: #ECE9D8; border-bottom: 1px solid #808080;">
+        <form method="get" class="d-flex gap-2 flex-wrap" style="align-items:center;">
+            <label style="font-size:12px;">סטטוס:</label>
+            <select name="status" style="font-size:12px;border:1px solid #808080;padding:2px;">
+                <option value="">הכל</option>
+                <option value="ok" {{ 'selected' if status=='ok' }}>שולם</option>
+                <option value="ready" {{ 'selected' if status=='ready' }}>ממתין</option>
+                <option value="returned" {{ 'selected' if status=='returned' }}>הוחזר</option>
+            </select>
+            <label style="font-size:12px;">שיטה:</label>
+            <select name="method" style="font-size:12px;border:1px solid #808080;padding:2px;">
+                <option value="">הכל</option>
+                <option value="credit" {{ 'selected' if method=='credit' }}>אשראי</option>
+                <option value="hork" {{ 'selected' if method=='hork' }}>הו"ק</option>
+                <option value="cash" {{ 'selected' if method=='cash' }}>מזומן</option>
+                <option value="check" {{ 'selected' if method=='check' }}>צ'ק</option>
+            </select>
+            <label style="font-size:12px;">מתאריך:</label>
+            <input type="date" name="date_from" value="{{ date_from }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
+            <label style="font-size:12px;">עד:</label>
+            <input type="date" name="date_to" value="{{ date_to }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
+            <button type="submit" class="btn btn-sm btn-primary" style="font-size:12px;"><i class="fas fa-filter"></i> סנן</button>
+        </form>
+    </div>
+    <div style="padding: 8px; background: #D6E4F0; font-size: 13px; font-weight: bold;">
+        סה"כ: {{ "{:,.2f}".format(total) }} | {{ payments|length }} תשלומים
+    </div>
+    <div style="overflow-y: auto; max-height: calc(100vh - 220px);">
+        <table class="access-grid">
+            <thead><tr><th>#</th><th>תורם</th><th>תרומה</th><th>תאריך</th><th>סכום</th><th>מטבע</th><th>שיטה</th><th>סטטוס</th><th>אסמכתא</th></tr></thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.donation.donor.full_name if p.donation and p.donation.donor else '' }}</td>
+                    <td>{{ p.donation_id }}</td>
+                    <td>{{ p.payment_date.strftime('%d/%m/%Y') if p.payment_date else '-' }}</td>
+                    <td>{{ p.currency_symbol }}{{ p.amount }}</td>
+                    <td>{{ p.currency }}</td>
+                    <td>{{ p.method or '-' }}</td>
+                    <td>{{ p.status_display }}</td>
+                    <td>{{ p.reference or '-' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

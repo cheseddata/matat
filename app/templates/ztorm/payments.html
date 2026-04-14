@@ -1,0 +1,25 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - תשלומים{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-shekel-sign"></i> תשלומים</span><span>{{ payments.total }} רשומות</span></div>
+    <div style="overflow-y: auto; max-height: calc(100vh - 120px);">
+        <table class="access-grid">
+            <thead><tr><th>#</th><th>תרומה</th><th>תורם</th><th>תאריך</th><th>סכום</th><th>מטבע</th><th>שיטה</th><th>סטטוס</th></tr></thead>
+            <tbody>
+                {% for p in payments.items %}
+                <tr>
+                    <td>{{ p.id }}</td><td>{{ p.donation_id }}</td>
+                    <td>{{ p.donation.donor.full_name if p.donation and p.donation.donor else '-' }}</td>
+                    <td>{{ p.payment_date.strftime('%d/%m/%Y') if p.payment_date else '-' }}</td>
+                    <td>{{ p.currency_symbol }}{{ p.amount }}</td><td>{{ p.currency }}</td>
+                    <td>{{ p.method or '-' }}</td><td>{{ p.status_display }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" style="text-align:center;color:#888;">אין תשלומים</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

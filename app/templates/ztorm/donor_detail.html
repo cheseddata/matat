@@ -1,0 +1,263 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - {{ donor.full_name }}{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-user"></i> תורם #{{ donor.id }} - {{ donor.display_name }}</span>
+        <span>{{ donor.email or '' }}</span>
+    </div>
+
+    <!-- Tab strip -->
+    <div class="access-tabs">
+        <a class="access-tab {{ 'active' if tab=='overview' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='overview') }}">
+            <i class="fas fa-id-card"></i> פרטים
+        </a>
+        <a class="access-tab {{ 'active' if tab=='donations' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='donations') }}">
+            <i class="fas fa-hand-holding-heart"></i> תרומות ({{ donations|length }})
+        </a>
+        <a class="access-tab {{ 'active' if tab=='payments' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='payments') }}">
+            <i class="fas fa-shekel-sign"></i> תשלומים ({{ payments|length }})
+        </a>
+        <a class="access-tab {{ 'active' if tab=='agreements' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='agreements') }}">
+            <i class="fas fa-file-contract"></i> הסכמים ({{ agreements|length }})
+        </a>
+        <a class="access-tab {{ 'active' if tab=='addresses' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='addresses') }}">
+            <i class="fas fa-map-marker-alt"></i> כתובות
+        </a>
+        <a class="access-tab {{ 'active' if tab=='communications' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='communications') }}">
+            <i class="fas fa-envelope"></i> תקשורת
+        </a>
+        <a class="access-tab {{ 'active' if tab=='memorial' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='memorial') }}">
+            <i class="fas fa-candle-holder"></i> אזכרות
+        </a>
+        <a class="access-tab {{ 'active' if tab=='notes' }}" href="{{ url_for('ztorm.donor_detail', donor_id=donor.id, tab='notes') }}">
+            <i class="fas fa-sticky-note"></i> הערות ({{ notes|length }})
+        </a>
+    </div>
+
+    <!-- Tab content -->
+    <div style="padding: 12px; min-height: 400px;">
+
+    {% if tab == 'overview' %}
+    <!-- OVERVIEW TAB -->
+    <div class="row">
+        <div class="col-md-6">
+            <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">פרטים אישיים</h6>
+            <div class="access-form-group"><label>מספר תורם:</label> <strong>{{ donor.id }}</strong></div>
+            <div class="access-form-group"><label>תואר:</label> {{ donor.title or '-' }}</div>
+            <div class="access-form-group"><label>שם משפחה:</label> <strong>{{ donor.last_name }}</strong></div>
+            <div class="access-form-group"><label>שם פרטי:</label> <strong>{{ donor.first_name }}</strong></div>
+            <div class="access-form-group"><label>ת.ז.:</label> {{ donor.teudat_zehut or '-' }}</div>
+            <div class="access-form-group"><label>מין:</label> {{ donor.gender or '-' }}</div>
+            <div class="access-form-group"><label>בן/בת זוג:</label> {{ donor.spouse_name or '-' }}</div>
+            <div class="access-form-group"><label>אימייל:</label> {{ donor.email or '-' }}</div>
+            <div class="access-form-group"><label>טלפון:</label> {{ donor.phone or '-' }}</div>
+            <div class="access-form-group"><label>שפה:</label> {{ 'עברית' if donor.language_pref == 'he' else 'English' }}</div>
+        </div>
+        <div class="col-md-6">
+            <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">כתובת וסיווג</h6>
+            <div class="access-form-group"><label>כתובת:</label> {{ donor.address_line1 or '-' }}</div>
+            <div class="access-form-group"><label>עיר:</label> {{ donor.city or '-' }}</div>
+            <div class="access-form-group"><label>מיקוד:</label> {{ donor.zip or '-' }}</div>
+            <div class="access-form-group"><label>מדינה:</label> {{ donor.country or '-' }}</div>
+            <div class="access-form-group"><label>סיווג 1:</label> {{ donor.classification_1 or '-' }}</div>
+            <div class="access-form-group"><label>סיווג 2:</label> {{ donor.classification_2 or '-' }}</div>
+            <div class="access-form-group"><label>שלח דואר:</label> {{ 'כן' if donor.send_mail else 'לא' }}</div>
+            <div class="access-form-group"><label>סימון:</label> {% if donor.bookmark %}<i class="fas fa-bookmark" style="color: #D4A017;"></i> מסומן{% else %}-{% endif %}</div>
+            <div class="access-form-group"><label>נוצר:</label> {{ donor.created_at.strftime('%d/%m/%Y') if donor.created_at else '-' }}</div>
+        </div>
+    </div>
+
+    {% elif tab == 'donations' %}
+    <!-- DONATIONS TAB -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 style="color: #2F5597; margin: 0;"><i class="fas fa-hand-holding-heart"></i> תרומות</h6>
+        <a href="{{ url_for('ztorm.klita') }}?donor_id={{ donor.id }}" class="btn btn-sm btn-primary" style="font-size: 12px;">
+            <i class="fas fa-plus"></i> תרומה חדשה
+        </a>
+    </div>
+    <table class="access-grid">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>סוג</th>
+                <th>סטטוס</th>
+                <th>סכום</th>
+                <th>מטבע</th>
+                <th>שולם ₪</th>
+                <th>צפוי ₪</th>
+                <th>תאריך</th>
+                <th>הסכם</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in donations %}
+            <tr>
+                <td>{{ d.id }}</td>
+                <td>{{ d.payment_method or d.payment_processor }}</td>
+                <td>
+                    <span class="badge bg-{{ 'success' if d.status in ('active','succeeded') else 'danger' if d.status=='cancelled' else 'warning' }}">
+                        {{ d.status_display }}
+                    </span>
+                </td>
+                <td>{{ d.currency_symbol }}{{ d.amount_display }}</td>
+                <td>{{ d.currency }}</td>
+                <td>{{ d.paid_nis or '-' }}</td>
+                <td>{{ d.expected_nis or '-' }}</td>
+                <td>{{ d.created_at.strftime('%d/%m/%Y') if d.created_at else '-' }}</td>
+                <td>{{ d.agreement_id or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="9" style="text-align: center; color: #888;">אין תרומות</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% elif tab == 'payments' %}
+    <!-- PAYMENTS TAB -->
+    <h6 style="color: #2F5597;"><i class="fas fa-shekel-sign"></i> תשלומים</h6>
+    <table class="access-grid">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>תרומה</th>
+                <th>תאריך</th>
+                <th>סכום</th>
+                <th>מטבע</th>
+                <th>שיטה</th>
+                <th>סטטוס</th>
+                <th>אסמכתא</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in payments %}
+            <tr>
+                <td>{{ p.id }}</td>
+                <td>{{ p.donation_id }}</td>
+                <td>{{ p.payment_date.strftime('%d/%m/%Y') if p.payment_date else '-' }}</td>
+                <td>{{ p.currency_symbol }}{{ p.amount }}</td>
+                <td>{{ p.currency }}</td>
+                <td>{{ p.method or '-' }}</td>
+                <td>{{ p.status_display }}</td>
+                <td>{{ p.reference or '-' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" style="text-align: center; color: #888;">אין תשלומים</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% elif tab == 'agreements' %}
+    <!-- AGREEMENTS TAB -->
+    <h6 style="color: #2F5597;"><i class="fas fa-file-contract"></i> הסכמים</h6>
+    <table class="access-grid">
+        <thead><tr><th>#</th><th>סוג</th><th>סכום</th><th>שולם</th><th>צפוי</th><th>מטבע</th></tr></thead>
+        <tbody>
+            {% for a in agreements %}
+            <tr>
+                <td>{{ a.id }}</td><td>{{ a.agreement_type or '-' }}</td>
+                <td>{{ a.total_amount or '-' }}</td><td>{{ a.paid_amount or 0 }}</td>
+                <td>{{ a.expected_amount or 0 }}</td><td>{{ a.currency }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align: center; color: #888;">אין הסכמים</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% elif tab == 'addresses' %}
+    <!-- ADDRESSES TAB -->
+    <h6 style="color: #2F5597;"><i class="fas fa-map-marker-alt"></i> כתובות</h6>
+    <table class="access-grid">
+        <thead><tr><th>#</th><th>סוג</th><th>רחוב</th><th>עיר</th><th>מיקוד</th><th>דואר</th></tr></thead>
+        <tbody>
+            {% for a in addresses %}
+            <tr>
+                <td>{{ a.sequence }}</td><td>{{ a.location_type or '-' }}</td>
+                <td>{{ a.street or '' }} {{ a.house_number or '' }}</td>
+                <td>{{ a.city or '-' }}</td><td>{{ a.zip_code or '-' }}</td>
+                <td>{% if a.is_primary_mail %}<i class="fas fa-check" style="color: green;"></i>{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align: center; color: #888;">אין כתובות נוספות</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <h6 style="color: #2F5597; margin-top: 16px;"><i class="fas fa-phone"></i> טלפונים</h6>
+    <table class="access-grid">
+        <thead><tr><th>#</th><th>מספר</th><th>קידומת</th><th>סוג</th><th>הערה</th></tr></thead>
+        <tbody>
+            {% for p in phones %}
+            <tr>
+                <td>{{ p.sequence }}</td><td>{{ p.number }}</td><td>{{ p.area_code or '' }}</td>
+                <td>{{ p.location or '-' }}</td><td>{{ p.notes or '' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align: center; color: #888;">אין טלפונים נוספים</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% elif tab == 'memorial' %}
+    <!-- MEMORIAL NAMES TAB -->
+    <h6 style="color: #2F5597;"><i class="fas fa-menorah"></i> שמות אזכרה</h6>
+    <table class="access-grid">
+        <thead><tr><th>שם</th><th>קרבה</th><th>יום</th><th>חודש</th><th>שנה</th><th>פעיל</th></tr></thead>
+        <tbody>
+            {% for m in memorial_names %}
+            <tr>
+                <td>{{ m.name }}</td><td>{{ m.relationship or '-' }}</td>
+                <td>{{ m.hebrew_day or '-' }}</td><td>{{ m.hebrew_month or '-' }}</td>
+                <td>{{ m.hebrew_year or '-' }}</td>
+                <td>{% if m.is_active %}<i class="fas fa-check" style="color: green;"></i>{% endif %}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align: center; color: #888;">אין שמות אזכרה</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% elif tab == 'notes' %}
+    <!-- NOTES TAB -->
+    <h6 style="color: #2F5597;"><i class="fas fa-sticky-note"></i> הערות</h6>
+    {% for n in notes %}
+    <div style="border: 1px solid #ccc; padding: 8px; margin-bottom: 8px; background: {{ '#FFFDE7' if n.is_pinned else '#fff' }};">
+        <div style="font-size: 11px; color: #888;">{{ n.created_at.strftime('%d/%m/%Y %H:%M') }} {% if n.is_pinned %}<i class="fas fa-thumbtack" style="color: #D4A017;"></i>{% endif %}</div>
+        <div>{{ n.content }}</div>
+    </div>
+    {% else %}
+    <p style="color: #888;">אין הערות</p>
+    {% endfor %}
+
+    {% elif tab == 'communications' %}
+    <!-- COMMUNICATIONS TAB -->
+    <h6 style="color: #2F5597;"><i class="fas fa-envelope"></i> תקשורת</h6>
+    <table class="access-grid">
+        <thead><tr><th>תאריך</th><th>סוג</th><th>סטטוס</th><th>הערות</th></tr></thead>
+        <tbody>
+            {% for c in communications %}
+            <tr>
+                <td>{{ c.created_at.strftime('%d/%m/%Y') if c.created_at else '-' }}</td>
+                <td>{{ c.comm_type or '-' }}</td>
+                <td>{{ c.status or '-' }}</td>
+                <td>{{ c.notes or '' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align: center; color: #888;">אין תקשורת</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    </div>
+
+    <!-- Bottom button bar -->
+    <div class="access-button-bar">
+        <a href="{{ url_for('ztorm.donors') }}" class="btn btn-sm btn-secondary"><i class="fas fa-arrow-right"></i> חזרה</a>
+        <a href="{{ url_for('ztorm.klita') }}?donor_id={{ donor.id }}" class="btn btn-sm btn-primary"><i class="fas fa-plus"></i> תרומה חדשה</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block status %}תורם #{{ donor.id }} - {{ donor.full_name }}{% endblock %}

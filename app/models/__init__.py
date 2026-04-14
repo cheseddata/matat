@@ -16,6 +16,19 @@ from .payment_processor import PaymentProcessor
 from .payment_routing_rule import PaymentRoutingRule
 from .donor_note import DonorNote
 
+from .agreement import Agreement
+from .payment import Payment
+from .standing_order import StandingOrder
+from .credit_card import CreditCardRecurring, CreditCardCharge
+from .address import Address
+from .phone import Phone
+from .classification import Classification
+from .memorial_name import MemorialName
+from .communication import Communication
+from .donation_event import DonationEvent
+from .account import Account, AccountAllocation, AccountingCredit
+from .collection_batch import CollectionBatch
+
 __all__ = [
     'User',
     'Donor',
@@ -39,4 +52,19 @@ __all__ = [
     'PaymentProcessor',
     'PaymentRoutingRule',
     'DonorNote',
+    'Agreement',
+    'Payment',
+    'StandingOrder',
+    'CreditCardRecurring',
+    'CreditCardCharge',
+    'Address',
+    'Phone',
+    'Classification',
+    'MemorialName',
+    'Communication',
+    'DonationEvent',
+    'Account',
+    'AccountAllocation',
+    'AccountingCredit',
+    'CollectionBatch',
 ]

@@ -1,0 +1,64 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - דוח תרומות{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-chart-bar"></i> דוח תרומות</span><span>{{ donations|length }} רשומות</span></div>
+    <!-- Filters -->
+    <div style="padding: 8px; background: #ECE9D8; border-bottom: 1px solid #808080;">
+        <form method="get" class="d-flex gap-2 flex-wrap" style="align-items:center;">
+            <label style="font-size:12px;">סטטוס:</label>
+            <select name="status" style="font-size:12px;border:1px solid #808080;padding:2px;">
+                <option value="">הכל</option>
+                <option value="active" {{ 'selected' if status=='active' }}>פעיל</option>
+                <option value="cancelled" {{ 'selected' if status=='cancelled' }}>בוטל</option>
+                <option value="completed" {{ 'selected' if status=='completed' }}>הושלם</option>
+            </select>
+            <label style="font-size:12px;">אופן:</label>
+            <select name="method" style="font-size:12px;border:1px solid #808080;padding:2px;">
+                <option value="">הכל</option>
+                <option value="credit" {{ 'selected' if method=='credit' }}>אשראי</option>
+                <option value="hork" {{ 'selected' if method=='hork' }}>הו"ק</option>
+                <option value="cash" {{ 'selected' if method=='cash' }}>מזומן</option>
+                <option value="check" {{ 'selected' if method=='check' }}>צ'ק</option>
+            </select>
+            <label style="font-size:12px;">מטבע:</label>
+            <select name="currency" style="font-size:12px;border:1px solid #808080;padding:2px;">
+                <option value="">הכל</option>
+                <option value="ILS" {{ 'selected' if currency=='ILS' }}>₪</option>
+                <option value="USD" {{ 'selected' if currency=='USD' }}>$</option>
+            </select>
+            <label style="font-size:12px;">מתאריך:</label>
+            <input type="date" name="date_from" value="{{ date_from }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
+            <label style="font-size:12px;">עד:</label>
+            <input type="date" name="date_to" value="{{ date_to }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
+            <button type="submit" class="btn btn-sm btn-primary" style="font-size:12px;"><i class="fas fa-filter"></i> סנן</button>
+            <a href="{{ url_for('ztorm.report_donations_export') }}" class="btn btn-sm btn-success" style="font-size:12px;"><i class="fas fa-file-excel"></i> ייצוא Excel</a>
+        </form>
+    </div>
+    <!-- Totals -->
+    <div style="padding: 8px; background: #D6E4F0; font-size: 13px; font-weight: bold;">
+        סה"כ: ₪{{ "{:,.2f}".format(total_nis) }} | ${{ "{:,.2f}".format(total_usd) }} | {{ donations|length }} תרומות
+    </div>
+    <!-- Grid -->
+    <div style="overflow-y: auto; max-height: calc(100vh - 220px);">
+        <table class="access-grid">
+            <thead><tr><th>#</th><th>תורם</th><th>אופן</th><th>סכום</th><th>מטבע</th><th>שולם ₪</th><th>שולם $</th><th>סטטוס</th><th>תאריך</th></tr></thead>
+            <tbody>
+                {% for d in donations %}
+                <tr onclick="window.location='{{ url_for('ztorm.donor_detail', donor_id=d.donor_id, tab='donations') }}'" style="cursor:pointer;">
+                    <td>{{ d.id }}</td>
+                    <td>{{ d.donor.full_name if d.donor else '' }}</td>
+                    <td>{{ d.payment_method or '' }}</td>
+                    <td>{{ d.currency_symbol }}{{ d.amount_display }}</td>
+                    <td>{{ d.currency }}</td>
+                    <td>{{ "{:,.2f}".format(d.paid_nis|float) if d.paid_nis else '-' }}</td>
+                    <td>{{ "{:,.2f}".format(d.paid_usd|float) if d.paid_usd else '-' }}</td>
+                    <td><span class="badge bg-{{ 'success' if d.status in ('active','succeeded') else 'danger' if d.status=='cancelled' else 'warning' }}">{{ d.status_display }}</span></td>
+                    <td>{{ d.created_at.strftime('%d/%m/%Y') if d.created_at else '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

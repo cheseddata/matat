@@ -1,0 +1,240 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - חיוב כרטיס אשראי{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-credit-card"></i> חיוב כרטיס אשראי + קבלה</span></div>
+    <form method="post" style="padding: 16px;">
+        <div class="row">
+            <!-- Column 1: Donor Info -->
+            <div class="col-md-4">
+                <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
+                    <i class="fas fa-user"></i> פרטי תורם
+                </h6>
+
+                <!-- Donor search -->
+                <div class="access-form-group">
+                    <label>חיפוש תורם:</label>
+                    <input type="text" id="donorSearch" placeholder="שם, טלפון, ת.ז...." style="width: 180px;" autocomplete="off">
+                    <input type="hidden" name="donor_id" id="donorId">
+                </div>
+                <div id="searchResults" style="display:none; position:absolute; background:white; border:1px solid #808080; max-height:200px; overflow-y:auto; z-index:100; width:300px; font-size:12px;"></div>
+
+                <div class="access-form-group">
+                    <label>שם משפחה:</label>
+                    <input type="text" name="last_name" id="lastName" required style="width: 160px;">
+                </div>
+                <div class="access-form-group">
+                    <label>שם פרטי:</label>
+                    <input type="text" name="first_name" id="firstName" required style="width: 160px;">
+                </div>
+                <div class="access-form-group">
+                    <label>ת.ז.:</label>
+                    <input type="text" name="tz" id="tz" style="width: 120px;" maxlength="9">
+                    <span id="tzStatus" style="font-size: 11px; margin-right: 4px;"></span>
+                </div>
+                <div class="access-form-group">
+                    <label>טלפון:</label>
+                    <input type="text" name="phone" id="phone" style="width: 140px;">
+                </div>
+                <div class="access-form-group">
+                    <label>אימייל:</label>
+                    <input type="email" name="email" id="email" style="width: 200px;">
+                </div>
+                <div class="access-form-group">
+                    <label>כתובת:</label>
+                    <input type="text" name="address" id="address" style="width: 200px;">
+                </div>
+                <div class="access-form-group">
+                    <label>עיר:</label>
+                    <input type="text" name="city" id="city" style="width: 140px;">
+                </div>
+
+                <div style="margin-top: 8px; padding: 8px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 4px; font-size: 11px;">
+                    <i class="fas fa-info-circle" style="color: #2E7D32;"></i>
+                    אם התורם קיים במערכת, חפש אותו למעלה. אם חדש, מלא את הפרטים ותורם חדש יווצר אוטומטית.
+                </div>
+            </div>
+
+            <!-- Column 2: Payment Details -->
+            <div class="col-md-4">
+                <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
+                    <i class="fas fa-shekel-sign"></i> פרטי חיוב
+                </h6>
+                <div class="access-form-group">
+                    <label>ספק אשראי:</label>
+                    <select name="processor" style="width: 180px; font-size: 13px;">
+                        {% for p in processors %}
+                        <option value="{{ p.code }}">{{ p.name_he }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="access-form-group">
+                    <label>סכום:</label>
+                    <input type="number" name="amount" required style="width: 120px;" step="0.01" min="1">
+                </div>
+                <div class="access-form-group">
+                    <label>מטבע:</label>
+                    <select name="currency" style="width: 100px;">
+                        <option value="ILS">₪ שקל</option>
+                        <option value="USD">$ דולר</option>
+                        <option value="EUR">€ אירו</option>
+                    </select>
+                </div>
+                <div class="access-form-group">
+                    <label>תשלומים:</label>
+                    <select name="installments" style="width: 80px;">
+                        <option value="1">1</option>
+                        {% for i in range(2, 37) %}
+                        <option value="{{ i }}">{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="access-form-group">
+                    <label>הערות:</label>
+                    <input type="text" name="notes" style="width: 200px;" placeholder="הקדשה, הערה...">
+                </div>
+
+                <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
+                    <i class="fas fa-receipt"></i> קבלה
+                </h6>
+                <div class="access-form-group">
+                    <label>שלח קבלה:</label>
+                    <input type="checkbox" name="send_receipt" checked>
+                    <span style="font-size: 11px; color: #666; margin-right: 4px;">באימייל</span>
+                </div>
+                <div class="access-form-group">
+                    <label>שם לקבלה:</label>
+                    <input type="text" name="receipt_name" id="receiptName" style="width: 180px;" placeholder="(אם שונה מהתורם)">
+                </div>
+            </div>
+
+            <!-- Column 3: Card Details -->
+            <div class="col-md-4">
+                <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
+                    <i class="fas fa-credit-card"></i> פרטי כרטיס
+                </h6>
+                <div class="access-form-group">
+                    <label>מספר כרטיס:</label>
+                    <input type="text" id="cardDisplay" style="width: 200px; font-size: 14px; letter-spacing: 2px;" maxlength="19" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off">
+                    <input type="hidden" name="card_number" id="cardNumber">
+                    <span id="cardMasked" style="font-size: 13px; color: #2F5597; margin-right: 8px; display: none;"></span>
+                </div>
+                <div class="access-form-group">
+                    <label>תוקף (MMYY):</label>
+                    <input type="text" name="expiry" required style="width: 80px; font-size: 14px;" maxlength="4" placeholder="MMYY" autocomplete="off">
+                </div>
+                <div class="access-form-group">
+                    <label>CVV:</label>
+                    <input type="text" name="cvv" required style="width: 60px; font-size: 14px;" maxlength="4" placeholder="***" autocomplete="off">
+                </div>
+
+                <div style="margin-top: 20px; padding: 16px; background: #FFF3CD; border: 1px solid #FFC107; border-radius: 4px; font-size: 12px;">
+                    <i class="fas fa-exclamation-triangle" style="color: #856404;"></i>
+                    <strong>שים לב:</strong> חיוב זה יבוצע ישירות מול ספק האשראי. וודא שהפרטים נכונים.
+                </div>
+
+                <div style="margin-top: 12px; padding: 12px; background: #E3F2FD; border: 1px solid #2196F3; border-radius: 4px; font-size: 12px;">
+                    <i class="fas fa-info-circle" style="color: #1565C0;"></i>
+                    <strong>מה יקרה:</strong><br>
+                    1. כרטיס האשראי יחוייב<br>
+                    2. קבלה תיווצר אוטומטית<br>
+                    3. קבלה תישלח באימייל לתורם
+                </div>
+            </div>
+        </div>
+
+        <div class="access-button-bar" style="margin-top: 16px;">
+            <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-bolt"></i> חייב כרטיס ושלח קבלה</button>
+            <a href="{{ url_for('ztorm.switchboard') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> ביטול</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Card number masking - shows full number briefly then masks to last 4
+const cardDisplay = document.getElementById('cardDisplay');
+const cardNumber = document.getElementById('cardNumber');
+const cardMasked = document.getElementById('cardMasked');
+let maskTimeout;
+
+cardDisplay.addEventListener('input', function() {
+    const raw = this.value.replace(/\D/g, '');
+    cardNumber.value = raw;
+
+    // Clear any pending mask
+    clearTimeout(maskTimeout);
+    cardMasked.style.display = 'none';
+    cardDisplay.style.display = '';
+
+    // After 1.5 seconds of no typing, mask the number
+    if (raw.length >= 8) {
+        maskTimeout = setTimeout(() => {
+            const last4 = raw.slice(-4);
+            const masked = '•••• •••• •••• ' + last4;
+            cardMasked.textContent = '🔒 ' + masked;
+            cardMasked.style.display = 'inline';
+            cardDisplay.style.display = 'none';
+        }, 1500);
+    }
+});
+
+// Click on masked display to edit again
+cardMasked.addEventListener('click', function() {
+    cardMasked.style.display = 'none';
+    cardDisplay.style.display = '';
+    cardDisplay.focus();
+});
+
+// TZ validation
+document.getElementById('tz').addEventListener('input', function() {
+    const tz = this.value;
+    const el = document.getElementById('tzStatus');
+    if (tz.length < 9) { el.textContent = ''; return; }
+    let sum = 0;
+    for (let i = 0; i < 9; i++) { let d = parseInt(tz[i]) * ((i % 2) + 1); if (d > 9) d -= 9; sum += d; }
+    el.innerHTML = sum % 10 === 0 ? '<span style="color:green;">✓</span>' : '<span style="color:red;">✗</span>';
+});
+
+// Donor search
+let searchTimeout;
+document.getElementById('donorSearch').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const q = this.value;
+    if (q.length < 2) { document.getElementById('searchResults').style.display = 'none'; return; }
+    searchTimeout = setTimeout(() => {
+        fetch('/ztorm/api/donors/search?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(donors => {
+                const div = document.getElementById('searchResults');
+                if (donors.length === 0) { div.style.display = 'none'; return; }
+                div.innerHTML = donors.map(d =>
+                    `<div style="padding:4px 8px; cursor:pointer; border-bottom:1px solid #eee;"
+                          onclick="selectDonor(${d.id}, '${d.name}', '${d.email||''}', '${d.phone||''}', '${d.tz||''}', '${d.city||''}')"
+                          onmouseover="this.style.background='#D6E4F0'" onmouseout="this.style.background='white'">
+                        <strong>${d.name}</strong> ${d.tz ? '('+d.tz+')' : ''} ${d.phone||''} ${d.email||''}
+                    </div>`
+                ).join('');
+                div.style.display = 'block';
+            });
+    }, 300);
+});
+
+function selectDonor(id, name, email, phone, tz, city) {
+    document.getElementById('donorId').value = id;
+    document.getElementById('donorSearch').value = name;
+    document.getElementById('searchResults').style.display = 'none';
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+        document.getElementById('firstName').value = parts[0];
+        document.getElementById('lastName').value = parts.slice(1).join(' ');
+    }
+    if (tz) document.getElementById('tz').value = tz;
+    if (email) document.getElementById('email').value = email;
+    if (phone) document.getElementById('phone').value = phone;
+    if (city) document.getElementById('city').value = city;
+    document.getElementById('receiptName').value = name;
+}
+</script>
+{% endblock %}

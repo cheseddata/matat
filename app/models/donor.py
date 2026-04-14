@@ -36,6 +36,41 @@ class Donor(db.Model):
     external_id = db.Column(db.String(100), nullable=True, index=True)  # ID from external system
     external_source = db.Column(db.String(50), nullable=True)  # e.g., 'salesforce', 'bloomerang', 'csv_import'
 
+    
+    # === ZTORM FIELDS ===
+    ztorm_donor_id = db.Column(db.Integer, nullable=True, index=True)
+    title = db.Column(db.String(50), nullable=True)
+    suffix = db.Column(db.String(50), nullable=True)
+    gender = db.Column(db.String(10), nullable=True)
+    spouse_name = db.Column(db.String(100), nullable=True)
+    spouse_tz = db.Column(db.String(9), nullable=True)
+    father_name = db.Column(db.String(100), nullable=True)
+    mother_name = db.Column(db.String(100), nullable=True)
+    birth_date = db.Column(db.Date, nullable=True)
+    birth_year = db.Column(db.Integer, nullable=True)
+    occupation = db.Column(db.String(100), nullable=True)
+    send_mail = db.Column(db.Boolean, default=True)
+    mail_reason = db.Column(db.String(255), nullable=True)
+    receipt_name = db.Column(db.String(200), nullable=True)
+    receipt_tz = db.Column(db.String(9), nullable=True)
+    send_receipts_once = db.Column(db.Boolean, default=False)
+    send_receipts_yearly = db.Column(db.Boolean, default=False)
+    monthly_receipt = db.Column(db.Boolean, default=False)
+    receipt_tz_not_required = db.Column(db.Boolean, default=False)
+    letter_first_name = db.Column(db.String(100), nullable=True)
+    letter_last_name = db.Column(db.String(100), nullable=True)
+    letter_title = db.Column(db.String(50), nullable=True)
+    letter_suffix = db.Column(db.String(50), nullable=True)
+    classification_1 = db.Column(db.String(100), nullable=True)
+    classification_2 = db.Column(db.String(100), nullable=True)
+    classification_3 = db.Column(db.String(100), nullable=True)
+    classification_4 = db.Column(db.String(100), nullable=True)
+    classification_5 = db.Column(db.String(100), nullable=True)
+    bookmark = db.Column(db.Boolean, default=False)
+    follow_up_freq = db.Column(db.Integer, nullable=True)
+    contact_person = db.Column(db.String(100), nullable=True)
+    registration_date = db.Column(db.Date, nullable=True)
+
     # Relationships
     donations = db.relationship('Donation', backref='donor', lazy='dynamic')
     receipts = db.relationship('Receipt', backref='donor', lazy='dynamic')
@@ -50,6 +85,15 @@ class Donor(db.Model):
     @property
     def is_deleted(self):
         return self.deleted_at is not None
+
+    @property
+    def display_name(self):
+        parts = []
+        if self.title: parts.append(self.title)
+        parts.append(self.first_name)
+        parts.append(self.last_name)
+        if self.suffix: parts.append(self.suffix)
+        return ' '.join(filter(None, parts))
 
     @property
     def full_name(self):

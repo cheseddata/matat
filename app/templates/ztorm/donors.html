@@ -1,0 +1,101 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - תורמים{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-users"></i> תורמים</span>
+        <span>{{ donors.total }} רשומות</span>
+    </div>
+
+    <!-- Search bar -->
+    <div style="padding: 8px; background: #ECE9D8; border-bottom: 1px solid #808080;">
+        <form method="get" class="d-flex gap-2" style="align-items: center;">
+            <label style="font-size: 12px; white-space: nowrap;">חיפוש:</label>
+            <input type="text" name="q" value="{{ search }}" placeholder="שם, טלפון, ת.ז., אימייל..."
+                   style="border: 1px solid #808080; padding: 3px 8px; font-size: 12px; width: 300px;"
+                   autofocus>
+            <button type="submit" class="btn btn-sm btn-primary" style="font-size: 12px; padding: 3px 12px;">
+                <i class="fas fa-search"></i> חפש
+            </button>
+            {% if search %}
+            <a href="{{ url_for('ztorm.donors') }}" class="btn btn-sm btn-secondary" style="font-size: 12px; padding: 3px 12px;">
+                <i class="fas fa-times"></i> נקה
+            </a>
+            {% endif %}
+            <div style="flex-grow: 1;"></div>
+            <span style="font-size: 11px; color: #666;">מיון:</span>
+            <a href="{{ url_for('ztorm.donors', q=search, sort='name') }}"
+               class="btn btn-sm {{ 'btn-primary' if sort=='name' else 'btn-outline-secondary' }}"
+               style="font-size: 11px; padding: 2px 8px;">א-ב</a>
+            <a href="{{ url_for('ztorm.donors', q=search, sort='number') }}"
+               class="btn btn-sm {{ 'btn-primary' if sort=='number' else 'btn-outline-secondary' }}"
+               style="font-size: 11px; padding: 2px 8px;">מספר</a>
+        </form>
+    </div>
+
+    <!-- Donor grid -->
+    <div style="overflow-y: auto; max-height: calc(100vh - 180px);">
+        <table class="access-grid">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">#</th>
+                    <th style="width: 50px;"><i class="fas fa-bookmark"></i></th>
+                    <th>שם משפחה</th>
+                    <th>שם פרטי</th>
+                    <th>ת.ז.</th>
+                    <th>טלפון</th>
+                    <th>אימייל</th>
+                    <th>עיר</th>
+                    <th style="width: 60px;">תרומות</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for donor in donors.items %}
+                <tr onclick="window.location='{{ url_for('ztorm.donor_detail', donor_id=donor.id) }}'"
+                    style="cursor: pointer;">
+                    <td>{{ donor.id }}</td>
+                    <td>{% if donor.bookmark %}<i class="fas fa-bookmark" style="color: #D4A017;"></i>{% endif %}</td>
+                    <td><strong>{{ donor.last_name }}</strong></td>
+                    <td>{{ donor.first_name }}</td>
+                    <td>{{ donor.teudat_zehut or '' }}</td>
+                    <td>{{ donor.phone or '' }}</td>
+                    <td>{{ donor.email or '' }}</td>
+                    <td>{{ donor.city or '' }}</td>
+                    <td style="text-align: center;">{{ donor.donations.filter_by(deleted_at=None).count() }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" style="text-align: center; padding: 20px; color: #888;">
+                    {% if search %}לא נמצאו תורמים התואמים "{{ search }}"{% else %}אין תורמים במערכת{% endif %}
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if donors.pages > 1 %}
+    <div class="access-button-bar justify-content-center">
+        <nav>
+            <ul class="pagination mb-0">
+                {% if donors.has_prev %}
+                <li class="page-item"><a class="page-link" href="{{ url_for('ztorm.donors', page=donors.prev_num, q=search, sort=sort) }}">הקודם</a></li>
+                {% endif %}
+                {% for p in donors.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                <li class="page-item {{ 'active' if p == donors.page }}"><a class="page-link" href="{{ url_for('ztorm.donors', page=p, q=search, sort=sort) }}">{{ p }}</a></li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+                {% endfor %}
+                {% if donors.has_next %}
+                <li class="page-item"><a class="page-link" href="{{ url_for('ztorm.donors', page=donors.next_num, q=search, sort=sort) }}">הבא</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block status %}{{ donors.total }} תורמים{% endblock %}

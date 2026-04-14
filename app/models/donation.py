@@ -85,6 +85,30 @@ class Donation(db.Model):
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    
+    # === ZTORM FIELDS ===
+    ztorm_truma_id = db.Column(db.Integer, nullable=True, index=True)
+    agreement_id = db.Column(db.Integer, nullable=True)
+    department_id = db.Column(db.Integer, nullable=True)
+    payment_method = db.Column(db.String(20), nullable=True)
+    paid_nis = db.Column(db.Numeric(12, 2), default=0)
+    paid_usd = db.Column(db.Numeric(12, 2), default=0)
+    expected_nis = db.Column(db.Numeric(12, 2), default=0)
+    expected_usd = db.Column(db.Numeric(12, 2), default=0)
+    entry_date = db.Column(db.Date, nullable=True)
+    first_payment_date = db.Column(db.Date, nullable=True)
+    last_payment_date = db.Column(db.Date, nullable=True)
+    last_paid_date = db.Column(db.Date, nullable=True)
+    cancellation_date = db.Column(db.Date, nullable=True)
+    cancellation_reason = db.Column(db.String(255), nullable=True)
+    cancellation_code = db.Column(db.String(50), nullable=True)
+    send_receipt = db.Column(db.Boolean, default=True)
+    receipt_name_ztorm = db.Column(db.String(200), nullable=True)
+    receipt_tz = db.Column(db.String(9), nullable=True)
+    receipt_email = db.Column(db.String(255), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    user_created = db.Column(db.String(50), nullable=True)
+
     # Relationships
     commission = db.relationship('Commission', backref='donation', uselist=False)
     receipt = db.relationship('Receipt', backref='donation', uselist=False)

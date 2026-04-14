@@ -1,0 +1,290 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - קליטת תרומה{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-plus-circle"></i> קליטת תרומה חדשה</span>
+    </div>
+
+    <form method="post" action="{{ url_for('ztorm.klita') }}" id="klitaForm">
+        <div style="padding: 12px;">
+            <div class="row">
+                <!-- LEFT: Donor Details -->
+                <div class="col-md-6">
+                    <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
+                        <i class="fas fa-user"></i> פרטי תורם
+                    </h6>
+
+                    <!-- Donor search -->
+                    <div class="access-form-group">
+                        <label>חיפוש תורם:</label>
+                        <input type="text" id="donorSearch" placeholder="הקלד שם, טלפון או ת.ז...."
+                               style="width: 250px;" autocomplete="off">
+                        <input type="hidden" name="donor_id" id="donorId">
+                    </div>
+                    <div id="searchResults" style="display:none; position:absolute; background:white; border:1px solid #808080; max-height:200px; overflow-y:auto; z-index:100; width:350px; font-size:12px;"></div>
+
+                    <div class="access-form-group">
+                        <label>תואר:</label>
+                        <select name="title" style="width: 100px;">
+                            <option value="">-</option>
+                            <option value="הר&quot;ר">הר"ר</option>
+                            <option value="גב'">גב'</option>
+                            <option value="ה&quot;ה">ה"ה</option>
+                            <option value="הרב">הרב</option>
+                        </select>
+                    </div>
+                    <div class="access-form-group">
+                        <label>שם משפחה:</label>
+                        <input type="text" name="last_name" id="lastName" required style="width: 200px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>שם פרטי:</label>
+                        <input type="text" name="first_name" id="firstName" required style="width: 200px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>ת.ז.:</label>
+                        <input type="text" name="teudat_zehut" id="tz" style="width: 150px;" maxlength="9">
+                        <span id="tzStatus" style="font-size: 11px; margin-right: 8px;"></span>
+                    </div>
+                    <div class="access-form-group">
+                        <label>מין:</label>
+                        <select name="gender" style="width: 100px;">
+                            <option value="">-</option>
+                            <option value="m">זכר</option>
+                            <option value="f">נקבה</option>
+                            <option value="plural">זוג</option>
+                        </select>
+                    </div>
+                    <div class="access-form-group">
+                        <label>טלפון:</label>
+                        <input type="text" name="phone" style="width: 150px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>אימייל:</label>
+                        <input type="email" name="email" style="width: 250px;">
+                    </div>
+
+                    <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
+                        <i class="fas fa-map-marker-alt"></i> כתובת
+                    </h6>
+                    <div class="access-form-group">
+                        <label>רחוב:</label>
+                        <input type="text" name="address_line1" style="width: 250px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>עיר:</label>
+                        <input type="text" name="city" style="width: 200px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>מיקוד:</label>
+                        <input type="text" name="zip" style="width: 100px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>מדינה:</label>
+                        <select name="country" style="width: 150px;">
+                            <option value="IL">ישראל</option>
+                            <option value="US">ארה"ב</option>
+                            <option value="UK">בריטניה</option>
+                            <option value="CA">קנדה</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Donation Details -->
+                <div class="col-md-6">
+                    <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
+                        <i class="fas fa-hand-holding-heart"></i> פרטי תרומה
+                    </h6>
+
+                    <div class="access-form-group">
+                        <label>אופן תשלום:</label>
+                        <select name="payment_method" id="paymentMethod" style="width: 180px;" onchange="togglePaymentFields()">
+                            <option value="credit">כרטיס אשראי</option>
+                            <option value="hork">הוראת קבע</option>
+                            <option value="ashp">אשראי תשלומים</option>
+                            <option value="cash">מזומן</option>
+                            <option value="check">צ'ק</option>
+                        </select>
+                    </div>
+                    <div class="access-form-group">
+                        <label>סכום:</label>
+                        <input type="number" name="amount" required style="width: 120px;" step="0.01" min="0">
+                    </div>
+                    <div class="access-form-group">
+                        <label>מטבע:</label>
+                        <select name="currency" style="width: 100px;">
+                            <option value="ILS">₪ שקל</option>
+                            <option value="USD">$ דולר</option>
+                            <option value="EUR">€ אירו</option>
+                        </select>
+                    </div>
+                    <div class="access-form-group" id="installmentsRow">
+                        <label>תשלומים:</label>
+                        <input type="number" name="installments" style="width: 80px;" value="12" min="1" max="72">
+                    </div>
+                    <div class="access-form-group" id="collectionDayRow">
+                        <label>יום גבייה:</label>
+                        <input type="number" name="collection_day" style="width: 80px;" value="1" min="1" max="28">
+                    </div>
+
+                    <!-- Bank details (for hork) -->
+                    <div id="bankFields" style="display: none;">
+                        <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
+                            <i class="fas fa-university"></i> פרטי בנק
+                        </h6>
+                        <div class="access-form-group">
+                            <label>בנק:</label>
+                            <input type="number" name="bank_code" style="width: 80px;">
+                        </div>
+                        <div class="access-form-group">
+                            <label>סניף:</label>
+                            <input type="number" name="branch_code" style="width: 80px;">
+                        </div>
+                        <div class="access-form-group">
+                            <label>חשבון:</label>
+                            <input type="text" name="account_number" style="width: 150px;">
+                        </div>
+                    </div>
+
+                    <!-- Credit card details -->
+                    <div id="creditFields" style="display: none;">
+                        <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
+                            <i class="fas fa-credit-card"></i> פרטי אשראי
+                        </h6>
+                        <div class="access-form-group">
+                            <label>4 ספרות אחרונות:</label>
+                            <input type="text" name="card_last4" style="width: 80px;" maxlength="4">
+                        </div>
+                        <div class="access-form-group">
+                            <label>תוקף (MMYY):</label>
+                            <input type="text" name="card_expiry" style="width: 80px;" maxlength="4">
+                        </div>
+                    </div>
+
+                    <!-- Check details -->
+                    <div id="checkFields" style="display: none;">
+                        <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
+                            <i class="fas fa-money-check"></i> פרטי צ'ק
+                        </h6>
+                        <div class="access-form-group">
+                            <label>בנק:</label>
+                            <input type="number" name="check_bank" style="width: 80px;">
+                        </div>
+                        <div class="access-form-group">
+                            <label>סניף:</label>
+                            <input type="number" name="check_branch" style="width: 80px;">
+                        </div>
+                        <div class="access-form-group">
+                            <label>חשבון:</label>
+                            <input type="text" name="check_account" style="width: 150px;">
+                        </div>
+                        <div class="access-form-group">
+                            <label>מספר צ'ק:</label>
+                            <input type="text" name="check_number" style="width: 120px;">
+                        </div>
+                    </div>
+
+                    <!-- Agreement -->
+                    <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
+                        <i class="fas fa-file-contract"></i> הסכם
+                    </h6>
+                    <div class="access-form-group">
+                        <label>סוג הסכם:</label>
+                        <select name="agreement_type" style="width: 150px;">
+                            <option value="clali">כללי</option>
+                            <option value="matbeot">מטבעות</option>
+                            <option value="nziv">נציב</option>
+                        </select>
+                    </div>
+                    <div class="access-form-group">
+                        <label>תת-סוג:</label>
+                        <input type="text" name="agreement_sub_type" style="width: 150px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="access-button-bar">
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> שמור</button>
+            <button type="reset" class="btn btn-sm btn-secondary"><i class="fas fa-undo"></i> נקה</button>
+            <a href="{{ url_for('ztorm.switchboard') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> סגור</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Payment method toggle
+function togglePaymentFields() {
+    const method = document.getElementById('paymentMethod').value;
+    document.getElementById('bankFields').style.display = method === 'hork' ? 'block' : 'none';
+    document.getElementById('creditFields').style.display = ['credit','ashp'].includes(method) ? 'block' : 'none';
+    document.getElementById('checkFields').style.display = method === 'check' ? 'block' : 'none';
+    document.getElementById('installmentsRow').style.display = ['credit','hork','ashp'].includes(method) ? 'flex' : 'none';
+    document.getElementById('collectionDayRow').style.display = ['credit','hork','ashp'].includes(method) ? 'flex' : 'none';
+}
+
+// TZ (Israeli ID) validation
+document.getElementById('tz').addEventListener('input', function() {
+    const tz = this.value;
+    const statusEl = document.getElementById('tzStatus');
+    if (tz.length < 9) { statusEl.textContent = ''; return; }
+    // Luhn-like check digit for Israeli TZ
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+        let d = parseInt(tz[i]) * ((i % 2) + 1);
+        if (d > 9) d -= 9;
+        sum += d;
+    }
+    if (sum % 10 === 0) {
+        statusEl.innerHTML = '<span style="color:green;">&#10004; ת.ז. תקין</span>';
+    } else {
+        statusEl.innerHTML = '<span style="color:red;">&#10008; ת.ז. לא תקין</span>';
+    }
+});
+
+// Donor search (type-ahead)
+let searchTimeout;
+document.getElementById('donorSearch').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const q = this.value;
+    if (q.length < 2) { document.getElementById('searchResults').style.display = 'none'; return; }
+    searchTimeout = setTimeout(() => {
+        fetch('/ztorm/api/donors/search?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(donors => {
+                const div = document.getElementById('searchResults');
+                if (donors.length === 0) { div.style.display = 'none'; return; }
+                div.innerHTML = donors.map(d =>
+                    `<div style="padding:4px 8px; cursor:pointer; border-bottom:1px solid #eee;"
+                          onclick="selectDonor(${d.id}, '${d.name}', '${d.email}', '${d.phone}', '${d.tz}')"
+                          onmouseover="this.style.background='#D6E4F0'" onmouseout="this.style.background='white'">
+                        <strong>${d.name}</strong> ${d.tz ? '('+d.tz+')' : ''} ${d.phone || ''} ${d.email || ''}
+                    </div>`
+                ).join('');
+                div.style.display = 'block';
+            });
+    }, 300);
+});
+
+function selectDonor(id, name, email, phone, tz) {
+    document.getElementById('donorId').value = id;
+    document.getElementById('donorSearch').value = name;
+    document.getElementById('searchResults').style.display = 'none';
+    // Pre-fill fields
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+        document.getElementById('firstName').value = parts[0];
+        document.getElementById('lastName').value = parts.slice(1).join(' ');
+    }
+    if (tz) document.getElementById('tz').value = tz;
+}
+
+// Init
+togglePaymentFields();
+</script>
+{% endblock %}

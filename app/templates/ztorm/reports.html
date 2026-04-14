@@ -1,0 +1,25 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - דוחות{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-chart-bar"></i> דוחות</span></div>
+    <div style="padding: 20px;">
+        <div class="row">
+            <div class="col-md-6">
+                <h6 style="color: #2F5597;">דוחות תרומות</h6>
+                <a href="{{ url_for('ztorm.report_donations') }}" class="switchboard-btn"><i class="fas fa-list"></i> דוח תרומות (עם פילטרים)</a>
+                <a href="{{ url_for('ztorm.report_donations', method='credit') }}" class="switchboard-btn"><i class="fas fa-credit-card"></i> דוח תרומות אשראי</a>
+                <a href="{{ url_for('ztorm.report_donations', method='hork') }}" class="switchboard-btn"><i class="fas fa-university"></i> דוח הוראות קבע</a>
+                <a href="{{ url_for('ztorm.report_donations', method='cash') }}" class="switchboard-btn"><i class="fas fa-money-bill"></i> דוח מזומן וצ'קים</a>
+            </div>
+            <div class="col-md-6">
+                <h6 style="color: #2F5597;">דוחות כספיים</h6>
+                <a href="{{ url_for('ztorm.report_payments') }}" class="switchboard-btn"><i class="fas fa-shekel-sign"></i> דוח תשלומים (עם פילטרים)</a>
+                <a href="{{ url_for('ztorm.receipts') }}" class="switchboard-btn"><i class="fas fa-receipt"></i> קבלות</a>
+                <a href="{{ url_for('ztorm.report_donations_export') }}" class="switchboard-btn"><i class="fas fa-file-excel"></i> ייצוא תרומות ל-Excel</a>
+                <a href="{{ url_for('ztorm.report_payments', status='returned') }}" class="switchboard-btn"><i class="fas fa-undo"></i> דוח החזרות</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

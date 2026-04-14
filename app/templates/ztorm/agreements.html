@@ -1,0 +1,25 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - הסכמים{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-file-contract"></i> הסכמים</span></div>
+    <div style="overflow-y: auto; max-height: calc(100vh - 120px);">
+        <table class="access-grid">
+            <thead><tr><th>#</th><th>סוג</th><th>תורם</th><th>סה"כ</th><th>שולם</th><th>צפוי</th><th>מטבע</th><th>תאריך</th></tr></thead>
+            <tbody>
+                {% for a in agreements %}
+                <tr>
+                    <td>{{ a.id }}</td><td>{{ a.agreement_type or '-' }}</td>
+                    <td>{{ a.donor.full_name if a.donor else '-' }}</td>
+                    <td>{{ a.total_amount or '-' }}</td><td>{{ a.paid_amount or 0 }}</td>
+                    <td>{{ a.expected_amount or 0 }}</td><td>{{ a.currency }}</td>
+                    <td>{{ a.created_at.strftime('%d/%m/%Y') if a.created_at else '-' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" style="text-align:center;color:#888;">אין הסכמים</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

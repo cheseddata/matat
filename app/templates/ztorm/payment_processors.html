@@ -1,0 +1,119 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - עיבוד אשראי{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-credit-card"></i> הגדרות עיבוד אשראי</span>
+    </div>
+    <div style="padding: 16px;">
+        <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
+            <i class="fas fa-cog"></i> ספקי עיבוד כרטיסי אשראי
+        </h6>
+        <p style="font-size: 12px; color: #666;">בחר את ספק עיבוד האשראי שבו ישתמש המערכת. ניתן להפעיל מספר ספקים במקביל.</p>
+
+        {% for proc in processors %}
+        <div style="border: 1px solid #ccc; padding: 12px; margin: 8px 0; border-radius: 4px; background: {{ '#F0F7FF' if proc.code == active_processor else '#fff' }};">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas {{ proc.icon }}" style="color: {{ proc.color }}; font-size: 18px;"></i>
+                    <strong style="margin-right: 8px;">{{ proc.name }}</strong>
+                    <span style="color: #666; font-size: 12px;">({{ proc.name_he }})</span>
+                    {% if proc.code == active_processor %}
+                    <span class="badge bg-success" style="font-size: 10px;">פעיל</span>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if proc.code == active_processor %}
+                    <span style="color: green; font-size: 12px;"><i class="fas fa-check-circle"></i> מופעל</span>
+                    {% else %}
+                    <form method="post" action="{{ url_for('ztorm.set_processor') }}" style="display: inline;">
+                        <input type="hidden" name="processor" value="{{ proc.code }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary" style="font-size: 11px;">הפעל</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            <div style="font-size: 12px; color: #666; margin-top: 4px;">{{ proc.description_he }}</div>
+        </div>
+        {% endfor %}
+
+        {% if active_processor == 'shva' %}
+        <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 20px;">
+            <i class="fas fa-key"></i> הגדרות שב"א / אשראית
+        </h6>
+        <form method="post" action="{{ url_for('ztorm.save_processor_config') }}">
+            <input type="hidden" name="processor" value="shva">
+            <div class="access-form-group">
+                <label>מספר מסוף:</label>
+                <input type="text" name="merchant_number" value="{{ shva_config.get('merchant_number', '2481062014') }}" style="width: 200px;">
+            </div>
+            <div class="access-form-group">
+                <label>שם משתמש:</label>
+                <input type="text" name="username" value="{{ shva_config.get('username', 'MXRCX') }}" style="width: 150px;">
+            </div>
+            <div class="access-form-group">
+                <label>סיסמה:</label>
+                <input type="password" name="password" value="{{ shva_config.get('password', 'Z496089') }}" style="width: 150px;">
+            </div>
+            <div class="access-form-group">
+                <label>מצב:</label>
+                <select name="test_mode" style="width: 150px;">
+                    <option value="false" {{ 'selected' if not shva_config.get('test_mode') }}>ייצור (Production)</option>
+                    <option value="true" {{ 'selected' if shva_config.get('test_mode') }}>בדיקות (Test)</option>
+                </select>
+            </div>
+            <div style="margin-top: 12px;">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> שמור</button>
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="testConnection()" id="btnTest">
+                    <i class="fas fa-plug"></i> בדוק חיבור
+                </button>
+                <span id="testResult" style="font-size: 12px; margin-right: 8px;"></span>
+            </div>
+        </form>
+        {% endif %}
+
+        <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 20px;">
+            <i class="fas fa-receipt"></i> הגדרות EZCount (קבלות)
+        </h6>
+        <form method="post" action="{{ url_for('ztorm.save_processor_config') }}">
+            <input type="hidden" name="processor" value="ezcount">
+            <div class="access-form-group">
+                <label>API Key:</label>
+                <input type="text" name="api_key" value="{{ ezcount_config.get('api_key', '') }}" style="width: 400px; font-size: 11px;">
+            </div>
+            <div class="access-form-group">
+                <label>קידומת:</label>
+                <input type="text" name="prefix" value="{{ ezcount_config.get('prefix', 'Z2') }}" style="width: 60px;">
+            </div>
+            <div style="margin-top: 12px;">
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> שמור</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function testConnection() {
+    const btn = document.getElementById('btnTest');
+    const result = document.getElementById('testResult');
+    btn.disabled = true;
+    result.innerHTML = '<i class="fas fa-spinner fa-spin"></i> בודק...';
+    fetch('/ztorm/api/test-processor/shva')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                result.innerHTML = '<span style="color:green;"><i class="fas fa-check"></i> ' + data.message + '</span>';
+            } else {
+                result.innerHTML = '<span style="color:red;"><i class="fas fa-times"></i> ' + data.message + '</span>';
+            }
+            btn.disabled = false;
+        })
+        .catch(e => {
+            result.innerHTML = '<span style="color:red;">שגיאה: ' + e + '</span>';
+            btn.disabled = false;
+        });
+}
+</script>
+{% endblock %}

@@ -135,6 +135,7 @@
 
             <a href="{{ url_for('admin.campaigns') }}" class="nav-direct">{{ t('nav.campaigns') }}</a>
             <a href="{{ url_for('admin.reports') }}" class="nav-direct">{{ t('nav.reports') }}</a>
+            <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
 
             <div class="nav-dropdown">
                 <span class="nav-link">{{ t('nav.settings') }} <span class="arrow">&#9662;</span></span>
@@ -153,6 +154,7 @@
             <a href="{{ url_for('salesperson.my_donations') }}" class="nav-direct">{{ t('nav.donations') }}</a>
             <a href="{{ url_for('salesperson.send_link') }}" class="nav-direct">{{ t('nav.send_link') }}</a>
             <a href="{{ url_for('salesperson.phone_entry') }}" class="nav-direct">{{ t('nav.phone_entry') }}</a>
+            <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             <a href="{{ url_for('salesperson.my_links') }}" class="nav-direct">{{ t('nav.my_links') }}</a>
         </div>
         {% endif %}

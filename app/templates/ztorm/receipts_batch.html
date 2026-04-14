@@ -1,0 +1,16 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - הכנת קבלות{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-receipt"></i> הכנת קבלות אוטומטית</span></div>
+    <div style="padding: 20px;">
+        <p>המערכת תמצא את כל התשלומים שאושרו ועדיין לא קיבלו קבלה, ותיצור קבלות עבורם.</p>
+        <form method="post" action="{{ url_for('ztorm.receipts_batch') }}">
+            <button type="submit" class="btn btn-primary" onclick="return confirm('להכין קבלות לכל התשלומים שטרם קיבלו קבלה?')">
+                <i class="fas fa-play"></i> התחל הכנת קבלות
+            </button>
+            <a href="{{ url_for('ztorm.receipts') }}" class="btn btn-secondary">חזרה</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

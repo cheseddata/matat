@@ -1,0 +1,37 @@
+{% extends "ztorm_base.html" %}
+{% block title %}ZTorm - קבלות{% endblock %}
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar"><span><i class="fas fa-receipt"></i> קבלות</span><span>{{ receipts.total }} רשומות</span></div>
+    <div style="padding: 4px 8px; background: #ECE9D8; border-bottom: 1px solid #808080;">
+        <a href="{{ url_for('ztorm.receipts_batch') }}" class="btn btn-sm btn-primary" style="font-size:12px;"><i class="fas fa-plus"></i> הכנת קבלות</a>
+    </div>
+    <div style="overflow-y: auto; max-height: calc(100vh - 160px);">
+        <table class="access-grid">
+            <thead><tr><th>מספר קבלה</th><th>תורם</th><th>סכום</th><th>סוג</th><th>תאריך</th><th>סטטוס</th><th>פעולות</th></tr></thead>
+            <tbody>
+                {% for r in receipts.items %}
+                <tr style="{{ 'background:#FFE0E0;' if r.is_cancelled else '' }}">
+                    <td><strong>{{ r.receipt_number }}</strong></td>
+                    <td>{{ r.recipient_name or '' }}</td>
+                    <td>{{ '₪' if (r.currency or 'ILS')=='ILS' else '$' }}{{ r.amount_display }}</td>
+                    <td>{{ r.receipt_type or '' }}</td>
+                    <td>{{ r.receipt_date.strftime('%d/%m/%Y') if r.receipt_date else r.created_at.strftime('%d/%m/%Y') if r.created_at else '' }}</td>
+                    <td>{% if r.is_cancelled %}<span class="badge bg-danger">בוטלה</span>{% else %}<span class="badge bg-success">פעילה</span>{% endif %}</td>
+                    <td>
+                        {% if not r.is_cancelled %}
+                        <form method="post" action="{{ url_for('ztorm.receipt_cancel', receipt_id=r.id) }}" style="display:inline;" onsubmit="return confirm('בטוח לבטל קבלה?')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:10px;padding:1px 6px;">ביטול</button>
+                        </form>
+                        {% endif %}
+                        {% if r.pdf_path %}<a href="#" class="btn btn-sm btn-outline-primary" style="font-size:10px;padding:1px 6px;">PDF</a>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align:center;color:#888;">אין קבלות</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

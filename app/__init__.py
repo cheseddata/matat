@@ -51,6 +51,9 @@ def create_app(config_name='default'):
     app.register_blueprint(webhook_bp, url_prefix='/api')
     app.register_blueprint(upload_bp)
     app.register_blueprint(claude_bp)
+# ZTorm Portal (Access-lookalike donation management)
+    from .blueprints.ztorm import ztorm_bp
+    app.register_blueprint(ztorm_bp)
     
     # User loader for Flask-Login
     from .models.user import User
