@@ -181,7 +181,201 @@ def import_donations_cmd(csv_file):
     click.echo(f"Import complete: {imported} imported, {skipped} skipped, {errors} errors")
 
 
+@click.command('sync-nedarim')
+@click.option('--with-receipts', is_flag=True, default=False, help='Generate receipts and send emails (off by default)')
+@with_appcontext
+def sync_nedarim_cmd(with_receipts):
+    """Sync transactions from Nedarim Plus API.
+
+    Polls GetHistoryJson to import any transactions we don't have yet.
+    Run periodically via cron (e.g., every 10 minutes).
+
+    By default, only imports donation records. Use --with-receipts to
+    also generate PDF receipts and send emails (for ongoing syncs, not
+    historical imports).
+    """
+    import logging
+    from .models.payment_processor import PaymentProcessor
+    from .services.payment.nedarim_processor import NedarimProcessor
+    from .services.commission_service import calculate_commission, create_commission_record
+    from .services.receipt_service import create_receipt_atomic
+    from .services.email_service import send_receipt_email
+
+    logger = logging.getLogger(__name__)
+
+    # Get processor config
+    proc = PaymentProcessor.get_by_code('nedarim')
+    if not proc or not proc.enabled:
+        click.echo('Nedarim Plus not enabled, skipping.')
+        return
+
+    config = proc.config_json or {}
+    processor = NedarimProcessor(config=config)
+    if not processor.initialize():
+        click.echo('Nedarim Plus not configured (missing credentials).')
+        return
+
+    # Get last synced transaction ID from processor config
+    last_id = int(config.get('last_sync_id', 0))
+
+    click.echo(f'Syncing Nedarim transactions from ID {last_id}...')
+
+    result = processor.sync_transactions(last_id=last_id)
+    if not result.get('success'):
+        click.echo(f'Sync failed: {result.get("error")}')
+        return
+
+    transactions = result.get('transactions', [])
+    if not transactions:
+        click.echo('No new transactions.')
+        return
+
+    click.echo(f'Found {len(transactions)} transactions to process.')
+
+    imported = 0
+    skipped = 0
+    max_id = last_id
+
+    for txn in transactions:
+        try:
+            txn_id = str(txn.get('Shovar') or txn.get('TransactionId', ''))
+            if not txn_id or txn_id == '0':
+                skipped += 1
+                continue
+
+            # Track highest ID for next sync
+            try:
+                numeric_id = int(txn_id)
+                if numeric_id > max_id:
+                    max_id = numeric_id
+            except ValueError:
+                pass
+
+            # Check for duplicate
+            existing = Donation.query.filter_by(
+                nedarim_transaction_id=txn_id
+            ).first()
+            if not existing:
+                existing = Donation.query.filter_by(
+                    processor_transaction_id=txn_id,
+                    payment_processor='nedarim'
+                ).first()
+            if existing:
+                skipped += 1
+                continue
+
+            # Parse amount (Nedarim sends in shekels/dollars)
+            amount_raw = float(txn.get('Amount', 0))
+            amount_cents = int(amount_raw * 100)
+            if amount_cents <= 0:
+                skipped += 1
+                continue
+
+            # Parse currency
+            currency_code = str(txn.get('Currency', '1'))
+            currency = 'ILS' if currency_code == '1' else 'USD'
+
+            # Find or create donor
+            donor_email = (txn.get('Mail') or '').strip()
+            donor_name = (txn.get('ClientName') or '').strip()
+            donor_phone = (txn.get('Phone') or '').strip()
+
+            donor = None
+            if donor_email:
+                donor = Donor.query.filter_by(email=donor_email).first()
+
+            if not donor:
+                name_parts = donor_name.split(' ', 1) if donor_name else ['Unknown', '']
+                donor = Donor(
+                    first_name=name_parts[0],
+                    last_name=name_parts[1] if len(name_parts) > 1 else '',
+                    email=donor_email or f'nedarim_{txn_id}@unknown.com',
+                    phone=donor_phone,
+                    country='IL',
+                    test=False
+                )
+                db.session.add(donor)
+                db.session.flush()
+
+            # Determine if recurring (keva)
+            is_keva = txn.get('KevaId') and str(txn.get('KevaId')) != '0'
+
+            # Resolve salesperson from Param2
+            salesperson_id = None
+            param2 = txn.get('Param2')
+            if param2:
+                try:
+                    salesperson_id = int(param2)
+                except ValueError:
+                    pass
+
+            # Create donation
+            donation = Donation(
+                donor_id=donor.id,
+                salesperson_id=salesperson_id,
+                payment_processor='nedarim',
+                processor_transaction_id=txn_id,
+                nedarim_transaction_id=txn_id,
+                nedarim_confirmation=txn.get('Confirmation'),
+                amount=amount_cents,
+                currency=currency,
+                status='succeeded',
+                donation_type='recurring' if is_keva else 'one_time',
+                source='nedarim_sync',
+                payment_method_last4=txn.get('LastNum'),
+                processor_metadata=txn,
+            )
+
+            if is_keva:
+                donation.nedarim_keva_id = str(txn['KevaId'])
+                donation.processor_recurring_id = str(txn['KevaId'])
+
+            db.session.add(donation)
+            db.session.flush()
+
+            # Commission
+            commission_data = calculate_commission(donation)
+            if commission_data:
+                create_commission_record(donation, commission_data)
+
+            # Receipt + email (only if --with-receipts)
+            receipt = None
+            if with_receipts:
+                try:
+                    receipt = create_receipt_atomic(donation, donor)
+                except Exception as e:
+                    logger.error(f'Receipt failed for nedarim txn {txn_id}: {e}')
+
+            db.session.commit()
+
+            if with_receipts and receipt and donor.email and not donor.email.endswith('@unknown.com'):
+                try:
+                    send_receipt_email(donor, donation, receipt)
+                except Exception as e:
+                    logger.error(f'Receipt email failed for nedarim txn {txn_id}: {e}')
+
+            imported += 1
+            click.echo(f'  Imported: {txn_id} - {amount_raw} {currency} - {donor_name}')
+
+        except Exception as e:
+            logger.error(f'Error processing nedarim txn: {e}')
+            db.session.rollback()
+            click.echo(f'  Error: {e}')
+
+    # Save last sync ID in processor config
+    if max_id > last_id:
+        proc = PaymentProcessor.query.filter_by(code='nedarim').first()
+        if proc:
+            updated_config = dict(proc.config_json or {})
+            updated_config['last_sync_id'] = str(max_id)
+            proc.config_json = updated_config
+            db.session.commit()
+
+    click.echo(f'Sync complete: {imported} imported, {skipped} skipped. Last ID: {max_id}')
+
+
 def init_app(app):
     """Register CLI commands with the app."""
     app.cli.add_command(import_donors_cmd)
     app.cli.add_command(import_donations_cmd)
+    app.cli.add_command(sync_nedarim_cmd)

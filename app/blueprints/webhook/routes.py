@@ -513,23 +513,9 @@ def handle_nedarim_payment(data):
         create_commission_record(donation, commission_data)
         logger.info(f'[nedarim] Commission created for donation {donation.id}')
 
-    # Generate receipt
-    receipt = None
-    try:
-        receipt = create_receipt_atomic(donation, donor)
-        logger.info(f'[nedarim] Receipt {receipt.receipt_number} generated')
-    except Exception as e:
-        logger.error(f'[nedarim] Receipt generation failed: {e}')
-
+    # Nedarim Plus provides its own receipts — do NOT generate ours
     db.session.commit()
-
-    # Send receipt email
-    if receipt and donor.email:
-        try:
-            send_receipt_email(donor, donation, receipt)
-            logger.info(f'[nedarim] Receipt email sent to {donor.email}')
-        except Exception as e:
-            logger.error(f'[nedarim] Receipt email failed: {e}')
+    logger.info(f'[nedarim] Donation {donation.id} saved (no receipt — Nedarim provides receipts)')
 
 
 # =============================================================================
