@@ -523,7 +523,7 @@ window.addEventListener('message', function(event) {
     catch(e) { return; }
 
     if (msg.Name === 'Height' && msg.Value) {
-        document.getElementById('nedarim-iframe').style.height = (parseInt(msg.Value) + 10) + 'px';
+        document.getElementById('nedarim-iframe').style.height = (parseInt(msg.Value) + 40) + 'px';
     }
 
     if (msg.Name === 'ValidateFields') {
