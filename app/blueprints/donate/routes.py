@@ -112,16 +112,130 @@ def donation_page():
 
 @donate_bp.route('/donate/nedarim')
 def nedarim_donation_page():
-    """Redirect to Nedarim Plus standalone donation page."""
+    """Nedarim Plus donation page - our form + Nedarim iframe for card entry."""
+    ref_code = request.args.get('ref')
+    aff_code = request.args.get('aff')
+    preset_amount = request.args.get('amt')
+    lang = request.args.get('lang', 'he')
+
     nedarim_proc = PaymentProcessor.get_by_code('nedarim')
     if not nedarim_proc or not nedarim_proc.enabled:
         return redirect(url_for('donate.donation_page'))
 
-    mosad_id = nedarim_proc.config_json.get('mosad_id') if nedarim_proc.config_json else None
+    config = nedarim_proc.config_json or {}
+    mosad_id = config.get('mosad_id')
+    api_password = config.get('api_password')
     if not mosad_id:
         return redirect(url_for('donate.donation_page'))
 
-    return redirect(f'https://www.matara.pro/nedarimplus/online/?Mosession={mosad_id}')
+    salesperson = resolve_ref_code(ref_code) if ref_code else None
+    campaign = resolve_aff_code(aff_code) if aff_code else None
+
+    return render_template(
+        'donate/nedarim_page.html',
+        mosad_id=mosad_id,
+        api_password=api_password,
+        ref_code=ref_code,
+        aff_code=aff_code,
+        preset_amount=preset_amount,
+        salesperson=salesperson,
+        campaign=campaign,
+        lang=lang,
+    )
+
+
+@donate_bp.route('/donate/nedarim-success', methods=['POST'])
+@csrf.exempt
+def nedarim_success_callback():
+    """Save a successful Nedarim payment from the frontend PostMessage response."""
+    from ...services.commission_service import calculate_commission, create_commission_record
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+
+    transaction_id = data.get('transaction_id', '')
+    if not transaction_id:
+        return jsonify({'error': 'No transaction ID'}), 400
+
+    # Check duplicate
+    existing = Donation.query.filter_by(
+        processor_transaction_id=str(transaction_id),
+        payment_processor='nedarim'
+    ).first()
+    if existing:
+        return jsonify({'ok': True, 'duplicate': True})
+
+    amount_cents = int(float(data.get('amount', 0)) * 100)
+    if amount_cents <= 0:
+        return jsonify({'error': 'Invalid amount'}), 400
+
+    # Find or create donor
+    donor_email = (data.get('donor_email') or '').strip()
+    donor_name = (data.get('donor_name') or '').strip()
+    donor = None
+    if donor_email:
+        donor = Donor.query.filter_by(email=donor_email).first()
+    if not donor:
+        name_parts = donor_name.split(' ', 1) if donor_name else ['Donor', '']
+        donor = Donor(
+            first_name=name_parts[0],
+            last_name=name_parts[1] if len(name_parts) > 1 else '',
+            email=donor_email or None,
+            phone=data.get('donor_phone') or None,
+            country='IL',
+            test=False
+        )
+        db.session.add(donor)
+        db.session.flush()
+
+    # Resolve salesperson
+    salesperson_id = None
+    ref_code = data.get('ref_code')
+    if ref_code:
+        sp = resolve_ref_code(ref_code)
+        if sp:
+            salesperson_id = sp.id
+
+    # Resolve campaign
+    campaign_id = None
+    aff_code = data.get('aff_code')
+    if aff_code:
+        camp = resolve_aff_code(aff_code)
+        if camp:
+            campaign_id = camp.id
+
+    payment_type = data.get('payment_type', 'Ragil')
+    donation_type = 'recurring' if payment_type == 'HK' else 'one_time'
+
+    donation = Donation(
+        donor_id=donor.id,
+        salesperson_id=salesperson_id,
+        campaign_id=campaign_id,
+        link_id=int(data['link_id']) if data.get('link_id') else None,
+        payment_processor='nedarim',
+        processor_transaction_id=str(transaction_id),
+        processor_confirmation=data.get('confirmation', ''),
+        nedarim_transaction_id=str(transaction_id),
+        nedarim_confirmation=data.get('confirmation', ''),
+        amount=amount_cents,
+        currency='ILS',
+        status='succeeded',
+        donation_type=donation_type,
+        source='nedarim_web',
+    )
+    db.session.add(donation)
+    db.session.flush()
+
+    # Commission
+    commission_data = calculate_commission(donation)
+    if commission_data:
+        create_commission_record(donation, commission_data)
+
+    db.session.commit()
+
+    logger.info(f'[nedarim-web] Donation {donation.id}: {amount_cents} ILS, txn={transaction_id}')
+    return jsonify({'ok': True, 'donation_id': donation.id})
 
 
 @donate_bp.route('/d/<short_code>')
