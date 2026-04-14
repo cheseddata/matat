@@ -283,17 +283,29 @@ def sync_nedarim_cmd(with_receipts):
             donor = None
             if donor_email:
                 donor = Donor.query.filter_by(email=donor_email).first()
+            if not donor and donor_phone:
+                donor = Donor.query.filter_by(phone=donor_phone).first()
 
             if not donor:
                 name_parts = donor_name.split(' ', 1) if donor_name else ['Unknown', '']
                 donor = Donor(
                     first_name=name_parts[0],
                     last_name=name_parts[1] if len(name_parts) > 1 else '',
-                    email=donor_email or f'nedarim_{txn_id}@unknown.com',
+                    email=donor_email or None,
                     phone=donor_phone,
                     country='IL',
                     test=False
                 )
+            else:
+                # Update existing donor with any new info
+                if donor_email and not donor.email:
+                    donor.email = donor_email
+                if donor_phone and not donor.phone:
+                    donor.phone = donor_phone
+                if donor_name and (not donor.first_name or donor.first_name == 'Unknown'):
+                    name_parts = donor_name.split(' ', 1)
+                    donor.first_name = name_parts[0]
+                    donor.last_name = name_parts[1] if len(name_parts) > 1 else ''
                 db.session.add(donor)
                 db.session.flush()
 
