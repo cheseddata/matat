@@ -1,10 +1,10 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - תפריט ראשי{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.switchboard.page_title') }}{% endblock %}
 
 {% block content %}
 <div class="access-window">
     <div class="access-title-bar">
-        <span>תפריט ראשי - מתת מרדכי</span>
+        <span>{{ t('ztorm.switchboard.page_title') }} - {{ t('ztorm.switchboard.org_name') }}</span>
         <span><i class="fas fa-synagogue"></i></span>
     </div>
     <div style="padding: 20px;">
@@ -13,67 +13,67 @@
             <div class="col-md-4 text-center" style="padding: 20px;">
                 <div style="background: linear-gradient(135deg, #D6E4F0, #B8CCE4); padding: 40px; border-radius: 8px; border: 2px solid #4472C4;">
                     <i class="fas fa-synagogue" style="font-size: 80px; color: #2F5597;"></i>
-                    <h4 style="color: #2F5597; margin-top: 15px;">מתת מרדכי</h4>
-                    <p style="font-size: 12px; color: #666;">מערכת ניהול תרומות</p>
+                    <h4 style="color: #2F5597; margin-top: 15px;">{{ t('ztorm.switchboard.org_name') }}</h4>
+                    <p style="font-size: 12px; color: #666;">{{ t('ztorm.switchboard.org_subtitle') }}</p>
                 </div>
                 <div style="margin-top: 15px; font-size: 11px; color: #888;">
-                    <div>תורמים: <strong>{{ stats.donors }}</strong></div>
-                    <div>תרומות: <strong>{{ stats.donations }}</strong></div>
-                    <div>תשלומים: <strong>{{ stats.payments }}</strong></div>
-                    <div>הסכמים: <strong>{{ stats.agreements }}</strong></div>
-                    <div>קבלות: <strong>{{ stats.receipts }}</strong></div>
+                    <div>{{ t('ztorm.switchboard.stat_donors') }} <strong>{{ stats.donors }}</strong></div>
+                    <div>{{ t('ztorm.switchboard.stat_donations') }} <strong>{{ stats.donations }}</strong></div>
+                    <div>{{ t('ztorm.switchboard.stat_payments') }} <strong>{{ stats.payments }}</strong></div>
+                    <div>{{ t('ztorm.switchboard.stat_agreements') }} <strong>{{ stats.agreements }}</strong></div>
+                    <div>{{ t('ztorm.switchboard.stat_receipts') }} <strong>{{ stats.receipts }}</strong></div>
                 </div>
             </div>
 
             <!-- Right side: Menu buttons -->
             <div class="col-md-8">
                 <h5 style="color: #2F5597; margin-bottom: 15px; border-bottom: 2px solid #4472C4; padding-bottom: 8px;">
-                    <i class="fas fa-bars"></i> תפריט משתמש
+                    <i class="fas fa-bars"></i> {{ t('ztorm.switchboard.user_menu') }}
                 </h5>
 
                 <a href="{{ url_for('ztorm.klita') }}" class="switchboard-btn">
-                    <i class="fas fa-plus-circle"></i> קליטת תרומה חדשה
-                    <small style="color: #888; display: block; font-size: 11px;">הזנת תורם ותרומה</small>
+                    <i class="fas fa-plus-circle"></i> {{ t('ztorm.switchboard.btn_klita') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_klita_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.donors') }}" class="switchboard-btn">
-                    <i class="fas fa-users"></i> תורמים
-                    <small style="color: #888; display: block; font-size: 11px;">חיפוש, עריכה וניהול תורמים</small>
+                    <i class="fas fa-users"></i> {{ t('ztorm.switchboard.btn_donors') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_donors_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.donations') }}" class="switchboard-btn">
-                    <i class="fas fa-hand-holding-heart"></i> תרומות
-                    <small style="color: #888; display: block; font-size: 11px;">רשימת כל התרומות</small>
+                    <i class="fas fa-hand-holding-heart"></i> {{ t('ztorm.switchboard.btn_donations') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_donations_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.payments') }}" class="switchboard-btn">
-                    <i class="fas fa-shekel-sign"></i> תשלומים
-                    <small style="color: #888; display: block; font-size: 11px;">ניהול תשלומים</small>
+                    <i class="fas fa-shekel-sign"></i> {{ t('ztorm.switchboard.btn_payments') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_payments_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.agreements') }}" class="switchboard-btn">
-                    <i class="fas fa-file-contract"></i> הסכמים
-                    <small style="color: #888; display: block; font-size: 11px;">הסכמי תרומה</small>
+                    <i class="fas fa-file-contract"></i> {{ t('ztorm.switchboard.btn_agreements') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_agreements_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.reports') }}" class="switchboard-btn">
-                    <i class="fas fa-chart-bar"></i> דוחות
-                    <small style="color: #888; display: block; font-size: 11px;">דוחות תרומות, תשלומים וקבלות</small>
+                    <i class="fas fa-chart-bar"></i> {{ t('ztorm.switchboard.btn_reports') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_reports_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.charge_card') }}" class="switchboard-btn" style="border-color: #DC3545;">
-                    <i class="fas fa-credit-card" style="color: #DC3545;"></i> חיוב כרטיס אשראי
-                    <small style="color: #888; display: block; font-size: 11px;">חיוב ישיר דרך שב"א / אשראית</small>
+                    <i class="fas fa-credit-card" style="color: #DC3545;"></i> {{ t('ztorm.switchboard.btn_charge') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_charge_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.receipts') }}" class="switchboard-btn">
-                    <i class="fas fa-receipt"></i> קבלות
-                    <small style="color: #888; display: block; font-size: 11px;">צפייה והכנת קבלות</small>
+                    <i class="fas fa-receipt"></i> {{ t('ztorm.switchboard.btn_receipts') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_receipts_desc') }}</small>
                 </a>
 
                 <a href="{{ url_for('ztorm.payment_processors') }}" class="switchboard-btn">
-                    <i class="fas fa-cog"></i> הגדרות אשראי
-                    <small style="color: #888; display: block; font-size: 11px;">ספקי אשראי, EZCount, הגדרות</small>
+                    <i class="fas fa-cog"></i> {{ t('ztorm.switchboard.btn_settings') }}
+                    <small style="color: #888; display: block; font-size: 11px;">{{ t('ztorm.switchboard.btn_settings_desc') }}</small>
                 </a>
             </div>
         </div>

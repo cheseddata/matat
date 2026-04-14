@@ -1,10 +1,10 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - קליטת תרומה{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.klita.page_title') }}{% endblock %}
 
 {% block content %}
 <div class="access-window">
     <div class="access-title-bar">
-        <span><i class="fas fa-plus-circle"></i> קליטת תרומה חדשה</span>
+        <span><i class="fas fa-plus-circle"></i> {{ t('ztorm.klita.title_bar') }}</span>
     </div>
 
     <form method="post" action="{{ url_for('ztorm.klita') }}" id="klitaForm">
@@ -13,81 +13,81 @@
                 <!-- LEFT: Donor Details -->
                 <div class="col-md-6">
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
-                        <i class="fas fa-user"></i> פרטי תורם
+                        <i class="fas fa-user"></i> {{ t('ztorm.klita.section_donor') }}
                     </h6>
 
                     <!-- Donor search -->
                     <div class="access-form-group">
-                        <label>חיפוש תורם:</label>
-                        <input type="text" id="donorSearch" placeholder="הקלד שם, טלפון או ת.ז...."
+                        <label>{{ t('ztorm.klita.donor_search') }}</label>
+                        <input type="text" id="donorSearch" placeholder="{{ t('ztorm.klita.search_placeholder') }}"
                                style="width: 250px;" autocomplete="off">
                         <input type="hidden" name="donor_id" id="donorId">
                     </div>
                     <div id="searchResults" style="display:none; position:absolute; background:white; border:1px solid #808080; max-height:200px; overflow-y:auto; z-index:100; width:350px; font-size:12px;"></div>
 
                     <div class="access-form-group">
-                        <label>תואר:</label>
+                        <label>{{ t('ztorm.donor_edit.title_label') }}</label>
                         <select name="title" style="width: 100px;">
                             <option value="">-</option>
-                            <option value="הר&quot;ר">הר"ר</option>
-                            <option value="גב'">גב'</option>
-                            <option value="ה&quot;ה">ה"ה</option>
-                            <option value="הרב">הרב</option>
+                            <option value="הר&quot;ר">{{ t('ztorm.klita.title_harar') }}</option>
+                            <option value="גב'">{{ t('ztorm.klita.title_geveret') }}</option>
+                            <option value="ה&quot;ה">{{ t('ztorm.klita.title_hehe') }}</option>
+                            <option value="הרב">{{ t('ztorm.klita.title_harav') }}</option>
                         </select>
                     </div>
                     <div class="access-form-group">
-                        <label>שם משפחה:</label>
+                        <label>{{ t('ztorm.common.label_last_name') }}</label>
                         <input type="text" name="last_name" id="lastName" required style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>שם פרטי:</label>
+                        <label>{{ t('ztorm.common.label_first_name') }}</label>
                         <input type="text" name="first_name" id="firstName" required style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>ת.ז.:</label>
+                        <label>{{ t('ztorm.common.label_tz') }}</label>
                         <input type="text" name="teudat_zehut" id="tz" style="width: 150px;" maxlength="9">
                         <span id="tzStatus" style="font-size: 11px; margin-right: 8px;"></span>
                     </div>
                     <div class="access-form-group">
-                        <label>מין:</label>
+                        <label>{{ t('ztorm.donor_edit.gender') }}</label>
                         <select name="gender" style="width: 100px;">
                             <option value="">-</option>
-                            <option value="m">זכר</option>
-                            <option value="f">נקבה</option>
-                            <option value="plural">זוג</option>
+                            <option value="m">{{ t('ztorm.common.gender_male') }}</option>
+                            <option value="f">{{ t('ztorm.common.gender_female') }}</option>
+                            <option value="plural">{{ t('ztorm.common.gender_plural') }}</option>
                         </select>
                     </div>
                     <div class="access-form-group">
-                        <label>טלפון:</label>
+                        <label>{{ t('ztorm.common.label_phone') }}</label>
                         <input type="text" name="phone" style="width: 150px;">
                     </div>
                     <div class="access-form-group">
-                        <label>אימייל:</label>
+                        <label>{{ t('ztorm.common.label_email') }}</label>
                         <input type="email" name="email" style="width: 250px;">
                     </div>
 
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
-                        <i class="fas fa-map-marker-alt"></i> כתובת
+                        <i class="fas fa-map-marker-alt"></i> {{ t('ztorm.klita.section_address') }}
                     </h6>
                     <div class="access-form-group">
-                        <label>רחוב:</label>
+                        <label>{{ t('ztorm.klita.street') }}</label>
                         <input type="text" name="address_line1" style="width: 250px;">
                     </div>
                     <div class="access-form-group">
-                        <label>עיר:</label>
+                        <label>{{ t('ztorm.common.label_city') }}</label>
                         <input type="text" name="city" style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>מיקוד:</label>
+                        <label>{{ t('ztorm.common.label_zip') }}</label>
                         <input type="text" name="zip" style="width: 100px;">
                     </div>
                     <div class="access-form-group">
-                        <label>מדינה:</label>
+                        <label>{{ t('ztorm.common.label_country') }}</label>
                         <select name="country" style="width: 150px;">
-                            <option value="IL">ישראל</option>
-                            <option value="US">ארה"ב</option>
-                            <option value="UK">בריטניה</option>
-                            <option value="CA">קנדה</option>
+                            <option value="IL">{{ t('ztorm.klita.country_il') }}</option>
+                            <option value="US">{{ t('ztorm.klita.country_us') }}</option>
+                            <option value="UK">{{ t('ztorm.klita.country_uk') }}</option>
+                            <option value="CA">{{ t('ztorm.klita.country_ca') }}</option>
                         </select>
                     </div>
                 </div>
@@ -95,55 +95,55 @@
                 <!-- RIGHT: Donation Details -->
                 <div class="col-md-6">
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
-                        <i class="fas fa-hand-holding-heart"></i> פרטי תרומה
+                        <i class="fas fa-hand-holding-heart"></i> {{ t('ztorm.klita.section_donation') }}
                     </h6>
 
                     <div class="access-form-group">
-                        <label>אופן תשלום:</label>
+                        <label>{{ t('ztorm.klita.payment_method') }}</label>
                         <select name="payment_method" id="paymentMethod" style="width: 180px;" onchange="togglePaymentFields()">
-                            <option value="credit">כרטיס אשראי</option>
-                            <option value="hork">הוראת קבע</option>
-                            <option value="ashp">אשראי תשלומים</option>
-                            <option value="cash">מזומן</option>
-                            <option value="check">צ'ק</option>
+                            <option value="credit">{{ t('ztorm.common.method_credit') }}</option>
+                            <option value="hork">{{ t('ztorm.common.method_hork') }}</option>
+                            <option value="ashp">{{ t('ztorm.common.method_ashp') }}</option>
+                            <option value="cash">{{ t('ztorm.common.method_cash') }}</option>
+                            <option value="check">{{ t('ztorm.common.method_check') }}</option>
                         </select>
                     </div>
                     <div class="access-form-group">
-                        <label>סכום:</label>
+                        <label>{{ t('ztorm.common.label_amount') }}</label>
                         <input type="number" name="amount" required style="width: 120px;" step="0.01" min="0">
                     </div>
                     <div class="access-form-group">
-                        <label>מטבע:</label>
+                        <label>{{ t('ztorm.common.label_currency') }}</label>
                         <select name="currency" style="width: 100px;">
-                            <option value="ILS">₪ שקל</option>
-                            <option value="USD">$ דולר</option>
-                            <option value="EUR">€ אירו</option>
+                            <option value="ILS">{{ t('ztorm.common.currency_ils') }}</option>
+                            <option value="USD">{{ t('ztorm.common.currency_usd') }}</option>
+                            <option value="EUR">{{ t('ztorm.common.currency_eur') }}</option>
                         </select>
                     </div>
                     <div class="access-form-group" id="installmentsRow">
-                        <label>תשלומים:</label>
+                        <label>{{ t('ztorm.klita.installments') }}</label>
                         <input type="number" name="installments" style="width: 80px;" value="12" min="1" max="72">
                     </div>
                     <div class="access-form-group" id="collectionDayRow">
-                        <label>יום גבייה:</label>
+                        <label>{{ t('ztorm.klita.collection_day') }}</label>
                         <input type="number" name="collection_day" style="width: 80px;" value="1" min="1" max="28">
                     </div>
 
                     <!-- Bank details (for hork) -->
                     <div id="bankFields" style="display: none;">
                         <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
-                            <i class="fas fa-university"></i> פרטי בנק
+                            <i class="fas fa-university"></i> {{ t('ztorm.klita.section_bank') }}
                         </h6>
                         <div class="access-form-group">
-                            <label>בנק:</label>
+                            <label>{{ t('ztorm.common.label_bank') }}</label>
                             <input type="number" name="bank_code" style="width: 80px;">
                         </div>
                         <div class="access-form-group">
-                            <label>סניף:</label>
+                            <label>{{ t('ztorm.common.label_branch') }}</label>
                             <input type="number" name="branch_code" style="width: 80px;">
                         </div>
                         <div class="access-form-group">
-                            <label>חשבון:</label>
+                            <label>{{ t('ztorm.common.label_account') }}</label>
                             <input type="text" name="account_number" style="width: 150px;">
                         </div>
                     </div>
@@ -151,14 +151,14 @@
                     <!-- Credit card details -->
                     <div id="creditFields" style="display: none;">
                         <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
-                            <i class="fas fa-credit-card"></i> פרטי אשראי
+                            <i class="fas fa-credit-card"></i> {{ t('ztorm.klita.section_credit') }}
                         </h6>
                         <div class="access-form-group">
-                            <label>4 ספרות אחרונות:</label>
+                            <label>{{ t('ztorm.klita.card_last4') }}</label>
                             <input type="text" name="card_last4" style="width: 80px;" maxlength="4">
                         </div>
                         <div class="access-form-group">
-                            <label>תוקף (MMYY):</label>
+                            <label>{{ t('ztorm.klita.card_expiry') }}</label>
                             <input type="text" name="card_expiry" style="width: 80px;" maxlength="4">
                         </div>
                     </div>
@@ -166,40 +166,40 @@
                     <!-- Check details -->
                     <div id="checkFields" style="display: none;">
                         <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
-                            <i class="fas fa-money-check"></i> פרטי צ'ק
+                            <i class="fas fa-money-check"></i> {{ t('ztorm.common.section_check') }}
                         </h6>
                         <div class="access-form-group">
-                            <label>בנק:</label>
+                            <label>{{ t('ztorm.common.label_bank') }}</label>
                             <input type="number" name="check_bank" style="width: 80px;">
                         </div>
                         <div class="access-form-group">
-                            <label>סניף:</label>
+                            <label>{{ t('ztorm.common.label_branch') }}</label>
                             <input type="number" name="check_branch" style="width: 80px;">
                         </div>
                         <div class="access-form-group">
-                            <label>חשבון:</label>
+                            <label>{{ t('ztorm.common.label_account') }}</label>
                             <input type="text" name="check_account" style="width: 150px;">
                         </div>
                         <div class="access-form-group">
-                            <label>מספר צ'ק:</label>
+                            <label>{{ t('ztorm.common.label_check_number') }}</label>
                             <input type="text" name="check_number" style="width: 120px;">
                         </div>
                     </div>
 
                     <!-- Agreement -->
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
-                        <i class="fas fa-file-contract"></i> הסכם
+                        <i class="fas fa-file-contract"></i> {{ t('ztorm.klita.section_agreement') }}
                     </h6>
                     <div class="access-form-group">
-                        <label>סוג הסכם:</label>
+                        <label>{{ t('ztorm.klita.agreement_type') }}</label>
                         <select name="agreement_type" style="width: 150px;">
-                            <option value="clali">כללי</option>
-                            <option value="matbeot">מטבעות</option>
-                            <option value="nziv">נציב</option>
+                            <option value="clali">{{ t('ztorm.klita.agreement_clali') }}</option>
+                            <option value="matbeot">{{ t('ztorm.klita.agreement_matbeot') }}</option>
+                            <option value="nziv">{{ t('ztorm.klita.agreement_nziv') }}</option>
                         </select>
                     </div>
                     <div class="access-form-group">
-                        <label>תת-סוג:</label>
+                        <label>{{ t('ztorm.klita.agreement_sub_type') }}</label>
                         <input type="text" name="agreement_sub_type" style="width: 150px;">
                     </div>
                 </div>
@@ -208,9 +208,9 @@
 
         <!-- Action buttons -->
         <div class="access-button-bar">
-            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> שמור</button>
-            <button type="reset" class="btn btn-sm btn-secondary"><i class="fas fa-undo"></i> נקה</button>
-            <a href="{{ url_for('ztorm.switchboard') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> סגור</a>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> {{ t('ztorm.common.btn_save') }}</button>
+            <button type="reset" class="btn btn-sm btn-secondary"><i class="fas fa-undo"></i> {{ t('ztorm.common.btn_clear') }}</button>
+            <a href="{{ url_for('ztorm.switchboard') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> {{ t('ztorm.common.btn_close') }}</a>
         </div>
     </form>
 </div>
@@ -241,9 +241,9 @@ document.getElementById('tz').addEventListener('input', function() {
         sum += d;
     }
     if (sum % 10 === 0) {
-        statusEl.innerHTML = '<span style="color:green;">&#10004; ת.ז. תקין</span>';
+        statusEl.innerHTML = '<span style="color:green;">{{ t('ztorm.klita.tz_valid') }}</span>';
     } else {
-        statusEl.innerHTML = '<span style="color:red;">&#10008; ת.ז. לא תקין</span>';
+        statusEl.innerHTML = '<span style="color:red;">{{ t('ztorm.klita.tz_invalid') }}</span>';
     }
 });
 

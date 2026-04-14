@@ -1,67 +1,67 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - חיוב כרטיס אשראי{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.charge.page_title') }}{% endblock %}
 {% block content %}
 <div class="access-window">
-    <div class="access-title-bar"><span><i class="fas fa-credit-card"></i> חיוב כרטיס אשראי + קבלה</span></div>
+    <div class="access-title-bar"><span><i class="fas fa-credit-card"></i> {{ t('ztorm.charge.title_bar') }}</span></div>
     <form method="post" style="padding: 16px;">
         <div class="row">
             <!-- Column 1: Donor Info -->
             <div class="col-md-4">
                 <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
-                    <i class="fas fa-user"></i> פרטי תורם
+                    <i class="fas fa-user"></i> {{ t('ztorm.charge.section_donor') }}
                 </h6>
 
                 <!-- Donor search -->
                 <div class="access-form-group">
-                    <label>חיפוש תורם:</label>
-                    <input type="text" id="donorSearch" placeholder="שם, טלפון, ת.ז...." style="width: 180px;" autocomplete="off">
+                    <label>{{ t('ztorm.charge.donor_search') }}</label>
+                    <input type="text" id="donorSearch" placeholder="{{ t('ztorm.charge.search_placeholder') }}" style="width: 180px;" autocomplete="off">
                     <input type="hidden" name="donor_id" id="donorId">
                 </div>
                 <div id="searchResults" style="display:none; position:absolute; background:white; border:1px solid #808080; max-height:200px; overflow-y:auto; z-index:100; width:300px; font-size:12px;"></div>
 
                 <div class="access-form-group">
-                    <label>שם משפחה:</label>
+                    <label>{{ t('ztorm.common.label_last_name') }}</label>
                     <input type="text" name="last_name" id="lastName" required style="width: 160px;">
                 </div>
                 <div class="access-form-group">
-                    <label>שם פרטי:</label>
+                    <label>{{ t('ztorm.common.label_first_name') }}</label>
                     <input type="text" name="first_name" id="firstName" required style="width: 160px;">
                 </div>
                 <div class="access-form-group">
-                    <label>ת.ז.:</label>
+                    <label>{{ t('ztorm.common.label_tz') }}</label>
                     <input type="text" name="tz" id="tz" style="width: 120px;" maxlength="9">
                     <span id="tzStatus" style="font-size: 11px; margin-right: 4px;"></span>
                 </div>
                 <div class="access-form-group">
-                    <label>טלפון:</label>
+                    <label>{{ t('ztorm.common.label_phone') }}</label>
                     <input type="text" name="phone" id="phone" style="width: 140px;">
                 </div>
                 <div class="access-form-group">
-                    <label>אימייל:</label>
+                    <label>{{ t('ztorm.common.label_email') }}</label>
                     <input type="email" name="email" id="email" style="width: 200px;">
                 </div>
                 <div class="access-form-group">
-                    <label>כתובת:</label>
+                    <label>{{ t('ztorm.common.label_address') }}</label>
                     <input type="text" name="address" id="address" style="width: 200px;">
                 </div>
                 <div class="access-form-group">
-                    <label>עיר:</label>
+                    <label>{{ t('ztorm.common.label_city') }}</label>
                     <input type="text" name="city" id="city" style="width: 140px;">
                 </div>
 
                 <div style="margin-top: 8px; padding: 8px; background: #E8F5E9; border: 1px solid #4CAF50; border-radius: 4px; font-size: 11px;">
                     <i class="fas fa-info-circle" style="color: #2E7D32;"></i>
-                    אם התורם קיים במערכת, חפש אותו למעלה. אם חדש, מלא את הפרטים ותורם חדש יווצר אוטומטית.
+                    {{ t('ztorm.charge.donor_hint') }}
                 </div>
             </div>
 
             <!-- Column 2: Payment Details -->
             <div class="col-md-4">
                 <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
-                    <i class="fas fa-shekel-sign"></i> פרטי חיוב
+                    <i class="fas fa-shekel-sign"></i> {{ t('ztorm.charge.section_charge') }}
                 </h6>
                 <div class="access-form-group">
-                    <label>ספק אשראי:</label>
+                    <label>{{ t('ztorm.charge.processor') }}</label>
                     <select name="processor" style="width: 180px; font-size: 13px;">
                         {% for p in processors %}
                         <option value="{{ p.code }}">{{ p.name_he }}</option>
@@ -69,19 +69,19 @@
                     </select>
                 </div>
                 <div class="access-form-group">
-                    <label>סכום:</label>
+                    <label>{{ t('ztorm.common.label_amount') }}</label>
                     <input type="number" name="amount" required style="width: 120px;" step="0.01" min="1">
                 </div>
                 <div class="access-form-group">
-                    <label>מטבע:</label>
+                    <label>{{ t('ztorm.common.label_currency') }}</label>
                     <select name="currency" style="width: 100px;">
-                        <option value="ILS">₪ שקל</option>
-                        <option value="USD">$ דולר</option>
-                        <option value="EUR">€ אירו</option>
+                        <option value="ILS">{{ t('ztorm.common.currency_ils') }}</option>
+                        <option value="USD">{{ t('ztorm.common.currency_usd') }}</option>
+                        <option value="EUR">{{ t('ztorm.common.currency_eur') }}</option>
                     </select>
                 </div>
                 <div class="access-form-group">
-                    <label>תשלומים:</label>
+                    <label>{{ t('ztorm.charge.installments') }}</label>
                     <select name="installments" style="width: 80px;">
                         <option value="1">1</option>
                         {% for i in range(2, 37) %}
@@ -90,62 +90,62 @@
                     </select>
                 </div>
                 <div class="access-form-group">
-                    <label>הערות:</label>
-                    <input type="text" name="notes" style="width: 200px;" placeholder="הקדשה, הערה...">
+                    <label>{{ t('ztorm.common.label_notes') }}</label>
+                    <input type="text" name="notes" style="width: 200px;" placeholder="{{ t('ztorm.charge.notes_placeholder') }}">
                 </div>
 
                 <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 12px;">
-                    <i class="fas fa-receipt"></i> קבלה
+                    <i class="fas fa-receipt"></i> {{ t('ztorm.charge.section_receipt') }}
                 </h6>
                 <div class="access-form-group">
-                    <label>שלח קבלה:</label>
+                    <label>{{ t('ztorm.charge.send_receipt') }}</label>
                     <input type="checkbox" name="send_receipt" checked>
-                    <span style="font-size: 11px; color: #666; margin-right: 4px;">באימייל</span>
+                    <span style="font-size: 11px; color: #666; margin-right: 4px;">{{ t('ztorm.charge.by_email') }}</span>
                 </div>
                 <div class="access-form-group">
-                    <label>שם לקבלה:</label>
-                    <input type="text" name="receipt_name" id="receiptName" style="width: 180px;" placeholder="(אם שונה מהתורם)">
+                    <label>{{ t('ztorm.charge.receipt_name') }}</label>
+                    <input type="text" name="receipt_name" id="receiptName" style="width: 180px;" placeholder="{{ t('ztorm.charge.receipt_name_placeholder') }}">
                 </div>
             </div>
 
             <!-- Column 3: Card Details -->
             <div class="col-md-4">
                 <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
-                    <i class="fas fa-credit-card"></i> פרטי כרטיס
+                    <i class="fas fa-credit-card"></i> {{ t('ztorm.charge.section_card') }}
                 </h6>
                 <div class="access-form-group">
-                    <label>מספר כרטיס:</label>
+                    <label>{{ t('ztorm.charge.card_number') }}</label>
                     <input type="text" id="cardDisplay" style="width: 200px; font-size: 14px; letter-spacing: 2px;" maxlength="19" placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off">
                     <input type="hidden" name="card_number" id="cardNumber">
                     <span id="cardMasked" style="font-size: 13px; color: #2F5597; margin-right: 8px; display: none;"></span>
                 </div>
                 <div class="access-form-group">
-                    <label>תוקף (MMYY):</label>
+                    <label>{{ t('ztorm.charge.card_expiry') }}</label>
                     <input type="text" name="expiry" required style="width: 80px; font-size: 14px;" maxlength="4" placeholder="MMYY" autocomplete="off">
                 </div>
                 <div class="access-form-group">
-                    <label>CVV:</label>
+                    <label>{{ t('ztorm.charge.cvv') }}</label>
                     <input type="text" name="cvv" required style="width: 60px; font-size: 14px;" maxlength="4" placeholder="***" autocomplete="off">
                 </div>
 
                 <div style="margin-top: 20px; padding: 16px; background: #FFF3CD; border: 1px solid #FFC107; border-radius: 4px; font-size: 12px;">
                     <i class="fas fa-exclamation-triangle" style="color: #856404;"></i>
-                    <strong>שים לב:</strong> חיוב זה יבוצע ישירות מול ספק האשראי. וודא שהפרטים נכונים.
+                    <strong>{{ t('ztorm.charge.warning_title') }}</strong> {{ t('ztorm.charge.warning_text') }}
                 </div>
 
                 <div style="margin-top: 12px; padding: 12px; background: #E3F2FD; border: 1px solid #2196F3; border-radius: 4px; font-size: 12px;">
                     <i class="fas fa-info-circle" style="color: #1565C0;"></i>
-                    <strong>מה יקרה:</strong><br>
-                    1. כרטיס האשראי יחוייב<br>
-                    2. קבלה תיווצר אוטומטית<br>
-                    3. קבלה תישלח באימייל לתורם
+                    <strong>{{ t('ztorm.charge.info_title') }}</strong><br>
+                    1. {{ t('ztorm.charge.info_step1') }}<br>
+                    2. {{ t('ztorm.charge.info_step2') }}<br>
+                    3. {{ t('ztorm.charge.info_step3') }}
                 </div>
             </div>
         </div>
 
         <div class="access-button-bar" style="margin-top: 16px;">
-            <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-bolt"></i> חייב כרטיס ושלח קבלה</button>
-            <a href="{{ url_for('ztorm.switchboard') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> ביטול</a>
+            <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-bolt"></i> {{ t('ztorm.charge.btn_charge') }}</button>
+            <a href="{{ url_for('ztorm.switchboard') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> {{ t('ztorm.common.btn_cancel') }}</a>
         </div>
     </form>
 </div>

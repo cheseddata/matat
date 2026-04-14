@@ -1,38 +1,38 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - דוח תשלומים{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.report_payments.page_title') }}{% endblock %}
 {% block content %}
 <div class="access-window">
-    <div class="access-title-bar"><span><i class="fas fa-shekel-sign"></i> דוח תשלומים</span><span>{{ payments|length }} רשומות</span></div>
+    <div class="access-title-bar"><span><i class="fas fa-shekel-sign"></i> {{ t('ztorm.report_payments.page_title') }}</span><span>{{ payments|length }} {{ t('ztorm.common.records_count') }}</span></div>
     <div style="padding: 8px; background: #ECE9D8; border-bottom: 1px solid #808080;">
         <form method="get" class="d-flex gap-2 flex-wrap" style="align-items:center;">
-            <label style="font-size:12px;">סטטוס:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_payments.filter_status') }}</label>
             <select name="status" style="font-size:12px;border:1px solid #808080;padding:2px;">
-                <option value="">הכל</option>
-                <option value="ok" {{ 'selected' if status=='ok' }}>שולם</option>
-                <option value="ready" {{ 'selected' if status=='ready' }}>ממתין</option>
-                <option value="returned" {{ 'selected' if status=='returned' }}>הוחזר</option>
+                <option value="">{{ t('ztorm.common.filter_all') }}</option>
+                <option value="ok" {{ 'selected' if status=='ok' }}>{{ t('ztorm.common.status_ok') }}</option>
+                <option value="ready" {{ 'selected' if status=='ready' }}>{{ t('ztorm.common.status_ready') }}</option>
+                <option value="returned" {{ 'selected' if status=='returned' }}>{{ t('ztorm.common.status_returned') }}</option>
             </select>
-            <label style="font-size:12px;">שיטה:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_payments.filter_method') }}</label>
             <select name="method" style="font-size:12px;border:1px solid #808080;padding:2px;">
-                <option value="">הכל</option>
-                <option value="credit" {{ 'selected' if method=='credit' }}>אשראי</option>
-                <option value="hork" {{ 'selected' if method=='hork' }}>הו"ק</option>
-                <option value="cash" {{ 'selected' if method=='cash' }}>מזומן</option>
-                <option value="check" {{ 'selected' if method=='check' }}>צ'ק</option>
+                <option value="">{{ t('ztorm.common.filter_all') }}</option>
+                <option value="credit" {{ 'selected' if method=='credit' }}>{{ t('ztorm.common.method_credit') }}</option>
+                <option value="hork" {{ 'selected' if method=='hork' }}>{{ t('ztorm.common.method_hork') }}</option>
+                <option value="cash" {{ 'selected' if method=='cash' }}>{{ t('ztorm.common.method_cash') }}</option>
+                <option value="check" {{ 'selected' if method=='check' }}>{{ t('ztorm.common.method_check') }}</option>
             </select>
-            <label style="font-size:12px;">מתאריך:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_payments.date_from') }}</label>
             <input type="date" name="date_from" value="{{ date_from }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
-            <label style="font-size:12px;">עד:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_payments.date_to') }}</label>
             <input type="date" name="date_to" value="{{ date_to }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
-            <button type="submit" class="btn btn-sm btn-primary" style="font-size:12px;"><i class="fas fa-filter"></i> סנן</button>
+            <button type="submit" class="btn btn-sm btn-primary" style="font-size:12px;"><i class="fas fa-filter"></i> {{ t('ztorm.common.btn_filter') }}</button>
         </form>
     </div>
     <div style="padding: 8px; background: #D6E4F0; font-size: 13px; font-weight: bold;">
-        סה"כ: {{ "{:,.2f}".format(total) }} | {{ payments|length }} תשלומים
+        {{ t('ztorm.common.total_label') }} {{ "{:,.2f}".format(total) }} | {{ payments|length }} {{ t('ztorm.report_payments.payments_label') }}
     </div>
     <div style="overflow-y: auto; max-height: calc(100vh - 220px);">
         <table class="access-grid">
-            <thead><tr><th>#</th><th>תורם</th><th>תרומה</th><th>תאריך</th><th>סכום</th><th>מטבע</th><th>שיטה</th><th>סטטוס</th><th>אסמכתא</th></tr></thead>
+            <thead><tr><th>#</th><th>{{ t('ztorm.common.th_donor') }}</th><th>{{ t('ztorm.common.th_donation') }}</th><th>{{ t('ztorm.common.th_date') }}</th><th>{{ t('ztorm.common.th_amount') }}</th><th>{{ t('ztorm.common.th_currency') }}</th><th>{{ t('ztorm.common.th_method') }}</th><th>{{ t('ztorm.common.th_status') }}</th><th>{{ t('ztorm.common.th_reference') }}</th></tr></thead>
             <tbody>
                 {% for p in payments %}
                 <tr>

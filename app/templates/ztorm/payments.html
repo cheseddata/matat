@@ -1,11 +1,11 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - תשלומים{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.payments.page_title') }}{% endblock %}
 {% block content %}
 <div class="access-window">
-    <div class="access-title-bar"><span><i class="fas fa-shekel-sign"></i> תשלומים</span><span>{{ payments.total }} רשומות</span></div>
+    <div class="access-title-bar"><span><i class="fas fa-shekel-sign"></i> {{ t('ztorm.payments.page_title') }}</span><span>{{ payments.total }} {{ t('ztorm.common.records_count') }}</span></div>
     <div style="overflow-y: auto; max-height: calc(100vh - 120px);">
         <table class="access-grid">
-            <thead><tr><th>#</th><th>תרומה</th><th>תורם</th><th>תאריך</th><th>סכום</th><th>מטבע</th><th>שיטה</th><th>סטטוס</th></tr></thead>
+            <thead><tr><th>#</th><th>{{ t('ztorm.common.th_donation') }}</th><th>{{ t('ztorm.common.th_donor') }}</th><th>{{ t('ztorm.common.th_date') }}</th><th>{{ t('ztorm.common.th_amount') }}</th><th>{{ t('ztorm.common.th_currency') }}</th><th>{{ t('ztorm.common.th_method') }}</th><th>{{ t('ztorm.common.th_status') }}</th></tr></thead>
             <tbody>
                 {% for p in payments.items %}
                 <tr>
@@ -16,7 +16,7 @@
                     <td>{{ p.method or '-' }}</td><td>{{ p.status_display }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="8" style="text-align:center;color:#888;">אין תשלומים</td></tr>
+                <tr><td colspan="8" style="text-align:center;color:#888;">{{ t('ztorm.payments.no_payments') }}</td></tr>
                 {% endfor %}
             </tbody>
         </table>

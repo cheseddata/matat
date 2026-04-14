@@ -1,48 +1,48 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - דוח תרומות{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.report_donations.page_title') }}{% endblock %}
 {% block content %}
 <div class="access-window">
-    <div class="access-title-bar"><span><i class="fas fa-chart-bar"></i> דוח תרומות</span><span>{{ donations|length }} רשומות</span></div>
+    <div class="access-title-bar"><span><i class="fas fa-chart-bar"></i> {{ t('ztorm.report_donations.page_title') }}</span><span>{{ donations|length }} {{ t('ztorm.common.records_count') }}</span></div>
     <!-- Filters -->
     <div style="padding: 8px; background: #ECE9D8; border-bottom: 1px solid #808080;">
         <form method="get" class="d-flex gap-2 flex-wrap" style="align-items:center;">
-            <label style="font-size:12px;">סטטוס:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_donations.filter_status') }}</label>
             <select name="status" style="font-size:12px;border:1px solid #808080;padding:2px;">
-                <option value="">הכל</option>
-                <option value="active" {{ 'selected' if status=='active' }}>פעיל</option>
-                <option value="cancelled" {{ 'selected' if status=='cancelled' }}>בוטל</option>
-                <option value="completed" {{ 'selected' if status=='completed' }}>הושלם</option>
+                <option value="">{{ t('ztorm.common.filter_all') }}</option>
+                <option value="active" {{ 'selected' if status=='active' }}>{{ t('ztorm.common.status_active') }}</option>
+                <option value="cancelled" {{ 'selected' if status=='cancelled' }}>{{ t('ztorm.common.status_cancelled') }}</option>
+                <option value="completed" {{ 'selected' if status=='completed' }}>{{ t('ztorm.common.status_completed') }}</option>
             </select>
-            <label style="font-size:12px;">אופן:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_donations.filter_method') }}</label>
             <select name="method" style="font-size:12px;border:1px solid #808080;padding:2px;">
-                <option value="">הכל</option>
-                <option value="credit" {{ 'selected' if method=='credit' }}>אשראי</option>
-                <option value="hork" {{ 'selected' if method=='hork' }}>הו"ק</option>
-                <option value="cash" {{ 'selected' if method=='cash' }}>מזומן</option>
-                <option value="check" {{ 'selected' if method=='check' }}>צ'ק</option>
+                <option value="">{{ t('ztorm.common.filter_all') }}</option>
+                <option value="credit" {{ 'selected' if method=='credit' }}>{{ t('ztorm.common.method_credit') }}</option>
+                <option value="hork" {{ 'selected' if method=='hork' }}>{{ t('ztorm.common.method_hork') }}</option>
+                <option value="cash" {{ 'selected' if method=='cash' }}>{{ t('ztorm.common.method_cash') }}</option>
+                <option value="check" {{ 'selected' if method=='check' }}>{{ t('ztorm.common.method_check') }}</option>
             </select>
-            <label style="font-size:12px;">מטבע:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_donations.filter_currency') }}</label>
             <select name="currency" style="font-size:12px;border:1px solid #808080;padding:2px;">
-                <option value="">הכל</option>
+                <option value="">{{ t('ztorm.common.filter_all') }}</option>
                 <option value="ILS" {{ 'selected' if currency=='ILS' }}>₪</option>
                 <option value="USD" {{ 'selected' if currency=='USD' }}>$</option>
             </select>
-            <label style="font-size:12px;">מתאריך:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_donations.date_from') }}</label>
             <input type="date" name="date_from" value="{{ date_from }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
-            <label style="font-size:12px;">עד:</label>
+            <label style="font-size:12px;">{{ t('ztorm.report_donations.date_to') }}</label>
             <input type="date" name="date_to" value="{{ date_to }}" style="font-size:12px;border:1px solid #808080;padding:2px;">
-            <button type="submit" class="btn btn-sm btn-primary" style="font-size:12px;"><i class="fas fa-filter"></i> סנן</button>
-            <a href="{{ url_for('ztorm.report_donations_export') }}" class="btn btn-sm btn-success" style="font-size:12px;"><i class="fas fa-file-excel"></i> ייצוא Excel</a>
+            <button type="submit" class="btn btn-sm btn-primary" style="font-size:12px;"><i class="fas fa-filter"></i> {{ t('ztorm.common.btn_filter') }}</button>
+            <a href="{{ url_for('ztorm.report_donations_export') }}" class="btn btn-sm btn-success" style="font-size:12px;"><i class="fas fa-file-excel"></i> {{ t('ztorm.common.btn_export') }}</a>
         </form>
     </div>
     <!-- Totals -->
     <div style="padding: 8px; background: #D6E4F0; font-size: 13px; font-weight: bold;">
-        סה"כ: ₪{{ "{:,.2f}".format(total_nis) }} | ${{ "{:,.2f}".format(total_usd) }} | {{ donations|length }} תרומות
+        {{ t('ztorm.common.total_label') }} ₪{{ "{:,.2f}".format(total_nis) }} | ${{ "{:,.2f}".format(total_usd) }} | {{ donations|length }} {{ t('ztorm.report_donations.donations_label') }}
     </div>
     <!-- Grid -->
     <div style="overflow-y: auto; max-height: calc(100vh - 220px);">
         <table class="access-grid">
-            <thead><tr><th>#</th><th>תורם</th><th>אופן</th><th>סכום</th><th>מטבע</th><th>שולם ₪</th><th>שולם $</th><th>סטטוס</th><th>תאריך</th></tr></thead>
+            <thead><tr><th>#</th><th>{{ t('ztorm.common.th_donor') }}</th><th>{{ t('ztorm.common.th_method') }}</th><th>{{ t('ztorm.common.th_amount') }}</th><th>{{ t('ztorm.common.th_currency') }}</th><th>{{ t('ztorm.report_donations.paid_nis') }}</th><th>{{ t('ztorm.report_donations.paid_usd') }}</th><th>{{ t('ztorm.common.th_status') }}</th><th>{{ t('ztorm.common.th_date') }}</th></tr></thead>
             <tbody>
                 {% for d in donations %}
                 <tr onclick="window.location='{{ url_for('ztorm.donor_detail', donor_id=d.donor_id, tab='donations') }}'" style="cursor:pointer;">

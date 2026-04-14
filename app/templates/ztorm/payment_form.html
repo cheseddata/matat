@@ -1,34 +1,34 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - תשלום חדש{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.payment_form.page_title') }}{% endblock %}
 {% block content %}
 <div class="access-window">
-    <div class="access-title-bar"><span><i class="fas fa-plus"></i> תשלום חדש לתרומה #{{ donation.id }}</span></div>
+    <div class="access-title-bar"><span><i class="fas fa-plus"></i> {{ t('ztorm.payment_form.title_bar_prefix') }}{{ donation.id }}</span></div>
     <form method="post" style="padding: 12px;">
-        <div class="access-form-group"><label>סכום:</label><input type="number" name="amount" required style="width:120px;" step="0.01"></div>
-        <div class="access-form-group"><label>מטבע:</label>
+        <div class="access-form-group"><label>{{ t('ztorm.common.label_amount') }}</label><input type="number" name="amount" required style="width:120px;" step="0.01"></div>
+        <div class="access-form-group"><label>{{ t('ztorm.common.label_currency') }}</label>
             <select name="currency" style="width:100px;">
-                <option value="ILS">₪ שקל</option><option value="USD">$ דולר</option>
+                <option value="ILS">{{ t('ztorm.common.currency_ils') }}</option><option value="USD">{{ t('ztorm.common.currency_usd') }}</option>
             </select>
         </div>
-        <div class="access-form-group"><label>שיטה:</label>
+        <div class="access-form-group"><label>{{ t('ztorm.payment_form.label_method') }}</label>
             <select name="method" id="pm" style="width:150px;" onchange="document.getElementById('checkDiv').style.display=this.value=='check'?'block':'none'">
-                <option value="cash">מזומן</option><option value="check">צ'ק</option>
-                <option value="hafkada">הפקדה</option><option value="transfer">העברה</option>
+                <option value="cash">{{ t('ztorm.common.method_cash') }}</option><option value="check">{{ t('ztorm.common.method_check') }}</option>
+                <option value="hafkada">{{ t('ztorm.payment_form.method_hafkada') }}</option><option value="transfer">{{ t('ztorm.payment_form.method_transfer') }}</option>
             </select>
         </div>
-        <div class="access-form-group"><label>תאריך:</label><input type="date" name="payment_date" style="width:150px;"></div>
-        <div class="access-form-group"><label>אסמכתא:</label><input type="text" name="reference" style="width:150px;"></div>
-        <div class="access-form-group"><label>הערות:</label><input type="text" name="notes" style="width:250px;"></div>
+        <div class="access-form-group"><label>{{ t('ztorm.payment_form.label_date') }}</label><input type="date" name="payment_date" style="width:150px;"></div>
+        <div class="access-form-group"><label>{{ t('ztorm.payment_form.label_reference') }}</label><input type="text" name="reference" style="width:150px;"></div>
+        <div class="access-form-group"><label>{{ t('ztorm.common.label_notes') }}</label><input type="text" name="notes" style="width:250px;"></div>
         <div id="checkDiv" style="display:none; margin-top:12px;">
-            <h6 style="color:#2F5597;">פרטי צ'ק</h6>
-            <div class="access-form-group"><label>בנק:</label><input type="number" name="check_bank" style="width:80px;"></div>
-            <div class="access-form-group"><label>סניף:</label><input type="number" name="check_branch" style="width:80px;"></div>
-            <div class="access-form-group"><label>חשבון:</label><input type="text" name="check_account" style="width:150px;"></div>
-            <div class="access-form-group"><label>מספר צ'ק:</label><input type="text" name="check_number" style="width:120px;"></div>
+            <h6 style="color:#2F5597;">{{ t('ztorm.common.section_check') }}</h6>
+            <div class="access-form-group"><label>{{ t('ztorm.common.label_bank') }}</label><input type="number" name="check_bank" style="width:80px;"></div>
+            <div class="access-form-group"><label>{{ t('ztorm.common.label_branch') }}</label><input type="number" name="check_branch" style="width:80px;"></div>
+            <div class="access-form-group"><label>{{ t('ztorm.common.label_account') }}</label><input type="text" name="check_account" style="width:150px;"></div>
+            <div class="access-form-group"><label>{{ t('ztorm.common.label_check_number') }}</label><input type="text" name="check_number" style="width:120px;"></div>
         </div>
         <div class="access-button-bar" style="margin-top:16px;">
-            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> שמור</button>
-            <a href="{{ url_for('ztorm.donor_detail', donor_id=donation.donor_id, tab='payments') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> ביטול</a>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> {{ t('ztorm.common.btn_save') }}</button>
+            <a href="{{ url_for('ztorm.donor_detail', donor_id=donation.donor_id, tab='payments') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> {{ t('ztorm.common.btn_cancel') }}</a>
         </div>
     </form>
 </div>

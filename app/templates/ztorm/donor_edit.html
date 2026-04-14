@@ -1,10 +1,10 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - עריכת תורם{% endblock %}
+{% block title %}ZTorm - {% if donor.id %}{{ t('ztorm.donor_edit.page_title_edit') }}{% else %}{{ t('ztorm.donor_edit.page_title_new') }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="access-window">
     <div class="access-title-bar">
-        <span><i class="fas fa-user-edit"></i> {% if donor.id %}עריכת תורם #{{ donor.id }}{% else %}תורם חדש{% endif %}</span>
+        <span><i class="fas fa-user-edit"></i> {% if donor.id %}{{ t('ztorm.donor_edit.page_title_edit') }} #{{ donor.id }}{% else %}{{ t('ztorm.donor_edit.page_title_new') }}{% endif %}</span>
     </div>
 
     <form method="post" action="{{ url_for('ztorm.donor_save', donor_id=donor.id or 0) }}">
@@ -12,142 +12,142 @@
             <div class="row">
                 <div class="col-md-6">
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
-                        <i class="fas fa-user"></i> פרטים אישיים
+                        <i class="fas fa-user"></i> {{ t('ztorm.donor_edit.section_personal') }}
                     </h6>
                     <div class="access-form-group">
-                        <label>תואר:</label>
+                        <label>{{ t('ztorm.donor_edit.title_label') }}</label>
                         <select name="title" style="width: 120px;">
                             <option value="">-</option>
-                            {% for t in ['הר"ר', "גב'", 'ה"ה', 'הרב', 'ד"ר', 'Mr.', 'Mrs.', 'Rabbi'] %}
-                            <option value="{{ t }}" {{ 'selected' if donor.title == t }}>{{ t }}</option>
+                            {% for t_val in ['הר"ר', "גב'", 'ה"ה', 'הרב', 'ד"ר', 'Mr.', 'Mrs.', 'Rabbi'] %}
+                            <option value="{{ t_val }}" {{ 'selected' if donor.title == t_val }}>{{ t_val }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="access-form-group">
-                        <label>שם משפחה:</label>
+                        <label>{{ t('ztorm.common.label_last_name') }}</label>
                         <input type="text" name="last_name" value="{{ donor.last_name or '' }}" required style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>שם פרטי:</label>
+                        <label>{{ t('ztorm.common.label_first_name') }}</label>
                         <input type="text" name="first_name" value="{{ donor.first_name or '' }}" required style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>סיומת:</label>
+                        <label>{{ t('ztorm.donor_edit.suffix') }}</label>
                         <input type="text" name="suffix" value="{{ donor.suffix or '' }}" style="width: 120px;">
                     </div>
                     <div class="access-form-group">
-                        <label>ת.ז.:</label>
+                        <label>{{ t('ztorm.common.label_tz') }}</label>
                         <input type="text" name="teudat_zehut" value="{{ donor.teudat_zehut or '' }}" style="width: 120px;" maxlength="9" id="tz">
                         <span id="tzStatus" style="font-size: 11px; margin-right: 8px;"></span>
                     </div>
                     <div class="access-form-group">
-                        <label>מין:</label>
+                        <label>{{ t('ztorm.donor_edit.gender') }}</label>
                         <select name="gender" style="width: 100px;">
                             <option value="">-</option>
-                            <option value="m" {{ 'selected' if donor.gender == 'm' }}>זכר</option>
-                            <option value="f" {{ 'selected' if donor.gender == 'f' }}>נקבה</option>
-                            <option value="plural" {{ 'selected' if donor.gender == 'plural' }}>זוג</option>
+                            <option value="m" {{ 'selected' if donor.gender == 'm' }}>{{ t('ztorm.common.gender_male') }}</option>
+                            <option value="f" {{ 'selected' if donor.gender == 'f' }}>{{ t('ztorm.common.gender_female') }}</option>
+                            <option value="plural" {{ 'selected' if donor.gender == 'plural' }}>{{ t('ztorm.common.gender_plural') }}</option>
                         </select>
                     </div>
                     <div class="access-form-group">
-                        <label>בן/בת זוג:</label>
+                        <label>{{ t('ztorm.donor_edit.spouse') }}</label>
                         <input type="text" name="spouse_name" value="{{ donor.spouse_name or '' }}" style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>ת.ז. בן זוג:</label>
+                        <label>{{ t('ztorm.donor_edit.spouse_tz') }}</label>
                         <input type="text" name="spouse_tz" value="{{ donor.spouse_tz or '' }}" style="width: 120px;">
                     </div>
                     <div class="access-form-group">
-                        <label>אב:</label>
+                        <label>{{ t('ztorm.donor_edit.father') }}</label>
                         <input type="text" name="father_name" value="{{ donor.father_name or '' }}" style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>אם:</label>
+                        <label>{{ t('ztorm.donor_edit.mother') }}</label>
                         <input type="text" name="mother_name" value="{{ donor.mother_name or '' }}" style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>שנת לידה:</label>
+                        <label>{{ t('ztorm.donor_edit.birth_year') }}</label>
                         <input type="number" name="birth_year" value="{{ donor.birth_year or '' }}" style="width: 80px;">
                     </div>
                     <div class="access-form-group">
-                        <label>מקצוע:</label>
+                        <label>{{ t('ztorm.donor_edit.occupation') }}</label>
                         <input type="text" name="occupation" value="{{ donor.occupation or '' }}" style="width: 200px;">
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px;">
-                        <i class="fas fa-phone"></i> פרטי קשר
+                        <i class="fas fa-phone"></i> {{ t('ztorm.donor_edit.section_contact') }}
                     </h6>
                     <div class="access-form-group">
-                        <label>טלפון:</label>
+                        <label>{{ t('ztorm.common.label_phone') }}</label>
                         <input type="text" name="phone" value="{{ donor.phone or '' }}" style="width: 150px;">
                     </div>
                     <div class="access-form-group">
-                        <label>אימייל:</label>
+                        <label>{{ t('ztorm.common.label_email') }}</label>
                         <input type="email" name="email" value="{{ donor.email or '' }}" style="width: 250px;">
                     </div>
                     <div class="access-form-group">
-                        <label>שפה:</label>
+                        <label>{{ t('ztorm.donor_detail.language') }}</label>
                         <select name="language_pref" style="width: 100px;">
-                            <option value="he" {{ 'selected' if donor.language_pref == 'he' }}>עברית</option>
-                            <option value="en" {{ 'selected' if donor.language_pref == 'en' }}>English</option>
+                            <option value="he" {{ 'selected' if donor.language_pref == 'he' }}>{{ t('ztorm.donor_edit.lang_hebrew') }}</option>
+                            <option value="en" {{ 'selected' if donor.language_pref == 'en' }}>{{ t('ztorm.donor_edit.lang_english') }}</option>
                         </select>
                     </div>
 
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
-                        <i class="fas fa-map-marker-alt"></i> כתובת
+                        <i class="fas fa-map-marker-alt"></i> {{ t('ztorm.donor_edit.section_address') }}
                     </h6>
                     <div class="access-form-group">
-                        <label>כתובת:</label>
+                        <label>{{ t('ztorm.common.label_address') }}</label>
                         <input type="text" name="address_line1" value="{{ donor.address_line1 or '' }}" style="width: 250px;">
                     </div>
                     <div class="access-form-group">
-                        <label>עיר:</label>
+                        <label>{{ t('ztorm.common.label_city') }}</label>
                         <input type="text" name="city" value="{{ donor.city or '' }}" style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>מיקוד:</label>
+                        <label>{{ t('ztorm.common.label_zip') }}</label>
                         <input type="text" name="zip" value="{{ donor.zip or '' }}" style="width: 100px;">
                     </div>
                     <div class="access-form-group">
-                        <label>מדינה:</label>
+                        <label>{{ t('ztorm.common.label_country') }}</label>
                         <input type="text" name="country" value="{{ donor.country or 'IL' }}" style="width: 100px;">
                     </div>
 
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
-                        <i class="fas fa-receipt"></i> קבלות ודואר
+                        <i class="fas fa-receipt"></i> {{ t('ztorm.donor_edit.section_receipts_mail') }}
                     </h6>
                     <div class="access-form-group">
-                        <label>שם לקבלה:</label>
+                        <label>{{ t('ztorm.donor_edit.receipt_name') }}</label>
                         <input type="text" name="receipt_name" value="{{ donor.receipt_name or '' }}" style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>ת.ז. לקבלה:</label>
+                        <label>{{ t('ztorm.donor_edit.receipt_tz') }}</label>
                         <input type="text" name="receipt_tz" value="{{ donor.receipt_tz or '' }}" style="width: 120px;">
                     </div>
                     <div class="access-form-group">
-                        <label>שלח דואר:</label>
+                        <label>{{ t('ztorm.donor_edit.send_mail') }}</label>
                         <input type="checkbox" name="send_mail" {{ 'checked' if donor.send_mail }}>
                     </div>
                     <div class="access-form-group">
-                        <label>סימון:</label>
+                        <label>{{ t('ztorm.donor_edit.bookmark') }}</label>
                         <input type="checkbox" name="bookmark" {{ 'checked' if donor.bookmark }}>
                     </div>
 
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
-                        <i class="fas fa-tags"></i> סיווג
+                        <i class="fas fa-tags"></i> {{ t('ztorm.donor_edit.section_classification') }}
                     </h6>
                     <div class="access-form-group">
-                        <label>סיווג 1:</label>
+                        <label>{{ t('ztorm.donor_edit.classification_1') }}</label>
                         <input type="text" name="classification_1" value="{{ donor.classification_1 or '' }}" style="width: 150px;">
                     </div>
                     <div class="access-form-group">
-                        <label>סיווג 2:</label>
+                        <label>{{ t('ztorm.donor_edit.classification_2') }}</label>
                         <input type="text" name="classification_2" value="{{ donor.classification_2 or '' }}" style="width: 150px;">
                     </div>
                     <div class="access-form-group">
-                        <label>סיווג 3:</label>
+                        <label>{{ t('ztorm.donor_edit.classification_3') }}</label>
                         <input type="text" name="classification_3" value="{{ donor.classification_3 or '' }}" style="width: 150px;">
                     </div>
                 </div>
@@ -155,10 +155,10 @@
         </div>
 
         <div class="access-button-bar">
-            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> שמור</button>
-            <a href="{{ url_for('ztorm.donor_detail', donor_id=donor.id) if donor.id else url_for('ztorm.donors') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> ביטול</a>
+            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> {{ t('ztorm.common.btn_save') }}</button>
+            <a href="{{ url_for('ztorm.donor_detail', donor_id=donor.id) if donor.id else url_for('ztorm.donors') }}" class="btn btn-sm btn-secondary"><i class="fas fa-times"></i> {{ t('ztorm.common.btn_cancel') }}</a>
             {% if donor.id %}
-            <a href="{{ url_for('ztorm.klita') }}?donor_id={{ donor.id }}" class="btn btn-sm btn-success"><i class="fas fa-plus"></i> תרומה חדשה</a>
+            <a href="{{ url_for('ztorm.klita') }}?donor_id={{ donor.id }}" class="btn btn-sm btn-success"><i class="fas fa-plus"></i> {{ t('ztorm.common.btn_new_donation') }}</a>
             {% endif %}
         </div>
     </form>
@@ -173,7 +173,7 @@ document.getElementById('tz').addEventListener('input', function() {
     if (tz.length < 9) { el.textContent = ''; return; }
     let sum = 0;
     for (let i = 0; i < 9; i++) { let d = parseInt(tz[i]) * ((i % 2) + 1); if (d > 9) d -= 9; sum += d; }
-    el.innerHTML = sum % 10 === 0 ? '<span style="color:green;">✓ תקין</span>' : '<span style="color:red;">✗ לא תקין</span>';
+    el.innerHTML = sum % 10 === 0 ? '<span style="color:green;">{{ t('ztorm.donor_edit.tz_valid') }}</span>' : '<span style="color:red;">{{ t('ztorm.donor_edit.tz_invalid') }}</span>';
 });
 </script>
 {% endblock %}

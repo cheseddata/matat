@@ -1,11 +1,11 @@
 {% extends "ztorm_base.html" %}
-{% block title %}ZTorm - הסכמים{% endblock %}
+{% block title %}ZTorm - {{ t('ztorm.agreements.page_title') }}{% endblock %}
 {% block content %}
 <div class="access-window">
-    <div class="access-title-bar"><span><i class="fas fa-file-contract"></i> הסכמים</span></div>
+    <div class="access-title-bar"><span><i class="fas fa-file-contract"></i> {{ t('ztorm.agreements.page_title') }}</span></div>
     <div style="overflow-y: auto; max-height: calc(100vh - 120px);">
         <table class="access-grid">
-            <thead><tr><th>#</th><th>סוג</th><th>תורם</th><th>סה"כ</th><th>שולם</th><th>צפוי</th><th>מטבע</th><th>תאריך</th></tr></thead>
+            <thead><tr><th>#</th><th>{{ t('ztorm.common.th_type') }}</th><th>{{ t('ztorm.common.th_donor') }}</th><th>{{ t('ztorm.common.total_label') }}</th><th>{{ t('ztorm.common.th_paid') }}</th><th>{{ t('ztorm.common.th_expected') }}</th><th>{{ t('ztorm.common.th_currency') }}</th><th>{{ t('ztorm.common.th_date') }}</th></tr></thead>
             <tbody>
                 {% for a in agreements %}
                 <tr>
@@ -16,7 +16,7 @@
                     <td>{{ a.created_at.strftime('%d/%m/%Y') if a.created_at else '-' }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="8" style="text-align:center;color:#888;">אין הסכמים</td></tr>
+                <tr><td colspan="8" style="text-align:center;color:#888;">{{ t('ztorm.agreements.no_agreements') }}</td></tr>
                 {% endfor %}
             </tbody>
         </table>
