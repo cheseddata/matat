@@ -477,6 +477,18 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
     else if (selectedMethod === 'credit' && document.getElementById('installments').value > 1) paymentType = 'Tashlumim';
 
     const iframe = document.getElementById('nedarim-iframe');
+
+    // Split name into first/last
+    const fullName = document.getElementById('donor_name').value || '';
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    let comment = document.getElementById('donor_comments').value || '';
+    const refCode = document.getElementById('ref_code').value;
+    const linkId = document.getElementById('link_id').value;
+    if (linkId) comment = (comment ? comment + ' | ' : '') + 'link_id:' + linkId;
+
     const data = {
         Mosad: MOSAD_ID,
         ApiValid: API_PASSWORD,
@@ -484,18 +496,16 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
         Amount: amount,
         Currency: '1',
         Zeout: document.getElementById('donor_id').value || '',
-        ClientName: document.getElementById('donor_name').value || '',
+        FirstName: firstName,
+        LastName: lastName,
         Phone: document.getElementById('donor_phone').value || '',
         Mail: document.getElementById('donor_email').value || '',
-        Comments: document.getElementById('donor_comments').value || '',
+        Comment: comment,
         Groupe: 'Donations',
         Tashlumim: (selectedMethod === 'credit') ? (document.getElementById('installments').value || '1') : '1',
+        Param1: '',
+        Param2: refCode || '',
     };
-
-    const refCode = document.getElementById('ref_code').value;
-    const linkId = document.getElementById('link_id').value;
-    if (refCode) data.Param2 = refCode;
-    if (linkId) data.Comments = (data.Comments ? data.Comments + ' | ' : '') + 'link_id:' + linkId;
 
     // Send as object (not JSON string) - iframe reads event.data.Name directly
     console.log('Sending to Nedarim iframe:', data);
