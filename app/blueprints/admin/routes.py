@@ -2377,3 +2377,98 @@ def delete_screenshot(id):
     db.session.commit()
     flash('Screenshot deleted.', 'success')
     return redirect(url_for('admin.screenshots'))
+
+
+# =============================================================================
+# EMAIL CAMPAIGN TRACKING
+# =============================================================================
+
+@admin_bp.route('/campaign-track/<campaign_name>')
+@admin_required
+def campaign_track(campaign_name):
+    """Track donations from email campaigns."""
+    from datetime import datetime
+
+    # Define campaigns and their target emails
+    campaigns = {
+        'apology': {
+            'title': 'Apology Email (Apr 14, 2026)',
+            'sent_date': datetime(2026, 4, 14),
+            'emails': [
+                'ateretkallah@gmail.com', 'berlbat@gmail.com', 'bernardstern20@gmail.com',
+                'bruchmarg@gmail.com', 'chanaschuss@gmail.com', 'cnmemail@gmail.com',
+                'estys1211@gmail.com', 'familysalis@gmail.com', 'flphadas@gmail.com',
+                'gittyfriedman33@gmail.com', 'glatt.benny@icloud.com', 'grosskopfchani@gmial.com',
+                'hm.schapira@gmail.com', 'issacsilbersteinbr@gmail.com', 'kidstopm@gmail.com',
+                'leeba@besimcha-israel.com', 'miriam92012@gmail.com', 'mlevy2483@gmail.com',
+                'pinterchanie@gmail.com', 'rbsg46008@gmail.com', 'sarahrdayan1@gmail.com',
+                'simonschifer@gmail.com', 'ss7987948@gmail.com', 'strenger.lugano@gmail.com',
+                'tziporawells@gmail.com', 'uumiri18@gmail.com', 'yankisara@mosesnet.net',
+                'yarbroughmolly@gmail.com', 'yehudamorsel89@gmail.com', 'zevibeer@gmail.com',
+            ]
+        }
+    }
+
+    campaign = campaigns.get(campaign_name)
+    if not campaign:
+        flash('Campaign not found.', 'danger')
+        return redirect(url_for('admin.dashboard'))
+
+    sent_date = campaign['sent_date']
+    target_emails = campaign['emails']
+
+    # Find donors by email
+    from ...models.donor import Donor
+    donors = Donor.query.filter(Donor.email.in_(target_emails)).all()
+    donor_map = {d.email: d for d in donors}
+
+    # Find new donations from these donors after the send date
+    results = []
+    total_donated = 0
+    for email in target_emails:
+        donor = donor_map.get(email)
+        entry = {
+            'email': email,
+            'name': donor.full_name if donor else 'Unknown',
+            'donations': [],
+            'total': 0,
+        }
+
+        if donor:
+            new_donations = Donation.query.filter(
+                Donation.donor_id == donor.id,
+                Donation.created_at >= sent_date,
+                Donation.status == 'succeeded',
+                Donation.deleted_at.is_(None)
+            ).order_by(Donation.created_at.desc()).all()
+
+            for d in new_donations:
+                symbol = '₪' if (d.currency or 'usd').upper() == 'ILS' else '$'
+                entry['donations'].append({
+                    'id': d.id,
+                    'amount': d.amount / 100,
+                    'currency': d.currency,
+                    'symbol': symbol,
+                    'processor': d.payment_processor or 'stripe',
+                    'date': d.created_at,
+                    'comment': d.donor_comment,
+                })
+                entry['total'] += d.amount / 100
+                total_donated += d.amount / 100
+
+        results.append(entry)
+
+    # Sort: donors who donated first, then by total
+    results.sort(key=lambda x: (-x['total'], x['email']))
+
+    donated_count = sum(1 for r in results if r['donations'])
+
+    return render_template(
+        'admin/campaign_track.html',
+        campaign_name=campaign_name,
+        campaign=campaign,
+        results=results,
+        total_donated=total_donated,
+        donated_count=donated_count,
+        total_sent=len(target_emails),
+    )

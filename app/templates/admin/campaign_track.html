@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Campaign Tracking - {{ campaign.title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .track-container { max-width: 900px; margin: 20px auto; }
+    .stats-row { display: flex; gap: 15px; margin-bottom: 25px; }
+    .stat-box {
+        flex: 1; background: white; border-radius: 8px;
+        padding: 18px; text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .stat-box .value { font-size: 28px; font-weight: 700; }
+    .stat-box .label { font-size: 13px; color: #666; margin-top: 4px; }
+    .stat-box.green .value { color: #27ae60; }
+    .stat-box.blue .value { color: #3498db; }
+    .stat-box.purple .value { color: #9b59b6; }
+
+    .donor-list { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow: hidden; }
+    .donor-row {
+        display: flex; align-items: center; padding: 12px 18px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .donor-row:last-child { border-bottom: none; }
+    .donor-row.donated { background: #f0faf3; }
+    .donor-info { flex: 1; }
+    .donor-name { font-weight: 600; font-size: 14px; }
+    .donor-email { font-size: 12px; color: #999; }
+    .donor-donations { text-align: right; }
+    .donation-badge {
+        display: inline-block; padding: 4px 10px; border-radius: 12px;
+        font-size: 12px; font-weight: 600; margin: 2px;
+    }
+    .donation-badge.donated { background: #d4edda; color: #155724; }
+    .donation-badge.none { background: #f0f0f0; color: #999; }
+    .donation-comment { font-size: 11px; color: #666; margin-top: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="track-container">
+    <h2>{{ campaign.title }}</h2>
+    <p style="color: #666; margin-bottom: 20px;">Tracking new donations from recipients since {{ campaign.sent_date.strftime('%b %d, %Y') }}</p>
+
+    <div class="stats-row">
+        <div class="stat-box blue">
+            <div class="value">{{ total_sent }}</div>
+            <div class="label">Emails Sent</div>
+        </div>
+        <div class="stat-box green">
+            <div class="value">{{ donated_count }}</div>
+            <div class="label">Donors Who Donated</div>
+        </div>
+        <div class="stat-box purple">
+            <div class="value">{{ "%.0f"|format(total_donated) }}</div>
+            <div class="label">Total Donated (mixed currencies)</div>
+        </div>
+        <div class="stat-box">
+            <div class="value">{{ "%.0f"|format(donated_count / total_sent * 100) if total_sent else 0 }}%</div>
+            <div class="label">Conversion Rate</div>
+        </div>
+    </div>
+
+    <div class="donor-list">
+        {% for r in results %}
+        <div class="donor-row {{ 'donated' if r.donations }}">
+            <div class="donor-info">
+                <div class="donor-name">{{ r.name }}</div>
+                <div class="donor-email">{{ r.email }}</div>
+            </div>
+            <div class="donor-donations">
+                {% if r.donations %}
+                    {% for d in r.donations %}
+                    <div class="donation-badge donated">
+                        {{ d.symbol }}{{ "%.0f"|format(d.amount) }} via {{ d.processor }} &middot; {{ d.date.strftime('%m/%d') }}
+                    </div>
+                    {% if d.comment %}
+                    <div class="donation-comment">{{ d.comment[:60] }}{% if d.comment|length > 60 %}...{% endif %}</div>
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <span class="donation-badge none">No donation yet</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
