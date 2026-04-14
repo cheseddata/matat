@@ -15,18 +15,8 @@
             min-height: 100vh;
             direction: {{ 'rtl' if lang == 'he' else 'ltr' }};
         }
-
-        .page-wrapper {
-            max-width: 480px;
-            margin: 20px auto;
-            padding: 0 15px;
-        }
-
-        /* Language toggle */
-        .lang-link {
-            text-align: {{ 'left' if lang == 'he' else 'right' }};
-            margin-bottom: 8px;
-        }
+        .page-wrapper { max-width: 480px; margin: 20px auto; padding: 0 15px; }
+        .lang-link { text-align: {{ 'left' if lang == 'he' else 'right' }}; margin-bottom: 8px; }
         .lang-link a { color: #3498db; text-decoration: none; font-size: 13px; }
 
         /* Main card */
@@ -37,227 +27,170 @@
             overflow: hidden;
         }
 
-        /* Header with logo */
+        /* Header */
         .card-header {
             text-align: center;
             padding: 25px 20px 15px;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         }
         .org-logo {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            margin: 0 auto 10px;
-            background: white;
+            width: 80px; height: 80px; border-radius: 50%;
+            margin: 0 auto 10px; background: white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
             overflow: hidden;
         }
         .org-logo img { width: 100%; height: 100%; object-fit: cover; }
         .org-name { font-size: 18px; font-weight: 700; color: #c0392b; margin-bottom: 4px; }
         .org-subtitle { font-size: 13px; color: #666; }
         .org-desc { font-size: 12px; color: #999; margin-top: 6px; }
-
-        /* Campaign banner */
         .campaign-bar {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 20px;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 600;
+            color: white; padding: 12px 20px; text-align: center;
+            font-size: 14px; font-weight: 600;
         }
 
-        /* Form body */
         .card-body { padding: 20px; }
 
-        /* Amount section */
-        .amount-section { margin-bottom: 20px; }
-        .amount-label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            color: #333;
+        /* ===== STEP 1: Payment Method Selection ===== */
+        .method-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
         }
-        .amount-icon { font-size: 18px; }
+        .method-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            position: relative;
+        }
+        .method-card:hover { border-color: #3498db; transform: translateY(-1px); }
+        .method-card.selected { border-color: #27ae60; background: #f0faf3; }
+        .method-card.selected::after {
+            content: '\2713';
+            position: absolute;
+            top: 6px;
+            {{ 'left' if lang == 'he' else 'right' }}: 8px;
+            background: #27ae60;
+            color: white;
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            font-size: 12px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .method-icon { font-size: 32px; margin-bottom: 6px; }
+        .method-label { font-size: 12px; font-weight: 600; color: #333; line-height: 1.3; }
+        .method-card.full-width { grid-column: 1 / -1; }
+
+        /* ===== STEP 2: Donation Form ===== */
+        .form-area { display: none; }
+        .form-area.show { display: block; }
+
+        .section-divider {
+            border: none; border-top: 1px solid #eee;
+            margin: 18px 0;
+        }
+
+        /* Amount */
+        .amount-section { margin-bottom: 18px; }
+        .amount-label {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 10px; font-weight: 600; font-size: 14px; color: #333;
+        }
         .amount-input-wrap {
-            display: flex;
-            align-items: center;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            transition: border-color 0.2s;
+            display: flex; align-items: center;
+            border: 2px solid #ddd; border-radius: 8px;
+            overflow: hidden; transition: border-color 0.2s;
         }
         .amount-input-wrap:focus-within { border-color: #3498db; }
         .amount-currency {
-            padding: 12px 14px;
-            background: #f8f9fa;
-            font-size: 18px;
-            font-weight: 700;
-            color: #333;
+            padding: 12px 14px; background: #f8f9fa;
+            font-size: 18px; font-weight: 700; color: #333;
             border-{{ 'left' if lang == 'he' else 'right' }}: 2px solid #ddd;
         }
         .amount-input {
-            flex: 1;
-            padding: 12px 14px;
-            font-size: 18px;
-            border: none;
-            outline: none;
-            text-align: center;
-            font-weight: 600;
+            flex: 1; padding: 12px 14px; font-size: 18px;
+            border: none; outline: none; text-align: center; font-weight: 600;
         }
-
-        /* Amount presets */
         .amount-presets {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 10px;
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 8px; margin-top: 10px;
         }
         .preset-btn {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            background: white;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
-            text-align: center;
-            transition: all 0.15s;
+            padding: 10px; border: 1px solid #ddd; border-radius: 6px;
+            background: white; cursor: pointer; font-size: 15px;
+            font-weight: 600; text-align: center; transition: all 0.15s;
         }
         .preset-btn:hover { border-color: #3498db; background: #e8f4f8; }
         .preset-btn.selected { border-color: #3498db; background: #3498db; color: white; }
 
-        /* Form fields */
-        .form-section { margin-bottom: 18px; }
-        .field-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 12px;
-        }
+        /* Fields */
+        .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
         .field-row.single { grid-template-columns: 1fr; }
-        .field-group { position: relative; }
         .field-group label {
-            display: block;
-            font-size: 13px;
-            font-weight: 500;
-            color: #555;
-            margin-bottom: 4px;
+            display: block; font-size: 13px; font-weight: 500;
+            color: #555; margin-bottom: 4px;
         }
         .field-group label .req { color: #e74c3c; }
-        .field-group input, .field-group textarea {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-            font-family: inherit;
+        .field-group input, .field-group select, .field-group textarea {
+            width: 100%; padding: 10px 12px; border: 1px solid #ddd;
+            border-radius: 6px; font-size: 14px; font-family: inherit;
             transition: border-color 0.2s;
         }
-        .field-group input:focus, .field-group textarea:focus {
-            border-color: #3498db;
-            outline: none;
-        }
-        .field-group textarea { resize: vertical; min-height: 60px; }
+        .field-group input:focus, .field-group textarea:focus { border-color: #3498db; outline: none; }
+        .field-group textarea { resize: vertical; min-height: 50px; }
 
-        /* Card iframe section */
+        /* Card iframe */
         .card-section {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 18px;
+            border: 1px solid #ddd; border-radius: 8px;
+            overflow: hidden; margin-bottom: 18px;
         }
         .card-section-label {
-            background: #f8f9fa;
-            padding: 10px 14px;
-            font-size: 13px;
-            font-weight: 600;
-            color: #555;
+            background: #f8f9fa; padding: 10px 14px;
+            font-size: 13px; font-weight: 600; color: #555;
             border-bottom: 1px solid #ddd;
         }
-        .card-iframe-wrap {
-            padding: 0;
-            min-height: 60px;
-        }
         .card-iframe-wrap iframe {
-            width: 100%;
-            height: 60px;
-            border: none;
-            display: block;
+            width: 100%; height: 60px; border: none; display: block;
         }
 
-        /* Payment type buttons */
-        .payment-types {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-bottom: 18px;
-        }
-        .ptype-btn {
-            padding: 12px 8px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            background: white;
-            cursor: pointer;
-            text-align: center;
-            transition: all 0.15s;
-        }
-        .ptype-btn:hover { border-color: #3498db; }
-        .ptype-btn.selected { border-color: #27ae60; background: #e8f5e9; }
-        .ptype-icon { font-size: 24px; margin-bottom: 4px; }
-        .ptype-label { font-size: 12px; font-weight: 600; color: #333; }
+        /* Installments */
+        .extra-field { display: none; margin-bottom: 14px; }
+        .extra-field.show { display: block; }
 
-        /* Installments field */
-        .installments-row {
-            display: none;
-            margin-bottom: 18px;
-        }
-        .installments-row.show { display: block; }
-
-        /* Submit button */
+        /* Submit */
         .submit-btn {
-            width: 100%;
-            padding: 16px;
-            font-size: 18px;
-            font-weight: 700;
-            background: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
+            width: 100%; padding: 16px; font-size: 18px; font-weight: 700;
+            background: #27ae60; color: white; border: none;
+            border-radius: 8px; cursor: pointer; transition: background 0.2s;
             font-family: inherit;
         }
         .submit-btn:hover { background: #219a52; }
         .submit-btn:disabled { background: #95a5a6; cursor: not-allowed; }
 
-        /* Error/success */
         .msg-error { color: #e74c3c; font-size: 13px; margin-top: 10px; text-align: center; }
-        .msg-success {
-            display: none;
-            text-align: center;
-            padding: 30px;
-        }
+        .msg-success { display: none; text-align: center; padding: 30px; }
         .msg-success .check-icon { font-size: 48px; color: #27ae60; }
         .msg-success strong { font-size: 16px; display: block; margin-top: 8px; }
 
-        /* Footer */
         .card-footer {
-            text-align: center;
-            padding: 15px 20px;
-            border-top: 1px solid #eee;
+            text-align: center; padding: 15px 20px; border-top: 1px solid #eee;
         }
         .secure-text { font-size: 12px; color: #999; }
 
+        /* Back link */
+        .back-link {
+            display: inline-block; margin-bottom: 12px;
+            color: #3498db; cursor: pointer; font-size: 13px;
+        }
+        .back-link:hover { text-decoration: underline; }
+
         @media (max-width: 500px) {
             .field-row { grid-template-columns: 1fr; }
-            .amount-presets { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
@@ -272,7 +205,6 @@
     </div>
 
     <div class="donate-card">
-        <!-- Header -->
         <div class="card-header">
             <div class="org-logo">
                 <img src="{{ url_for('static', filename='logo.png') }}" alt="Matat Mordechai">
@@ -293,40 +225,81 @@
         {% endif %}
 
         <div class="card-body">
-            <form id="donate-form">
-                <!-- Amount -->
-                <div class="amount-section">
-                    <div class="amount-label">
-                        <span class="amount-icon">&#8362;</span>
-                        {% if lang == 'he' %}סכום התרומה{% else %}Donation Amount{% endif %}
+
+            <!-- ===== STEP 1: Choose Payment Method ===== -->
+            <div id="step-method">
+                <div class="amount-label" style="margin-bottom: 12px;">
+                    {% if lang == 'he' %}בחר אמצעי תשלום{% else %}Choose Payment Method{% endif %}
+                </div>
+
+                <div class="method-cards">
+                    <div class="method-card selected" data-method="credit" onclick="selectMethod(this)">
+                        <div class="method-icon">&#128179;</div>
+                        <div class="method-label">{% if lang == 'he' %}חיוב בודד / תשלומים<br>באמצעות אשראי{% else %}Credit Card<br>One-Time / Installments{% endif %}</div>
                     </div>
-                    <div class="amount-input-wrap">
-                        <div class="amount-currency">&#8362;</div>
-                        <input type="number" id="amount" class="amount-input" min="1" step="1"
-                               value="{{ preset_amount or '' }}"
-                               placeholder="{% if lang == 'he' %}הזינו סכום{% else %}Enter amount{% endif %}" required>
+                    <div class="method-card" data-method="standing" onclick="selectMethod(this)">
+                        <div class="method-icon">&#128260;</div>
+                        <div class="method-label">{% if lang == 'he' %}הוראת קבע אשראי<br>ללא תפיסת מסגרת{% else %}Credit Standing Order<br>No Credit Limit Hold{% endif %}</div>
                     </div>
-                    <div class="amount-presets">
-                        <button type="button" class="preset-btn" data-amount="100">&#8362;100</button>
-                        <button type="button" class="preset-btn" data-amount="250">&#8362;250</button>
-                        <button type="button" class="preset-btn" data-amount="500">&#8362;500</button>
-                        <button type="button" class="preset-btn" data-amount="1000">&#8362;1,000</button>
-                        <button type="button" class="preset-btn" data-amount="1800">&#8362;1,800</button>
-                        <button type="button" class="preset-btn" data-amount="3600">&#8362;3,600</button>
+                    <div class="method-card" data-method="bank_standing" onclick="selectMethod(this)">
+                        <div class="method-icon">&#127974;</div>
+                        <div class="method-label">{% if lang == 'he' %}הוראת קבע בנקאית{% else %}Bank Standing Order{% endif %}</div>
+                    </div>
+                    <div class="method-card" data-method="bit" onclick="selectMethod(this)">
+                        <div class="method-icon">&#128241;</div>
+                        <div class="method-label">{% if lang == 'he' %}ביט BIT{% else %}BIT Payment{% endif %}</div>
+                    </div>
+                    <div class="method-card" data-method="bank_transfer" onclick="selectMethod(this)">
+                        <div class="method-icon">&#127975;</div>
+                        <div class="method-label">{% if lang == 'he' %}העברה בנקאית בקליק{% else %}One-Click Bank Transfer{% endif %}</div>
                     </div>
                 </div>
 
-                <!-- Donor Info -->
-                <div class="form-section">
+                <button class="submit-btn" id="continue-btn" onclick="showForm()">
+                    {% if lang == 'he' %}המשך{% else %}Continue{% endif %}
+                </button>
+            </div>
+
+            <!-- ===== STEP 2: Donation Form ===== -->
+            <div id="step-form" class="form-area">
+                <span class="back-link" onclick="showMethodStep()">
+                    &#8592; {% if lang == 'he' %}חזרה לבחירת אמצעי תשלום{% else %}Back to payment method{% endif %}
+                </span>
+
+                <form id="donate-form">
+                    <!-- Amount -->
+                    <div class="amount-section">
+                        <div class="amount-label">
+                            <span>&#8362;</span>
+                            {% if lang == 'he' %}סכום התרומה{% else %}Donation Amount{% endif %}
+                        </div>
+                        <div class="amount-input-wrap">
+                            <div class="amount-currency">&#8362;</div>
+                            <input type="number" id="amount" class="amount-input" min="1" step="1"
+                                   value="{{ preset_amount or '' }}"
+                                   placeholder="{% if lang == 'he' %}הזינו סכום{% else %}Enter amount{% endif %}" required>
+                        </div>
+                        <div class="amount-presets">
+                            <button type="button" class="preset-btn" data-amount="100">&#8362;100</button>
+                            <button type="button" class="preset-btn" data-amount="250">&#8362;250</button>
+                            <button type="button" class="preset-btn" data-amount="500">&#8362;500</button>
+                            <button type="button" class="preset-btn" data-amount="1000">&#8362;1,000</button>
+                            <button type="button" class="preset-btn" data-amount="1800">&#8362;1,800</button>
+                            <button type="button" class="preset-btn" data-amount="3600">&#8362;3,600</button>
+                        </div>
+                    </div>
+
+                    <hr class="section-divider">
+
+                    <!-- Donor Info -->
                     <div class="field-row">
                         <div class="field-group">
                             <label>{% if lang == 'he' %}שם מלא{% else %}Full Name{% endif %} <span class="req">*</span></label>
                             <input type="text" id="donor_name" required>
                         </div>
                         <div class="field-group">
-                            <label>{% if lang == 'he' %}ת.ז. (תעודת זהות){% else %}ID Number (ת.ז.){% endif %}</label>
-                            <input type="text" id="donor_id" maxlength="9" pattern="[0-9]{5,9}"
-                                   placeholder="{% if lang == 'he' %}מספר ת.ז.{% else %}ID number{% endif %}">
+                            <label>{% if lang == 'he' %}ת.ז.{% else %}ID (ת.ז.){% endif %}</label>
+                            <input type="text" id="donor_id" maxlength="9" pattern="[0-9]{5,9}">
                         </div>
                     </div>
                     <div class="field-row">
@@ -341,69 +314,64 @@
                     </div>
                     <div class="field-row single">
                         <div class="field-group">
-                            <label>{% if lang == 'he' %}הערות או הקדשה לתרומה{% else %}Comments or dedication{% endif %}</label>
+                            <label>{% if lang == 'he' %}הערות או הקדשה{% else %}Comments or dedication{% endif %}</label>
                             <textarea id="donor_comments" rows="2"></textarea>
                         </div>
                     </div>
-                </div>
 
-                <!-- Card Details (Nedarim iframe) -->
-                <div class="card-section">
-                    <div class="card-section-label">
-                        {% if lang == 'he' %}פרטי כרטיס אשראי{% else %}Credit Card Details{% endif %}
+                    <!-- Installments (shown for credit/standing) -->
+                    <div class="extra-field" id="installments-field">
+                        <div class="field-group">
+                            <label>{% if lang == 'he' %}מספר תשלומים{% else %}Number of payments{% endif %}</label>
+                            <select id="installments">
+                                <option value="1">{% if lang == 'he' %}תשלום אחד{% else %}Single payment{% endif %}</option>
+                                <option value="2">2 {% if lang == 'he' %}תשלומים{% else %}payments{% endif %}</option>
+                                <option value="3">3 {% if lang == 'he' %}תשלומים{% else %}payments{% endif %}</option>
+                                <option value="4">4 {% if lang == 'he' %}תשלומים{% else %}payments{% endif %}</option>
+                                <option value="5">5 {% if lang == 'he' %}תשלומים{% else %}payments{% endif %}</option>
+                                <option value="6">6 {% if lang == 'he' %}תשלומים{% else %}payments{% endif %}</option>
+                                <option value="10">10 {% if lang == 'he' %}תשלומים{% else %}payments{% endif %}</option>
+                                <option value="12">12 {% if lang == 'he' %}תשלומים{% else %}payments{% endif %}</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="card-iframe-wrap">
-                        <iframe id="nedarim-iframe"
-                                src="https://www.matara.pro/nedarimplus/iframe/"
-                                allow="payment"></iframe>
+
+                    <hr class="section-divider">
+
+                    <!-- Card Details (Nedarim iframe) -->
+                    <div class="card-section" id="card-section">
+                        <div class="card-section-label">
+                            {% if lang == 'he' %}פרטי כרטיס אשראי{% else %}Credit Card Details{% endif %}
+                        </div>
+                        <div class="card-iframe-wrap">
+                            <iframe id="nedarim-iframe"
+                                    src="https://www.matara.pro/nedarimplus/iframe/"
+                                    allow="payment"></iframe>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Payment Type -->
-                <div class="payment-types">
-                    <button type="button" class="ptype-btn selected" data-type="Ragil">
-                        <div class="ptype-icon">&#128179;</div>
-                        <div class="ptype-label">{% if lang == 'he' %}תשלום רגיל{% else %}One-Time{% endif %}</div>
+                    <!-- Hidden fields -->
+                    <input type="hidden" id="ref_code" value="{{ ref_code or '' }}">
+                    <input type="hidden" id="aff_code" value="{{ aff_code or '' }}">
+                    <input type="hidden" id="link_id" value="{{ request.args.get('link_id', '') }}">
+
+                    <button type="submit" class="submit-btn" id="submit-btn">
+                        {% if lang == 'he' %}תרמו עכשיו{% else %}Donate Now{% endif %}
                     </button>
-                    <button type="button" class="ptype-btn" data-type="Tashlumim">
-                        <div class="ptype-icon">&#128197;</div>
-                        <div class="ptype-label">{% if lang == 'he' %}תשלומים{% else %}Installments{% endif %}</div>
-                    </button>
-                    <button type="button" class="ptype-btn" data-type="HK">
-                        <div class="ptype-icon">&#128260;</div>
-                        <div class="ptype-label">{% if lang == 'he' %}הוראת קבע{% else %}Recurring{% endif %}</div>
-                    </button>
+
+                    <div class="msg-error" id="error-msg"></div>
+                </form>
+
+                <div class="msg-success" id="success-msg">
+                    <div class="check-icon">&#10003;</div>
+                    <strong>{% if lang == 'he' %}התרומה בוצעה בהצלחה!{% else %}Donation completed successfully!{% endif %}</strong>
+                    <p style="color: #666; margin-top: 8px;">{% if lang == 'he' %}תודה רבה על תרומתכם{% else %}Thank you for your generous donation{% endif %}</p>
                 </div>
-
-                <!-- Installments count (hidden by default) -->
-                <div class="installments-row" id="installments-row">
-                    <div class="field-group">
-                        <label>{% if lang == 'he' %}מספר תשלומים{% else %}Number of installments{% endif %}</label>
-                        <input type="number" id="installments" value="3" min="2" max="12">
-                    </div>
-                </div>
-
-                <!-- Hidden fields -->
-                <input type="hidden" id="ref_code" value="{{ ref_code or '' }}">
-                <input type="hidden" id="aff_code" value="{{ aff_code or '' }}">
-                <input type="hidden" id="link_id" value="{{ request.args.get('link_id', '') }}">
-
-                <button type="submit" class="submit-btn" id="submit-btn">
-                    {% if lang == 'he' %}תרמו עכשיו{% else %}Donate Now{% endif %}
-                </button>
-
-                <div class="msg-error" id="error-msg"></div>
-            </form>
-
-            <div class="msg-success" id="success-msg">
-                <div class="check-icon">&#10003;</div>
-                <strong>{% if lang == 'he' %}התרומה בוצעה בהצלחה!{% else %}Donation completed successfully!{% endif %}</strong>
-                <p style="color: #666; margin-top: 8px;">{% if lang == 'he' %}תודה רבה על תרומתכם{% else %}Thank you for your generous donation{% endif %}</p>
             </div>
         </div>
 
         <div class="card-footer">
-            <div class="secure-text">&#128274; {% if lang == 'he' %}תשלום מאובטח | נדרים פלוס{% else %}Secure Payment | Nedarim Plus{% endif %}</div>
+            <div class="secure-text">&#128274; {% if lang == 'he' %}תשלום מאובטח | נדרים פלוס | PCI DSS Level 1{% else %}Secure Payment | Nedarim Plus | PCI DSS Level 1{% endif %}</div>
         </div>
     </div>
 </div>
@@ -411,9 +379,53 @@
 <script>
 const MOSAD_ID = '{{ mosad_id }}';
 const API_PASSWORD = '{{ api_password }}';
-let paymentType = 'Ragil';
+let selectedMethod = 'credit';
 
-// Amount presets
+// ===== STEP 1: Method selection =====
+function selectMethod(el) {
+    document.querySelectorAll('.method-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedMethod = el.dataset.method;
+}
+
+function showForm() {
+    document.getElementById('step-method').style.display = 'none';
+    document.getElementById('step-form').classList.add('show');
+
+    // Show/hide fields based on method
+    const installField = document.getElementById('installments-field');
+    const cardSection = document.getElementById('card-section');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (selectedMethod === 'credit') {
+        installField.classList.add('show');
+        cardSection.style.display = '';
+        submitBtn.textContent = '{% if lang == "he" %}תרמו עכשיו{% else %}Donate Now{% endif %}';
+    } else if (selectedMethod === 'standing') {
+        installField.classList.remove('show');
+        cardSection.style.display = '';
+        submitBtn.textContent = '{% if lang == "he" %}הפעל הוראת קבע{% else %}Start Standing Order{% endif %}';
+    } else if (selectedMethod === 'bank_standing') {
+        installField.classList.remove('show');
+        cardSection.style.display = 'none';
+        submitBtn.textContent = '{% if lang == "he" %}הפעל הוראת קבע בנקאית{% else %}Start Bank Standing Order{% endif %}';
+    } else if (selectedMethod === 'bit') {
+        installField.classList.remove('show');
+        cardSection.style.display = 'none';
+        submitBtn.textContent = '{% if lang == "he" %}שלם באמצעות ביט{% else %}Pay with BIT{% endif %}';
+    } else if (selectedMethod === 'bank_transfer') {
+        installField.classList.remove('show');
+        cardSection.style.display = 'none';
+        submitBtn.textContent = '{% if lang == "he" %}בצע העברה בנקאית{% else %}Make Bank Transfer{% endif %}';
+    }
+}
+
+function showMethodStep() {
+    document.getElementById('step-form').classList.remove('show');
+    document.getElementById('step-method').style.display = '';
+}
+
+// ===== Amount presets =====
 document.querySelectorAll('.preset-btn').forEach(btn => {
     btn.addEventListener('click', function() {
         document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
@@ -421,39 +433,16 @@ document.querySelectorAll('.preset-btn').forEach(btn => {
         document.getElementById('amount').value = this.dataset.amount;
     });
 });
-
 document.getElementById('amount').addEventListener('input', function() {
     document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('selected'));
 });
-
 {% if preset_amount %}
 const pa = document.querySelector('[data-amount="{{ preset_amount }}"]');
 if (pa) pa.classList.add('selected');
 document.getElementById('amount').value = '{{ preset_amount }}';
 {% endif %}
 
-// Payment type buttons
-document.querySelectorAll('.ptype-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        document.querySelectorAll('.ptype-btn').forEach(b => b.classList.remove('selected'));
-        this.classList.add('selected');
-        paymentType = this.dataset.type;
-
-        const installRow = document.getElementById('installments-row');
-        installRow.classList.toggle('show', paymentType === 'Tashlumim');
-
-        const submitBtn = document.getElementById('submit-btn');
-        if (paymentType === 'HK') {
-            submitBtn.textContent = '{% if lang == "he" %}הפעל הוראת קבע{% else %}Start Recurring{% endif %}';
-        } else if (paymentType === 'Tashlumim') {
-            submitBtn.textContent = '{% if lang == "he" %}שלם בתשלומים{% else %}Pay in Installments{% endif %}';
-        } else {
-            submitBtn.textContent = '{% if lang == "he" %}תרמו עכשיו{% else %}Donate Now{% endif %}';
-        }
-    });
-});
-
-// Form submission - send to Nedarim iframe via PostMessage
+// ===== Form submission =====
 document.getElementById('donate-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
@@ -470,24 +459,27 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = '{% if lang == "he" %}מעבד...{% else %}Processing...{% endif %}';
 
-    const iframe = document.getElementById('nedarim-iframe');
+    // Map method to Nedarim PaymentType
+    let paymentType = 'Ragil';
+    if (selectedMethod === 'standing') paymentType = 'HK';
+    else if (selectedMethod === 'credit' && document.getElementById('installments').value > 1) paymentType = 'Tashlumim';
 
+    const iframe = document.getElementById('nedarim-iframe');
     const data = {
         Mosad: MOSAD_ID,
         ApiValid: API_PASSWORD,
         PaymentType: paymentType,
         Amount: amount,
-        Currency: '1', // ILS
+        Currency: '1',
         Zeout: document.getElementById('donor_id').value || '',
         ClientName: document.getElementById('donor_name').value || '',
         Phone: document.getElementById('donor_phone').value || '',
         Mail: document.getElementById('donor_email').value || '',
         Comments: document.getElementById('donor_comments').value || '',
         Groupe: 'Donations',
-        Tashlumim: paymentType === 'Tashlumim' ? (document.getElementById('installments').value || '3') : '1',
+        Tashlumim: (selectedMethod === 'credit') ? (document.getElementById('installments').value || '1') : '1',
     };
 
-    // Add tracking params
     const refCode = document.getElementById('ref_code').value;
     const linkId = document.getElementById('link_id').value;
     if (refCode) data.Param2 = refCode;
@@ -499,57 +491,41 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
     );
 });
 
-// Listen for responses from Nedarim iframe
+// ===== PostMessage listener =====
 window.addEventListener('message', function(event) {
     if (event.origin !== 'https://www.matara.pro') return;
 
     let msg;
-    try {
-        msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-    } catch(e) { return; }
+    try { msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; }
+    catch(e) { return; }
 
-    // Handle iframe height
     if (msg.Name === 'Height' && msg.Value) {
         document.getElementById('nedarim-iframe').style.height = msg.Value + 'px';
     }
 
-    // Handle validation errors from iframe
     if (msg.Name === 'ValidateFields') {
         const errorEl = document.getElementById('error-msg');
         const submitBtn = document.getElementById('submit-btn');
-        if (msg.Value === 'OK') {
-            // Validation passed - iframe will process
-        } else {
-            let fieldName = msg.Field || '';
-            let errType = msg.ErrorType || '';
-            if (fieldName === 'Card') {
-                errorEl.textContent = '{% if lang == "he" %}מספר כרטיס לא תקין{% else %}Invalid card number{% endif %}';
-            } else if (fieldName === 'Expiration') {
-                errorEl.textContent = '{% if lang == "he" %}תוקף כרטיס לא תקין{% else %}Invalid expiration date{% endif %}';
-            } else if (fieldName === 'CVV') {
-                errorEl.textContent = '{% if lang == "he" %}CVV לא תקין{% else %}Invalid CVV{% endif %}';
-            }
+        if (msg.Value !== 'OK') {
+            const field = msg.Field || '';
+            if (field === 'Card') errorEl.textContent = '{% if lang == "he" %}מספר כרטיס לא תקין{% else %}Invalid card number{% endif %}';
+            else if (field === 'Expiration') errorEl.textContent = '{% if lang == "he" %}תוקף לא תקין{% else %}Invalid expiration{% endif %}';
+            else if (field === 'CVV') errorEl.textContent = '{% if lang == "he" %}CVV לא תקין{% else %}Invalid CVV{% endif %}';
             submitBtn.disabled = false;
             submitBtn.textContent = '{% if lang == "he" %}תרמו עכשיו{% else %}Donate Now{% endif %}';
         }
     }
 
-    // Handle transaction response
     if (msg.Name === 'TransactionResponse') {
         const submitBtn = document.getElementById('submit-btn');
         const errorEl = document.getElementById('error-msg');
         let resp = msg.Value;
-        if (typeof resp === 'string') {
-            try { resp = JSON.parse(resp); } catch(e) {}
-        }
+        if (typeof resp === 'string') { try { resp = JSON.parse(resp); } catch(e) {} }
 
         if (resp && (resp.Status === 'OK' || resp.Status === 'Success')) {
-            // Success
             document.getElementById('donate-form').style.display = 'none';
             document.getElementById('success-msg').style.display = 'block';
-            console.log('Nedarim payment succeeded:', resp);
 
-            // Also save to our backend
             fetch('/donate/nedarim-success', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -562,17 +538,14 @@ window.addEventListener('message', function(event) {
                     donor_email: document.getElementById('donor_email').value,
                     donor_phone: document.getElementById('donor_phone').value,
                     donor_id_number: document.getElementById('donor_id').value,
-                    payment_type: paymentType,
+                    payment_type: selectedMethod,
                     ref_code: document.getElementById('ref_code').value,
                     aff_code: document.getElementById('aff_code').value,
                     link_id: document.getElementById('link_id').value,
                 })
-            }).catch(err => console.error('Backend save error:', err));
-
+            }).catch(err => console.error('Save error:', err));
         } else {
-            // Error
-            let errMsg = (resp && resp.Message) || (resp && resp.ErrorMessage) || '';
-            errorEl.textContent = errMsg || '{% if lang == "he" %}התשלום נכשל. אנא נסו שנית.{% else %}Payment failed. Please try again.{% endif %}';
+            errorEl.textContent = (resp && (resp.Message || resp.ErrorMessage)) || '{% if lang == "he" %}התשלום נכשל{% else %}Payment failed{% endif %}';
             submitBtn.disabled = false;
             submitBtn.textContent = '{% if lang == "he" %}תרמו עכשיו{% else %}Donate Now{% endif %}';
         }
