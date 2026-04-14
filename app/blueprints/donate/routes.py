@@ -124,6 +124,40 @@ def nedarim_donation_page():
     return redirect(f'https://www.matara.pro/nedarimplus/online/?mosad={mosad_id}')
 
 
+@donate_bp.route('/donate/nedarim-test')
+def nedarim_test_page():
+    """Test page for Nedarim Plus iframe integration (for debugging with Nedarim support)."""
+    nedarim_proc = PaymentProcessor.get_by_code('nedarim')
+    if not nedarim_proc or not nedarim_proc.enabled:
+        return redirect(url_for('donate.donation_page'))
+
+    config = nedarim_proc.config_json or {}
+    mosad_id = config.get('mosad_id')
+    api_password = config.get('api_password')
+    if not mosad_id:
+        return redirect(url_for('donate.donation_page'))
+
+    lang = request.args.get('lang', 'he')
+    ref_code = request.args.get('ref')
+    aff_code = request.args.get('aff')
+    preset_amount = request.args.get('amt')
+
+    salesperson = resolve_ref_code(ref_code) if ref_code else None
+    campaign = resolve_aff_code(aff_code) if aff_code else None
+
+    return render_template(
+        'donate/nedarim_page.html',
+        mosad_id=mosad_id,
+        api_password=api_password,
+        ref_code=ref_code,
+        aff_code=aff_code,
+        preset_amount=preset_amount,
+        salesperson=salesperson,
+        campaign=campaign,
+        lang=lang,
+    )
+
+
 @donate_bp.route('/donate/nedarim-success', methods=['POST'])
 @csrf.exempt
 def nedarim_success_callback():
