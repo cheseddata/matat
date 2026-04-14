@@ -13,6 +13,7 @@ class Donor(db.Model):
     email = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(50), nullable=True)
     phone_country_code = db.Column(db.String(10), nullable=True)
+    teudat_zehut = db.Column(db.String(9), nullable=True)  # Israeli ID number
     address_line1 = db.Column(db.String(255), nullable=True)
     address_line2 = db.Column(db.String(255), nullable=True)
     city = db.Column(db.String(100), nullable=True)

@@ -306,6 +306,11 @@ def sync_nedarim_cmd(with_receipts):
                     name_parts = donor_name.split(' ', 1)
                     donor.first_name = name_parts[0]
                     donor.last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+            # Capture Teudat Zehut
+            zeout = (txn.get('Zeout') or '').strip()
+            if zeout and zeout != '000000000' and not donor.teudat_zehut:
+                donor.teudat_zehut = zeout
                 db.session.add(donor)
                 db.session.flush()
 
