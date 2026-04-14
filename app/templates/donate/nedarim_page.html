@@ -155,7 +155,7 @@
             border-bottom: 1px solid #ddd;
         }
         .card-iframe-wrap iframe {
-            width: 100%; height: 60px; border: none; display: block;
+            width: 100%; height: 150px; border: none; display: block;
         }
 
         /* Installments */
@@ -266,7 +266,7 @@
                     &#8592; {% if lang == 'he' %}חזרה לבחירת אמצעי תשלום{% else %}Back to payment method{% endif %}
                 </span>
 
-                <form id="donate-form">
+                <form id="donate-form" autocomplete="off">
                     <!-- Amount -->
                     <div class="amount-section">
                         <div class="amount-label">
@@ -295,21 +295,21 @@
                     <div class="field-row">
                         <div class="field-group">
                             <label>{% if lang == 'he' %}שם מלא{% else %}Full Name{% endif %} <span class="req">*</span></label>
-                            <input type="text" id="donor_name" required>
+                            <input type="text" id="donor_name" required autocomplete="off">
                         </div>
                         <div class="field-group">
                             <label>{% if lang == 'he' %}ת.ז.{% else %}ID (ת.ז.){% endif %}</label>
-                            <input type="text" id="donor_id" maxlength="9" pattern="[0-9]{5,9}">
+                            <input type="text" id="donor_id" maxlength="9" pattern="[0-9]{5,9}" autocomplete="off">
                         </div>
                     </div>
                     <div class="field-row">
                         <div class="field-group">
                             <label>{% if lang == 'he' %}טלפון{% else %}Phone{% endif %}</label>
-                            <input type="tel" id="donor_phone" placeholder="05x-xxx-xxxx">
+                            <input type="tel" id="donor_phone" placeholder="05x-xxx-xxxx" autocomplete="off">
                         </div>
                         <div class="field-group">
                             <label>{% if lang == 'he' %}אימייל{% else %}Email{% endif %}</label>
-                            <input type="email" id="donor_email">
+                            <input type="email" id="donor_email" autocomplete="off">
                         </div>
                     </div>
                     <div class="field-row single">
@@ -485,10 +485,21 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
     if (refCode) data.Param2 = refCode;
     if (linkId) data.Comments = (data.Comments ? data.Comments + ' | ' : '') + 'link_id:' + linkId;
 
+    // Send as object (not JSON string) - iframe reads event.data.Name directly
+    console.log('Sending to Nedarim iframe:', data);
     iframe.contentWindow.postMessage(
-        JSON.stringify({ Name: 'FinishTransaction2', Value: JSON.stringify(data) }),
+        { Name: 'FinishTransaction2', Value: data },
         'https://www.matara.pro'
     );
+
+    // Timeout fallback - re-enable button after 30s if no response
+    setTimeout(function() {
+        if (submitBtn.disabled) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '{% if lang == "he" %}תרמו עכשיו{% else %}Donate Now{% endif %}';
+            errorEl.textContent = '{% if lang == "he" %}לא התקבלה תשובה. אנא נסו שנית.{% else %}No response received. Please try again.{% endif %}';
+        }
+    }, 30000);
 });
 
 // ===== PostMessage listener =====
