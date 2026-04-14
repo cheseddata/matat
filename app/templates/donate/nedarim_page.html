@@ -155,8 +155,10 @@
             border-bottom: 1px solid #ddd;
         }
         .card-iframe-wrap iframe {
-            width: 100%; height: 250px; border: none; display: block;
+            width: 100%; border: none; display: block;
+            overflow: hidden;
         }
+        .card-iframe-wrap { overflow: hidden; }
 
         /* Installments */
         .extra-field { display: none; margin-bottom: 14px; }
@@ -346,7 +348,10 @@
                         <div class="card-iframe-wrap">
                             <iframe id="nedarim-iframe"
                                     src="https://www.matara.pro/nedarimplus/iframe/"
-                                    allow="payment"></iframe>
+                                    allow="payment"
+                                    scrolling="no"
+                                    style="height: 280px;"
+                                    onload="requestIframeHeight()"></iframe>
                         </div>
                     </div>
 
@@ -377,6 +382,13 @@
 </div>
 
 <script>
+function requestIframeHeight() {
+    const iframe = document.getElementById('nedarim-iframe');
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ Name: 'GetHeight' }, 'https://www.matara.pro');
+    }
+}
+
 const MOSAD_ID = '{{ mosad_id }}';
 const API_PASSWORD = '{{ api_password }}';
 let selectedMethod = 'credit';
@@ -511,7 +523,7 @@ window.addEventListener('message', function(event) {
     catch(e) { return; }
 
     if (msg.Name === 'Height' && msg.Value) {
-        document.getElementById('nedarim-iframe').style.height = msg.Value + 'px';
+        document.getElementById('nedarim-iframe').style.height = (parseInt(msg.Value) + 10) + 'px';
     }
 
     if (msg.Name === 'ValidateFields') {
