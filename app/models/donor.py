@@ -74,6 +74,10 @@ class Donor(db.Model):
     # Relationships
     donations = db.relationship('Donation', backref='donor', lazy='dynamic')
     receipts = db.relationship('Receipt', backref='donor', lazy='dynamic')
+    addresses = db.relationship('Address', backref='donor', lazy='dynamic')
+    phones = db.relationship('Phone', backref='donor', lazy='dynamic')
+    memorial_names = db.relationship('MemorialName', backref='donor', lazy='dynamic')
+    communications = db.relationship('Communication', backref='donor', lazy='dynamic')
 
     # Self-referential relationship for linked donors
     linked_donors = db.relationship(
