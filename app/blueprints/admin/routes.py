@@ -2216,7 +2216,7 @@ def donor_activity(id):
             'type': 'donation',
             'icon': 'money',
             'timestamp': d.created_at.isoformat(),
-            'title': f'Donation ${d.amount / 100:.2f}',
+            'title': f'Donation {"₪" if (d.currency or "usd").upper() == "ILS" else "$"}{d.amount / 100:.2f}',
             'description': f'{d.donation_type.replace("_", " ").title()} - {d.status}',
             'link': url_for('admin.donation_detail', id=d.id),
             'status': d.status
@@ -2233,7 +2233,7 @@ def donor_activity(id):
             'icon': 'receipt',
             'timestamp': r.created_at.isoformat(),
             'title': f'Receipt {r.receipt_number}',
-            'description': f'${r.amount / 100:.2f}',
+            'description': f'{r.amount / 100:.2f}',
             'link': url_for('admin.download_receipt', id=r.id)
         })
 
