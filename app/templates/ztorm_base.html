@@ -206,6 +206,17 @@
         .page-link { padding: 3px 8px; }
     </style>
     {% block extra_css %}{% endblock %}
+    <script>
+    // Prevent "Leave site?" warnings
+    (function() {
+        Object.defineProperty(window, 'onbeforeunload', { get: function() { return null; }, set: function() {} });
+        var origAdd = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function(type, fn, opts) {
+            if (type === 'beforeunload') return;
+            return origAdd.call(this, type, fn, opts);
+        };
+    })();
+    </script>
 </head>
 <body>
     <!-- Access-style toolbar -->

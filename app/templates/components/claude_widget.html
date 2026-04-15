@@ -357,6 +357,20 @@
 </div>
 
 <script>
+// Kill ttyd iframe before navigating to prevent "Leave site?" popup
+window.addEventListener('beforeunload', function() {
+    var frame = document.getElementById('claudeFrame');
+    if (frame) frame.src = 'about:blank';
+});
+// Also remove on any link click
+document.addEventListener('click', function(e) {
+    var link = e.target.closest('a[href]');
+    if (link && !link.href.startsWith('javascript')) {
+        var frame = document.getElementById('claudeFrame');
+        if (frame) frame.src = 'about:blank';
+    }
+});
+
 const chatBox = document.getElementById('claudeChatBox');
 const btn = document.getElementById('claudeWidgetBtn');
 
