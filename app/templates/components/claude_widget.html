@@ -345,6 +345,7 @@
         <!-- Screenshot / Upload bar (everyone) -->
         <div style="padding:8px 12px; background:#f0f0f0; border-top:1px solid #ccc; display:flex; gap:6px; align-items:center; flex-shrink:0;">
             <button class="claude-action-btn" onclick="takeScreenshot()" style="padding:5px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📸 Screenshot</button>
+            <button class="claude-action-btn" onclick="pasteFromClipboard()" style="padding:5px 12px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📋 Paste</button>
             <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()" style="padding:5px 12px; background:#9b59b6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📁 Upload</button>
             {% if current_user.username != 'admin' %}
             <button class="claude-action-btn" onclick="clearChat()" style="padding:5px 12px;">🗑️ Clear</button>
@@ -523,6 +524,39 @@ function uploadFileWidget(input) {
             }
         });
     input.value = '';
+}
+
+// Paste button - reads clipboard directly (works even when terminal has focus)
+async function pasteFromClipboard() {
+    const status = document.getElementById('claudeUploadStatus');
+    try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+            const imageType = item.types.find(t => t.startsWith('image/'));
+            if (imageType) {
+                const blob = await item.getType(imageType);
+                status.textContent = 'Uploading pasted image...';
+
+                const form = new FormData();
+                form.append('file', blob, 'pasted-image.png');
+                form.append('description', 'Pasted from: ' + location.href);
+
+                const res = await fetch('/claude/screenshot/upload', { method: 'POST', body: form });
+                const data = await res.json();
+
+                if (data.success) {
+                    const fullUrl = window.location.origin + data.url;
+                    status.innerHTML = '✓ <a href="' + data.url + '" target="_blank" style="color:#3498db">' + data.filename + '</a> <span style="cursor:pointer;color:#27ae60" onclick="navigator.clipboard.writeText(\'' + fullUrl + '\');this.textContent=\'Copied!\'">[Copy URL]</span>';
+                } else {
+                    status.textContent = 'Error: ' + (data.error || 'Upload failed');
+                }
+                return;
+            }
+        }
+        status.textContent = 'No image in clipboard. Copy a screenshot first (PrtScn or Snipping Tool).';
+    } catch (err) {
+        status.textContent = 'Clipboard access denied. Use Ctrl+V after clicking outside the terminal.';
+    }
 }
 
 // Ctrl+V paste screenshot from clipboard (works on any screen)
