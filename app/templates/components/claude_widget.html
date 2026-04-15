@@ -357,19 +357,29 @@
 </div>
 
 <script>
-// Kill ttyd iframe before navigating to prevent "Leave site?" popup
-window.addEventListener('beforeunload', function() {
-    var frame = document.getElementById('claudeFrame');
-    if (frame) frame.src = 'about:blank';
-});
-// Also remove on any link click
-document.addEventListener('click', function(e) {
-    var link = e.target.closest('a[href]');
-    if (link && !link.href.startsWith('javascript')) {
+// Kill ttyd iframe before ANY navigation to prevent "Leave site?" popup
+(function() {
+    function killFrame() {
         var frame = document.getElementById('claudeFrame');
-        if (frame) frame.src = 'about:blank';
+        if (frame) {
+            frame.src = 'about:blank';
+            frame.remove();
+        }
     }
-});
+    // Kill on link clicks
+    document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (link && link.href && !link.href.startsWith('javascript')) {
+            killFrame();
+        }
+    }, true);
+    // Kill on form submits
+    document.addEventListener('submit', function() { killFrame(); }, true);
+    // Kill on beforeunload
+    window.addEventListener('beforeunload', function() { killFrame(); });
+    // Kill on pagehide (mobile/tab close)
+    window.addEventListener('pagehide', function() { killFrame(); });
+})();
 
 const chatBox = document.getElementById('claudeChatBox');
 const btn = document.getElementById('claudeWidgetBtn');

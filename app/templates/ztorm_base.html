@@ -219,6 +219,26 @@
     </script>
 </head>
 <body>
+    <!-- Matat main nav bar -->
+    {% if current_user.is_authenticated %}
+    <nav style="background:#2c3e50; color:white; padding:0 20px; display:flex; align-items:center; min-height:40px; font-size:13px;">
+        <a href="/" style="color:white; text-decoration:none; font-weight:bold; margin-{{ 'left' if is_rtl else 'right' }}:15px;">מתת מרדכי | Matat</a>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('admin.dashboard') }}" style="color:white; text-decoration:none; padding:0 10px;">{{ t('nav.dashboard') }}</a>
+        <a href="{{ url_for('admin.donations') }}" style="color:white; text-decoration:none; padding:0 10px;">{{ t('nav.donations') }}</a>
+        <a href="{{ url_for('admin.donors') }}" style="color:white; text-decoration:none; padding:0 10px;">{{ t('nav.donors') }}</a>
+        <a href="{{ url_for('admin.receipts') }}" style="color:white; text-decoration:none; padding:0 10px;">{{ t('nav.receipts') }}</a>
+        <a href="{{ url_for('admin.settings') }}" style="color:white; text-decoration:none; padding:0 10px;">{{ t('nav.settings') }}</a>
+        {% endif %}
+        <div style="flex-grow:1;"></div>
+        <a href="/ztorm/" style="color:#FFD700; text-decoration:none; font-weight:bold; padding:0 10px;">🏛 ZTorm</a>
+        <button onclick="toggleLanguage()" style="background:#3498db; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px; margin:0 5px;">
+            {% if lang == 'he' %}{{ t('nav.switch_to_english') }}{% else %}{{ t('nav.switch_to_hebrew') }}{% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" style="color:white; text-decoration:none; padding:0 10px;">{{ t('nav.logout') }}</a>
+    </nav>
+    {% endif %}
+
     <!-- Access-style toolbar -->
     <div class="access-toolbar">
         <a href="{{ url_for('ztorm.switchboard') }}" class="btn"><i class="fas fa-home"></i> {{ t('ztorm.nav.home') }}</a>
@@ -260,6 +280,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+    function toggleLanguage() { toggleLang(); }
     function toggleLang() {
         var curr = '{{ lang }}';
         var next = curr === 'he' ? 'en' : 'he';
