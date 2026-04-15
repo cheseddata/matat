@@ -306,7 +306,7 @@
         💬
     </button>
 
-    <div class="claude-chat-box{% if current_user.username == 'admin' %}" style="height:600px;{% else %}{% endif %}" id="claudeChatBox">
+    <div class="claude-chat-box" id="claudeChatBox" {% if current_user.username == 'admin' %}style="height:600px;"{% endif %}>
         <div class="claude-chat-header" id="claudeChatHeader">
             <div class="claude-chat-avatar">🤖</div>
             <div class="claude-chat-info">
