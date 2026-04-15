@@ -142,9 +142,21 @@ def send_link():
 
         logger.info(f'Donation link created: {link.short_code}, URL: {link.full_url}')
 
-        # Get attachment from template if one was selected
+        # Get attachment: uploaded file takes priority, then template attachment
         attachment_path = None
-        if template_id:
+        uploaded_file = request.files.get('attachment')
+        if uploaded_file and uploaded_file.filename:
+            import os, uuid
+            from werkzeug.utils import secure_filename
+            upload_dir = '/var/www/matat/uploads/email_attachments'
+            os.makedirs(upload_dir, exist_ok=True)
+            ext = uploaded_file.filename.rsplit('.', 1)[1].lower() if '.' in uploaded_file.filename else 'bin'
+            filename = f'{uuid.uuid4().hex}.{ext}'
+            filepath = os.path.join(upload_dir, filename)
+            uploaded_file.save(filepath)
+            attachment_path = filepath
+            logger.info(f'send_link: attachment uploaded: {uploaded_file.filename} -> {filepath}')
+        elif template_id:
             template = EmailTemplate.query.get(int(template_id))
             if template and template.attachment_path:
                 attachment_path = template.attachment_path

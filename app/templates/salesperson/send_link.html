@@ -426,8 +426,16 @@
                 <div class="char-count"><span id="charCount">0</span> characters</div>
             </div>
 
-            <div id="attachmentInfo" style="display: none; margin-top: 15px; padding: 10px 15px; background: #e8f4f8; border-radius: 6px; font-size: 13px;">
-                &#x1F4CE; <strong>Attachment:</strong> <span id="attachmentName"></span>
+            <div class="email-field" style="margin-top: 15px;">
+                <label for="email_attachment">Attach Document (PDF, DOC, image, etc.)</label>
+                <input type="file" id="email_attachment" name="attachment"
+                       accept=".pdf,.doc,.docx,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.gif,.txt"
+                       style="padding:8px; border:1px dashed #ccc; border-radius:6px; width:100%; cursor:pointer;">
+                <small style="color:#999;">Max 10MB. Leave empty for no attachment.</small>
+            </div>
+
+            <div id="attachmentInfo" style="display: none; margin-top: 10px; padding: 10px 15px; background: #e8f4f8; border-radius: 6px; font-size: 13px;">
+                &#x1F4CE; <strong>Template Attachment:</strong> <span id="attachmentName"></span>
             </div>
 
             <p style="font-size: 13px; color: #666; margin-top: 15px;">
@@ -441,8 +449,8 @@
     </div>
 </div>
 
-<!-- Hidden form for actual submission -->
-<form id="submitForm" method="POST" action="{{ url_for('salesperson.send_link') }}" style="display: none;">
+<!-- Hidden form for actual submission (multipart for file upload) -->
+<form id="submitForm" method="POST" action="{{ url_for('salesperson.send_link') }}" enctype="multipart/form-data" style="display: none;">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="donor_name" id="submit_donor_name">
     <input type="hidden" name="donor_email" id="submit_donor_email">
@@ -454,6 +462,7 @@
     <input type="hidden" name="email_subject" id="submit_email_subject">
     <input type="hidden" name="email_body" id="submit_email_body">
     <input type="hidden" name="template_id" id="submit_template_id">
+    <input type="file" name="attachment" id="submit_attachment" style="display:none;">
 </form>
 {% endblock %}
 
@@ -842,6 +851,14 @@ function sendEmail() {
     document.getElementById('submit_email_subject').value = subject;
     document.getElementById('submit_email_body').value = body;
     document.getElementById('submit_template_id').value = selectedTemplateId || '';
+
+    // Copy file attachment to hidden form
+    var fileInput = document.getElementById('email_attachment');
+    if (fileInput.files.length > 0) {
+        var dt = new DataTransfer();
+        dt.items.add(fileInput.files[0]);
+        document.getElementById('submit_attachment').files = dt.files;
+    }
 
     // Submit the hidden form
     document.getElementById('submitForm').submit();
