@@ -481,7 +481,7 @@
 
         <div class="donor-stats">
             <div class="stat-card">
-                <div class="value">${{ "%.2f"|format(total_donated) }}</div>
+                <div class="value">{{ "%.2f"|format(total_donated) }}</div>
                 <div class="label">{{ t('admin.total_donated') }}</div>
             </div>
             <div class="stat-card">
@@ -507,7 +507,7 @@
             <div class="card" style="margin-bottom: 25px; padding: 20px;">
                 <h3 style="margin-top: 0;">Linked Donor Records</h3>
                 <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
-                    This person has multiple records. Combined total: <strong>${{ "%.2f"|format(donor.get_total_donated() / 100) }}</strong>
+                    This person has multiple records. Combined total: <strong>{{ "%.2f"|format(donor.get_total_donated() / 100) }}</strong>
                 </p>
                 <table class="data-table" style="margin-bottom: 15px;">
                     <thead>
@@ -586,7 +586,7 @@
                     {% for d in donations %}
                     <tr>
                         <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>${{ "%.2f"|format(d.amount / 100) }}</td>
+                        <td>{% if (d.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(d.amount / 100) }}</td>
                         <td>{{ d.donation_type | replace('_', ' ') | title }}</td>
                         <td>{{ d.source or t('common.direct') }}</td>
                         <td>
@@ -625,7 +625,7 @@
                     <tr>
                         <td><strong>{{ r.receipt_number }}</strong></td>
                         <td>{{ r.created_at.strftime('%Y-%m-%d') }}</td>
-                        <td>${{ "%.2f"|format(r.amount / 100) }}</td>
+                        <td>{{ "%.2f"|format(r.amount / 100) }}</td>
                         <td>
                             <a href="{{ url_for('admin.download_receipt', id=r.id) }}" class="action-btn primary">{{ t('common.download') }}</a>
                             <button class="action-btn secondary" onclick="resendReceipt({{ r.id }})">{{ t('common.resend') }}</button>
