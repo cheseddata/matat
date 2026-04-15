@@ -306,12 +306,12 @@
         💬
     </button>
 
-    <div class="claude-chat-box" id="claudeChatBox">
+    <div class="claude-chat-box" id="claudeChatBox" style="height:600px;">
         <div class="claude-chat-header" id="claudeChatHeader">
             <div class="claude-chat-avatar">🤖</div>
             <div class="claude-chat-info">
-                <div class="name">{% if current_user.username == 'admin' %}Claude Code{% else %}Claude Assistant{% endif %}</div>
-                <div class="status">{% if current_user.username == 'admin' %}Developer Terminal{% else %}Here to help!{% endif %}</div>
+                <div class="name">Claude Code</div>
+                <div class="status">Developer Terminal</div>
             </div>
             <div class="claude-chat-controls">
                 <button onclick="toggleMaximize()" title="Maximize">⬜</button>
@@ -319,41 +319,18 @@
             </div>
         </div>
 
-        {% if current_user.username == 'admin' %}
-        <!-- Admin: Terminal (ttyd) + Screenshots -->
+        <!-- Terminal (ttyd) -->
         <div style="flex:1; background:#1a1a2e; overflow:hidden;">
             <iframe id="claudeFrame" src="/help" style="width:100%;height:100%;border:none;"></iframe>
         </div>
+
+        <!-- Screenshot / Upload bar -->
         <div class="claude-input-actions" style="padding:6px 12px; background:#f5f5f5; border-top:1px solid #e0e0e0;">
             <button class="claude-action-btn" onclick="takeScreenshot()">📸 Screenshot</button>
             <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()">📁 Upload</button>
             <input type="file" id="claudeFileInput" accept="image/*" style="display:none" onchange="uploadFileWidget(this)">
         </div>
         <div class="claude-upload-status" id="claudeUploadStatus"></div>
-        {% else %}
-        <!-- Non-admin: AI Chat (API key) + Screenshots -->
-        <div class="claude-messages" id="claudeMessages">
-            <div class="claude-welcome">
-                <h3>Hi {{ current_user.first_name or current_user.username }}! 👋</h3>
-                <p>Ask me anything about the system.<br>Ctrl+V to paste a screenshot.</p>
-            </div>
-        </div>
-        <div class="claude-input-area">
-            <div class="claude-input-row">
-                <div class="claude-input-wrapper">
-                    <textarea class="claude-input" id="claudeInput" placeholder="Type your message... (Ctrl+V to paste screenshot)" rows="1" onkeydown="handleInputKey(event)"></textarea>
-                </div>
-                <button class="claude-send-btn" id="claudeSendBtn" onclick="sendMessage()">➤</button>
-            </div>
-            <div class="claude-input-actions">
-                <button class="claude-action-btn" onclick="takeScreenshot()">📸 Screenshot</button>
-                <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()">📁 Upload</button>
-                <button class="claude-action-btn" onclick="clearChat()">🗑️ Clear</button>
-                <input type="file" id="claudeFileInput" accept="image/*" style="display:none" onchange="uploadFileWidget(this)">
-            </div>
-            <div class="claude-upload-status" id="claudeUploadStatus"></div>
-        </div>
-        {% endif %}
     </div>
 </div>
 
@@ -368,10 +345,6 @@ window.toggleClaudeChat = function() {
     } else {
         chatBox.classList.add('open');
         btn.style.display = 'none';
-        {% if current_user.username != 'admin' %}
-        loadChatHistory();
-        if (document.getElementById('claudeInput')) document.getElementById('claudeInput').focus();
-        {% endif %}
     }
 };
 
@@ -402,147 +375,6 @@ document.addEventListener('mousemove', function(e) {
     chatBox.style.bottom = 'auto';
 });
 document.addEventListener('mouseup', function() { isDragging = false; });
-
-{% if current_user.role != 'admin' %}
-// Chat functions (non-admin users via API key)
-async function loadChatHistory() {
-    try {
-        const res = await fetch('/claude/chat/history');
-        const data = await res.json();
-        const container = document.getElementById('claudeMessages');
-
-        if (data.messages && data.messages.length > 0) {
-            container.innerHTML = '';
-            data.messages.forEach(msg => addMessage(msg.role, msg.content, false));
-            scrollToBottom();
-        }
-    } catch (err) {
-        console.error('Failed to load chat history:', err);
-    }
-}
-
-function addMessage(role, content, animate = true) {
-    const container = document.getElementById('claudeMessages');
-
-    // Remove welcome message if present
-    const welcome = container.querySelector('.claude-welcome');
-    if (welcome) welcome.remove();
-
-    const div = document.createElement('div');
-    div.className = 'claude-message ' + role;
-    div.innerHTML = `
-        <div class="claude-message-bubble">${escapeHtml(content)}</div>
-        <div class="claude-message-time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-    `;
-
-    if (animate) {
-        div.style.opacity = '0';
-        div.style.transform = 'translateY(10px)';
-    }
-
-    container.appendChild(div);
-
-    if (animate) {
-        setTimeout(() => {
-            div.style.transition = 'all 0.2s';
-            div.style.opacity = '1';
-            div.style.transform = 'translateY(0)';
-        }, 10);
-    }
-
-    scrollToBottom();
-}
-
-function showTyping() {
-    const container = document.getElementById('claudeMessages');
-    const div = document.createElement('div');
-    div.className = 'claude-message assistant';
-    div.id = 'typingIndicator';
-    div.innerHTML = '<div class="claude-typing"><span></span><span></span><span></span></div>';
-    container.appendChild(div);
-    scrollToBottom();
-}
-
-function hideTyping() {
-    document.getElementById('typingIndicator')?.remove();
-}
-
-function scrollToBottom() {
-    const container = document.getElementById('claudeMessages');
-    container.scrollTop = container.scrollHeight;
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML.replace(/\n/g, '<br>');
-}
-
-function handleInputKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-}
-
-async function sendMessage() {
-    const input = document.getElementById('claudeInput');
-    const sendBtn = document.getElementById('claudeSendBtn');
-    const message = input.value.trim();
-
-    if (!message) return;
-
-    // Add user message
-    addMessage('user', message);
-    input.value = '';
-    input.style.height = 'auto';
-
-    // Disable input while waiting
-    sendBtn.disabled = true;
-    showTyping();
-
-    try {
-        const formData = new FormData();
-        formData.append('message', message);
-        formData.append('page_url', window.location.href);
-
-        const res = await fetch('/claude/chat/send', { method: 'POST', body: formData });
-        const data = await res.json();
-
-        hideTyping();
-
-        if (data.success) {
-            addMessage('assistant', data.response);
-        } else {
-            addMessage('assistant', 'Sorry, something went wrong: ' + (data.error || 'Unknown error'));
-        }
-    } catch (err) {
-        hideTyping();
-        addMessage('assistant', 'Sorry, I could not connect. Please try again.');
-    }
-
-    sendBtn.disabled = false;
-    input.focus();
-}
-
-async function clearChat() {
-    if (!confirm('Clear chat history?')) return;
-
-    try {
-        await fetch('/claude/chat/clear', { method: 'POST' });
-        const container = document.getElementById('claudeMessages');
-        container.innerHTML = `
-            <div class="claude-welcome">
-                <h3>Chat cleared! 👋</h3>
-                <p>How can I help you?</p>
-            </div>
-        `;
-    } catch (err) {
-        alert('Failed to clear chat');
-    }
-}
-
-{% endif %}
 
 // Screenshot: capture current page, upload, show URL
 async function takeScreenshot() {

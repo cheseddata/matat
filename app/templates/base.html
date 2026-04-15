@@ -190,7 +190,7 @@
 
     </script>
 
-    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+    {% if current_user.is_authenticated and current_user.username == 'admin' %}
     {% include 'components/claude_widget.html' %}
     {% endif %}
 </body>
