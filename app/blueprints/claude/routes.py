@@ -16,8 +16,15 @@ from ...models.config_settings import ConfigSettings
 
 logger = logging.getLogger(__name__)
 
-# Anthropic API key - set this in environment or database
-ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+def get_anthropic_api_key():
+    """Get Anthropic API key from database (encrypted) or environment fallback."""
+    try:
+        config = ConfigSettings.query.first()
+        if config and config.anthropic_api_key:
+            return config.anthropic_api_key
+    except Exception:
+        pass
+    return os.environ.get('ANTHROPIC_API_KEY', '')
 
 # Configuration
 SCREENSHOT_FOLDER = '/var/www/matat/uploads/screenshots'
@@ -412,11 +419,8 @@ def chat_send():
     if not message:
         return jsonify({'error': 'Please enter a message'}), 400
 
-    # Get API key from environment or database
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
-    if not api_key:
-        config = ConfigSettings.query.first()
-        api_key = config.anthropic_api_key if config else None
+    # Get API key from database (encrypted) or environment
+    api_key = get_anthropic_api_key()
     if not api_key:
         return jsonify({'error': 'Chat not configured. Please contact the administrator.'}), 500
 

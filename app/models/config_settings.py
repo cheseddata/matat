@@ -77,11 +77,33 @@ class ConfigSettings(db.Model):
     yeshinvoice_enabled = db.Column(db.Boolean, default=False)
     yeshinvoice_default_doc_type = db.Column(db.String(50), default='receipt')
 
-    # Claude AI API key
-    anthropic_api_key = db.Column(db.String(255), nullable=True)
+    # Claude AI API key (encrypted)
+    _anthropic_api_key_enc = db.Column('anthropic_api_key', db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
+    @property
+    def anthropic_api_key(self):
+        """Decrypt and return the Anthropic API key."""
+        if not self._anthropic_api_key_enc:
+            return None
+        from ..utils.crypto import decrypt_value
+        decrypted = decrypt_value(self._anthropic_api_key_enc)
+        if decrypted is None:
+            # Might be stored unencrypted (legacy) - return as-is
+            return self._anthropic_api_key_enc
+        return decrypted
+
+    @anthropic_api_key.setter
+    def anthropic_api_key(self, value):
+        """Encrypt and store the Anthropic API key."""
+        if not value:
+            self._anthropic_api_key_enc = None
+            return
+        from ..utils.crypto import encrypt_value
+        encrypted = encrypt_value(value)
+        self._anthropic_api_key_enc = encrypted if encrypted else value
+
     def __repr__(self):
         return f'<ConfigSettings {self.org_name}>'
