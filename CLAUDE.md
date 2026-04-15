@@ -266,6 +266,33 @@ estimate_fee()        # Estimate processing fee
 ## Changelog
 
 
+### 2026-04-15
+- **ZTorm i18n:** Full English/Hebrew translation for all 17 ZTorm templates + base
+  - ~300 translation keys under `ztorm.*` namespace in en.json and he.json
+  - EN/עב language toggle button in ZTorm toolbar
+  - RTL/LTR Bootstrap switching based on language
+  - ZTorm base template uses `lang`/`text_dir` for direction
+- **Three New Payment Processors (built, not activated):**
+  - `CreditGuard (Hyp)` — XML API, leading Israeli gateway, tokenization, 3D Secure
+  - `Yaad (iCard)` — REST form-encoded, simplest API, popular with nonprofits
+  - `Pelecard` — JSON REST, 35+ year processor, standing orders
+  - All registered in `router.py`, support ILS/USD/EUR/GBP, charges, installments, refunds, tokens
+- **Encrypted AI API Keys:** Fernet encryption (AES) for all API keys in database
+  - Anthropic (Claude), OpenAI (ChatGPT), Google (Gemini) — all encrypted at rest
+  - `app/utils/crypto.py` with encrypt_value/decrypt_value derived from SECRET_KEY
+  - Admin Settings page: purple "AI API Keys" card with three password fields
+  - Keys never stored in code, .env, or environment variables
+- **Help Widget Redesign:**
+  - `admin` username → ttyd terminal (Claude Code direct access) + screenshot tools
+  - All other users → AI chat via API key (reads CLAUDE.md for context) + screenshot tools
+  - Ctrl+V paste screenshots from ANY screen (auto-opens widget, uploads, shows copyable URL)
+  - 📸 Screenshot button captures current page and uploads
+  - 📁 Upload button for file selection
+  - Widget appears on both Matat and ZTorm pages
+- **ZTorm ↔ Matat Toggle:** Orange "Matat" button in ZTorm toolbar, gold "ZTorm" in Matat nav
+- **Donor Model Fix:** Added missing relationships (addresses, phones, memorial_names, communications)
+- **Dashboard Fix:** Missing `in processor_breakdown` on for loop
+
 ### 2026-04-14 (ZTorm Integration)
 - **ZTorm Portal:** Full Access-lookalike donation management system integrated at 
   - Switchboard (main menu), Donor browser with search, Donor detail with 8 tabs
