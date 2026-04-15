@@ -804,7 +804,68 @@ def charge_card():
 
         installments = int(request.form.get('installments', 1))
 
-        # Step 1: Charge the card
+        # === STEP 1: SAVE DONOR INFO FIRST (before charging) ===
+        try:
+            donor_id = request.form.get('donor_id', type=int)
+            if donor_id:
+                donor = Donor.query.get(donor_id)
+            else:
+                donor = Donor(country='IL', language_pref='he')
+                db.session.add(donor)
+
+            # Collect form data
+            form_first = request.form.get('first_name', '').strip()
+            form_last = request.form.get('last_name', '').strip()
+            form_email = request.form.get('email', '').strip()
+            form_phone = request.form.get('phone', '').strip()
+            form_tz = request.form.get('tz', '').strip()
+            form_city = request.form.get('city', '').strip()
+            form_address = request.form.get('address', '').strip()
+            form_receipt_name = request.form.get('receipt_name', '').strip()
+
+            # Check if any info changed
+            changed_fields = []
+            if form_first and form_first != (donor.first_name or ''):
+                changed_fields.append(f'שם פרטי: {donor.first_name} → {form_first}')
+                donor.first_name = form_first
+            if form_last and form_last != (donor.last_name or ''):
+                changed_fields.append(f'שם משפחה: {donor.last_name} → {form_last}')
+                donor.last_name = form_last
+            if form_email and form_email != (donor.email or ''):
+                changed_fields.append(f'אימייל: {donor.email} → {form_email}')
+                donor.email = form_email
+            if form_phone and form_phone != (donor.phone or ''):
+                changed_fields.append(f'טלפון: {donor.phone} → {form_phone}')
+                donor.phone = form_phone
+            if form_tz and form_tz != (donor.teudat_zehut or ''):
+                changed_fields.append(f'ת.ז.: {donor.teudat_zehut} → {form_tz}')
+                donor.teudat_zehut = form_tz
+            if form_city and form_city != (donor.city or ''):
+                changed_fields.append(f'עיר: {donor.city} → {form_city}')
+                donor.city = form_city
+            if form_address and form_address != (donor.address_line1 or ''):
+                changed_fields.append(f'כתובת: {donor.address_line1} → {form_address}')
+                donor.address_line1 = form_address
+            if form_receipt_name and form_receipt_name != (donor.receipt_name or ''):
+                donor.receipt_name = form_receipt_name
+
+            # For new donors, set required fields
+            if not donor.first_name:
+                donor.first_name = form_first or 'Unknown'
+            if not donor.last_name:
+                donor.last_name = form_last or 'Unknown'
+
+            db.session.flush()
+
+            if changed_fields:
+                flash(f'פרטי תורם עודכנו: {", ".join(changed_fields[:3])}', 'info')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'שגיאה בשמירת פרטי תורם: {str(e)}', 'error')
+            return render_template('ztorm/charge_form.html', processors=processors)
+
+        # === STEP 2: CHARGE THE CARD ===
         result = proc.create_payment(
             amount=amount_cents,
             currency=currency,
@@ -815,39 +876,6 @@ def charge_card():
 
         if result['success']:
             try:
-                # Step 2: Find or create donor, and update with form corrections
-                donor_id = request.form.get('donor_id', type=int)
-                if donor_id:
-                    donor = Donor.query.get(donor_id)
-                else:
-                    donor = Donor(country='IL')
-                    db.session.add(donor)
-
-                # Always update donor with latest form data (user may have corrected info)
-                form_first = request.form.get('first_name', '').strip()
-                form_last = request.form.get('last_name', '').strip()
-                form_email = request.form.get('email', '').strip()
-                form_phone = request.form.get('phone', '').strip()
-                form_tz = request.form.get('tz', '').strip()
-                form_city = request.form.get('city', '').strip()
-                form_address = request.form.get('address', '').strip()
-
-                if form_first:
-                    donor.first_name = form_first
-                if form_last:
-                    donor.last_name = form_last
-                if form_email:
-                    donor.email = form_email
-                if form_phone:
-                    donor.phone = form_phone
-                if form_tz:
-                    donor.teudat_zehut = form_tz
-                if form_city:
-                    donor.city = form_city
-                if form_address:
-                    donor.address_line1 = form_address
-
-                db.session.flush()
 
                 # Step 3: Create donation record
                 donation = Donation(
