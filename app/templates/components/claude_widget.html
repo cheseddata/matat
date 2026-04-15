@@ -310,8 +310,8 @@
         <div class="claude-chat-header" id="claudeChatHeader">
             <div class="claude-chat-avatar">🤖</div>
             <div class="claude-chat-info">
-                <div class="name">{% if current_user.role == 'admin' %}Claude Code{% else %}Claude Assistant{% endif %}</div>
-                <div class="status">{% if current_user.role == 'admin' %}Developer Terminal{% else %}Here to help!{% endif %}</div>
+                <div class="name">{% if current_user.username == 'admin' %}Claude Code{% else %}Claude Assistant{% endif %}</div>
+                <div class="status">{% if current_user.username == 'admin' %}Developer Terminal{% else %}Here to help!{% endif %}</div>
             </div>
             <div class="claude-chat-controls">
                 <button onclick="toggleMaximize()" title="Maximize">⬜</button>
@@ -319,7 +319,7 @@
             </div>
         </div>
 
-        {% if current_user.role == 'admin' %}
+        {% if current_user.username == 'admin' %}
         <!-- Admin: Terminal (ttyd) + Screenshots -->
         <div class="claude-chat-body" style="flex:1; background:#1a1a2e;">
             <iframe id="claudeFrame" src="" style="width:100%;height:100%;border:none;" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
@@ -368,7 +368,7 @@ window.toggleClaudeChat = function() {
     } else {
         chatBox.classList.add('open');
         btn.style.display = 'none';
-        {% if current_user.role == 'admin' %}
+        {% if current_user.username == 'admin' %}
         var frame = document.getElementById('claudeFrame');
         if (frame && (!frame.src || frame.src === 'about:blank' || frame.src === '')) {
             frame.src = '/help';
