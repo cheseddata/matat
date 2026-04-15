@@ -472,6 +472,21 @@
                 </div>
             </div>
 
+            <!-- Claude AI API Key (Encrypted) -->
+            <div class="settings-card" id="claude-settings" style="border: 2px solid #9b59b6;">
+                <h2 style="color: #9b59b6;">Claude AI API Key</h2>
+                <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
+                    Stored encrypted in the database. Never saved in plain text.
+                </p>
+                <div class="form-group">
+                    <label for="anthropic_api_key">API Key</label>
+                    <input type="password" name="anthropic_api_key" id="anthropic_api_key"
+                           value="{{ '••••••••' if config.anthropic_api_key else '' }}"
+                           placeholder="sk-ant-...">
+                    <small style="color: #999;">Enter a new key to replace the existing one. Leave as •••• to keep current.</small>
+                </div>
+            </div>
+
             <!-- YeshInvoice Settings -->
             <div class="settings-card" id="yeshinvoice-settings" style="border: 2px solid #2ecc71;">
                 <h2 style="color: #2ecc71;">YeshInvoice (Israeli Invoicing)</h2>
