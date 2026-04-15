@@ -1351,10 +1351,18 @@ def settings():
         config.activetrail_from_email = request.form.get('activetrail_from_email', '').strip() or None
         config.activetrail_from_name = request.form.get('activetrail_from_name', '').strip() or None
 
-        # Claude AI API key (encrypted in DB)
+        # AI API keys (encrypted in DB)
         anthropic_key = request.form.get('anthropic_api_key', '').strip()
         if anthropic_key and anthropic_key != '••••••••':
             config.anthropic_api_key = anthropic_key
+
+        openai_key = request.form.get('openai_api_key', '').strip()
+        if openai_key and openai_key != '••••••••':
+            config.openai_api_key = openai_key
+
+        google_key = request.form.get('google_api_key', '').strip()
+        if google_key and google_key != '••••••••':
+            config.google_api_key = google_key
 
         # YeshInvoice settings
         config.yeshinvoice_enabled = request.form.get('yeshinvoice_enabled') == 'on'

@@ -450,6 +450,14 @@ def chat_send():
                 'content': msg.content
             })
 
+        # Load CLAUDE.md for system knowledge
+        claude_md_content = ''
+        try:
+            with open('/var/www/matat/CLAUDE.md', 'r') as f:
+                claude_md_content = f.read()
+        except Exception:
+            pass
+
         # Build system prompt with user context
         user_notes = current_user.claude_notes or ''
         system_prompt = f"""You are a helpful assistant for the Matat Mordechai donation management system.
@@ -466,7 +474,10 @@ GUIDELINES:
 - If the user needs a fix or has a bug, help them if you can explain how to work around it
 - For new feature requests or development work, let them know you'll pass it to Menachem Kantor (the developer)
 - Keep responses concise but complete
-- If you don't know something about the system, say so honestly"""
+- If you don't know something about the system, say so honestly
+
+SYSTEM DOCUMENTATION:
+{claude_md_content}"""
 
         # Call Claude API
         client = anthropic.Anthropic(api_key=api_key)

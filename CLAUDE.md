@@ -388,6 +388,15 @@ estimate_fee()        # Estimate processing fee
   - Added `/admin/settings/test-yeshinvoice` API endpoint for connection testing
   - Disabled by default; not wired into any donation flow
 
+### 2026-04-15
+- **AI API Keys:** Added encrypted OpenAI and Google API key fields to ConfigSettings model (same encrypt/decrypt pattern as Anthropic key)
+  - New columns: `openai_api_key`, `google_api_key` with property getters/setters
+  - Renamed settings card from "Claude AI API Key" to "AI API Keys" with all three providers
+  - Admin routes updated to save new keys with masked value check
+- **Chat Widget System Context:** Chat widget now loads CLAUDE.md as system documentation context, so the assistant knows all system features
+- **ZTorm Widget:** Claude chat widget now included in ZTorm base template for all authenticated users
+- **ZTorm-Matat Toggle:** Added "Matat" toggle button in ZTorm toolbar to switch back to main app
+
 ### 2026-04-09
 - **Server Migration:** Migrated from compromised server (`/root/matat`) to new server (`/var/www/matat`, IP 178.128.83.220)
   - Security audit: all MD files and codebase scanned for compromise — clean

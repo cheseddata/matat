@@ -472,18 +472,32 @@
                 </div>
             </div>
 
-            <!-- Claude AI API Key (Encrypted) -->
-            <div class="settings-card" id="claude-settings" style="border: 2px solid #9b59b6;">
-                <h2 style="color: #9b59b6;">Claude AI API Key</h2>
+            <!-- AI API Keys (Encrypted) -->
+            <div class="settings-card" id="ai-keys-settings" style="border: 2px solid #9b59b6;">
+                <h2 style="color: #9b59b6;">AI API Keys</h2>
                 <p style="color: #666; font-size: 13px; margin-bottom: 15px;">
-                    Stored encrypted in the database. Never saved in plain text.
+                    All keys are stored encrypted in the database. Never saved in plain text.
                 </p>
                 <div class="form-group">
-                    <label for="anthropic_api_key">API Key</label>
+                    <label for="anthropic_api_key">Anthropic (Claude) API Key</label>
                     <input type="password" name="anthropic_api_key" id="anthropic_api_key"
                            value="{{ '••••••••' if config.anthropic_api_key else '' }}"
                            placeholder="sk-ant-...">
-                    <small style="color: #999;">Enter a new key to replace the existing one. Leave as •••• to keep current.</small>
+                    <small style="color: #999;">Enter a new key to replace the existing one. Leave as &bull;&bull;&bull;&bull; to keep current.</small>
+                </div>
+                <div class="form-group">
+                    <label for="openai_api_key">OpenAI (ChatGPT) API Key</label>
+                    <input type="password" name="openai_api_key" id="openai_api_key"
+                           value="{{ '••••••••' if config.openai_api_key else '' }}"
+                           placeholder="sk-...">
+                    <small style="color: #999;">Enter a new key to replace the existing one. Leave as &bull;&bull;&bull;&bull; to keep current.</small>
+                </div>
+                <div class="form-group">
+                    <label for="google_api_key">Google AI (Gemini) API Key</label>
+                    <input type="password" name="google_api_key" id="google_api_key"
+                           value="{{ '••••••••' if config.google_api_key else '' }}"
+                           placeholder="AIza...">
+                    <small style="color: #999;">Enter a new key to replace the existing one. Leave as &bull;&bull;&bull;&bull; to keep current.</small>
                 </div>
             </div>
 

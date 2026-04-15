@@ -77,8 +77,10 @@ class ConfigSettings(db.Model):
     yeshinvoice_enabled = db.Column(db.Boolean, default=False)
     yeshinvoice_default_doc_type = db.Column(db.String(50), default='receipt')
 
-    # Claude AI API key (encrypted)
+    # AI API keys (encrypted)
     _anthropic_api_key_enc = db.Column('anthropic_api_key', db.Text, nullable=True)
+    _openai_api_key_enc = db.Column('openai_api_key', db.Text, nullable=True)
+    _google_api_key_enc = db.Column('google_api_key', db.Text, nullable=True)
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -104,6 +106,48 @@ class ConfigSettings(db.Model):
         from ..utils.crypto import encrypt_value
         encrypted = encrypt_value(value)
         self._anthropic_api_key_enc = encrypted if encrypted else value
+
+    @property
+    def openai_api_key(self):
+        """Decrypt and return the OpenAI API key."""
+        if not self._openai_api_key_enc:
+            return None
+        from ..utils.crypto import decrypt_value
+        decrypted = decrypt_value(self._openai_api_key_enc)
+        if decrypted is None:
+            return self._openai_api_key_enc
+        return decrypted
+
+    @openai_api_key.setter
+    def openai_api_key(self, value):
+        """Encrypt and store the OpenAI API key."""
+        if not value:
+            self._openai_api_key_enc = None
+            return
+        from ..utils.crypto import encrypt_value
+        encrypted = encrypt_value(value)
+        self._openai_api_key_enc = encrypted if encrypted else value
+
+    @property
+    def google_api_key(self):
+        """Decrypt and return the Google API key."""
+        if not self._google_api_key_enc:
+            return None
+        from ..utils.crypto import decrypt_value
+        decrypted = decrypt_value(self._google_api_key_enc)
+        if decrypted is None:
+            return self._google_api_key_enc
+        return decrypted
+
+    @google_api_key.setter
+    def google_api_key(self, value):
+        """Encrypt and store the Google API key."""
+        if not value:
+            self._google_api_key_enc = None
+            return
+        from ..utils.crypto import encrypt_value
+        encrypted = encrypt_value(value)
+        self._google_api_key_enc = encrypted if encrypted else value
 
     def __repr__(self):
         return f'<ConfigSettings {self.org_name}>'

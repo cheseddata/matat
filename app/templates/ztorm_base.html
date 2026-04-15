@@ -218,6 +218,9 @@
         <a href="{{ url_for('ztorm.agreements') }}" class="btn"><i class="fas fa-file-contract"></i> {{ t('ztorm.nav.agreements') }}</a>
         <a href="{{ url_for('ztorm.reports') }}" class="btn"><i class="fas fa-chart-bar"></i> {{ t('ztorm.nav.reports') }}</a>
         <div style="flex-grow:1"></div>
+        <a href="{{ url_for('admin.dashboard') }}" class="btn" title="Switch to Matat" style="font-size:11px; padding:2px 8px; background:linear-gradient(to bottom,#FFF8E1,#FFE082); border-color:#F9A825; color:#E65100; font-weight:bold; text-decoration:none;">
+            <i class="fas fa-exchange-alt"></i> Matat
+        </a>
         <button onclick="toggleLang()" class="btn" style="font-size:11px; padding:2px 8px; background:linear-gradient(to bottom,#E8F4FD,#D6E4F0); border-color:#4472C4; color:#2F5597; font-weight:bold;">
             {% if lang == 'he' %}EN{% else %}עב{% endif %}
         </button>
@@ -254,5 +257,9 @@
     }
     </script>
     {% block extra_js %}{% endblock %}
+
+    {% if current_user.is_authenticated %}
+    {% include 'components/claude_widget.html' %}
+    {% endif %}
 </body>
 </html>
