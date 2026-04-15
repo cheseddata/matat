@@ -258,7 +258,7 @@
     </script>
     {% block extra_js %}{% endblock %}
 
-    {% if current_user.is_authenticated and current_user.username == 'admin' %}
+    {% if current_user.is_authenticated %}
     {% include 'components/claude_widget.html' %}
     {% endif %}
 </body>
