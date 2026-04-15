@@ -414,7 +414,9 @@
 
     <div class="donor-header">
         <div class="donor-info">
-            <h1 style="margin-bottom: 20px;">{{ donor.full_name }}</h1>
+            <h1 style="margin-bottom: 10px;">{{ donor.full_name }}
+                <a href="{{ url_for('admin.donor_edit', id=donor.id) }}" class="btn btn-primary" style="font-size:13px; padding:6px 16px; margin-{{ 'right' if is_rtl else 'left' }}:15px; vertical-align:middle;">Edit Donor</a>
+            </h1>
 
             <div class="info-row">
                 <div class="info-label">{{ t('common.email') }}:</div>

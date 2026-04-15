@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}Edit Donor - {{ donor.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .edit-container { max-width: 700px; margin: 20px auto; }
+    .edit-card {
+        background: white; border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        padding: 25px; margin-bottom: 20px;
+    }
+    .edit-card h3 {
+        margin: 0 0 18px; padding-bottom: 10px;
+        border-bottom: 1px solid #eee; color: #2c3e50;
+    }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+    .field-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+    .field-row.single { grid-template-columns: 1fr; }
+    .field-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; color: #555; }
+    .field-group input, .field-group select {
+        width: 100%; padding: 10px 12px; border: 1px solid #ddd;
+        border-radius: 6px; font-size: 14px;
+    }
+    .field-group input:focus, .field-group select:focus { border-color: #3498db; outline: none; }
+    .btn-bar { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-save { padding: 12px 30px; background: #27ae60; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .btn-save:hover { background: #219a52; }
+    .btn-cancel { padding: 12px 30px; background: #95a5a6; color: white; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; text-decoration: none; }
+    @media (max-width: 600px) { .field-row, .field-row.triple { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <a href="{{ url_for('admin.donor_detail', id=donor.id) }}" style="color:#3498db; text-decoration:none; font-size:14px;">&larr; Back to {{ donor.full_name }}</a>
+
+    <h1 style="margin: 15px 0;">Edit Donor #{{ donor.id }}</h1>
+
+    <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="edit-card">
+            <h3>Personal Details</h3>
+            <div class="field-row triple">
+                <div class="field-group">
+                    <label>Title</label>
+                    <input type="text" name="title" value="{{ donor.title or '' }}" placeholder="Mr., Mrs., Rabbi...">
+                </div>
+                <div class="field-group">
+                    <label>First Name *</label>
+                    <input type="text" name="first_name" value="{{ donor.first_name }}" required>
+                </div>
+                <div class="field-group">
+                    <label>Last Name *</label>
+                    <input type="text" name="last_name" value="{{ donor.last_name }}" required>
+                </div>
+            </div>
+            <div class="field-row triple">
+                <div class="field-group">
+                    <label>Suffix</label>
+                    <input type="text" name="suffix" value="{{ donor.suffix or '' }}">
+                </div>
+                <div class="field-group">
+                    <label>Spouse Name</label>
+                    <input type="text" name="spouse_name" value="{{ donor.spouse_name or '' }}">
+                </div>
+                <div class="field-group">
+                    <label>Teudat Zehut (ID)</label>
+                    <input type="text" name="teudat_zehut" value="{{ donor.teudat_zehut or '' }}" maxlength="9">
+                </div>
+            </div>
+        </div>
+
+        <div class="edit-card">
+            <h3>Contact</h3>
+            <div class="field-row">
+                <div class="field-group">
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ donor.email or '' }}">
+                </div>
+                <div class="field-group">
+                    <label>Phone</label>
+                    <input type="tel" name="phone" value="{{ donor.phone or '' }}">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field-group">
+                    <label>Language</label>
+                    <select name="language_pref">
+                        <option value="en" {{ 'selected' if donor.language_pref == 'en' }}>English</option>
+                        <option value="he" {{ 'selected' if donor.language_pref == 'he' }}>Hebrew</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="edit-card">
+            <h3>Address</h3>
+            <div class="field-row single">
+                <div class="field-group">
+                    <label>Address Line 1</label>
+                    <input type="text" name="address_line1" value="{{ donor.address_line1 or '' }}">
+                </div>
+            </div>
+            <div class="field-row single">
+                <div class="field-group">
+                    <label>Address Line 2</label>
+                    <input type="text" name="address_line2" value="{{ donor.address_line2 or '' }}">
+                </div>
+            </div>
+            <div class="field-row triple">
+                <div class="field-group">
+                    <label>City</label>
+                    <input type="text" name="city" value="{{ donor.city or '' }}">
+                </div>
+                <div class="field-group">
+                    <label>State</label>
+                    <input type="text" name="state" value="{{ donor.state or '' }}">
+                </div>
+                <div class="field-group">
+                    <label>Zip</label>
+                    <input type="text" name="zip" value="{{ donor.zip or '' }}">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field-group">
+                    <label>Country</label>
+                    <select name="country">
+                        <option value="US" {{ 'selected' if donor.country == 'US' }}>United States</option>
+                        <option value="IL" {{ 'selected' if donor.country == 'IL' }}>Israel</option>
+                        <option value="CA" {{ 'selected' if donor.country == 'CA' }}>Canada</option>
+                        <option value="GB" {{ 'selected' if donor.country == 'GB' }}>United Kingdom</option>
+                        <option value="AU" {{ 'selected' if donor.country == 'AU' }}>Australia</option>
+                        <option value="FR" {{ 'selected' if donor.country == 'FR' }}>France</option>
+                        <option value="DE" {{ 'selected' if donor.country == 'DE' }}>Germany</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-bar">
+            <button type="submit" class="btn-save">Save Changes</button>
+            <a href="{{ url_for('admin.donor_detail', id=donor.id) }}" class="btn-cancel">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

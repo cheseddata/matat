@@ -1148,6 +1148,37 @@ def donor_detail(id):
     )
 
 
+@admin_bp.route('/donors/<int:id>/edit', methods=['GET', 'POST'])
+@admin_required
+def donor_edit(id):
+    """Edit donor information."""
+    donor = Donor.query.get_or_404(id)
+
+    if request.method == 'POST':
+        donor.first_name = request.form.get('first_name', donor.first_name).strip()
+        donor.last_name = request.form.get('last_name', donor.last_name).strip()
+        donor.email = request.form.get('email', donor.email).strip() or None
+        donor.phone = request.form.get('phone', '').strip() or None
+        donor.teudat_zehut = request.form.get('teudat_zehut', '').strip() or None
+        donor.address_line1 = request.form.get('address_line1', '').strip() or None
+        donor.address_line2 = request.form.get('address_line2', '').strip() or None
+        donor.city = request.form.get('city', '').strip() or None
+        donor.state = request.form.get('state', '').strip() or None
+        donor.zip = request.form.get('zip', '').strip() or None
+        donor.country = request.form.get('country', 'US').strip()
+        donor.language_pref = request.form.get('language_pref', 'en')
+        donor.title = request.form.get('title', '').strip() or None
+        donor.suffix = request.form.get('suffix', '').strip() or None
+        donor.spouse_name = request.form.get('spouse_name', '').strip() or None
+
+        db.session.commit()
+        logger.info(f'[admin] Donor {donor.id} edited by admin {current_user.id}')
+        flash(f'Donor {donor.full_name} updated.', 'success')
+        return redirect(url_for('admin.donor_detail', id=donor.id))
+
+    return render_template('admin/donor_edit.html', donor=donor)
+
+
 @admin_bp.route('/donors/<int:id>/toggle-test', methods=['POST'])
 @admin_required
 def toggle_donor_test(id):
