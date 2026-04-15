@@ -254,15 +254,15 @@
                     <span style="color: #999;">{{ t('common.unknown') }}</span>
                     {% endif %}
                 </td>
-                <td>${{ "%.2f"|format(commission.donation_amount_dollars) }}</td>
+                <td>{% if (commission.donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(commission.donation_amount_dollars) }}</td>
                 <td>
                     {% if commission.commission_type == 'percentage' %}
                     {{ commission.commission_rate }}%
                     {% else %}
-                    ${{ "%.2f"|format(commission.commission_rate) }} flat
+                    {% if (commission.donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(commission.commission_rate) }} flat
                     {% endif %}
                 </td>
-                <td><strong>${{ "%.2f"|format(commission.commission_amount_dollars) }}</strong></td>
+                <td><strong>{% if (commission.donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(commission.commission_amount_dollars) }}</strong></td>
                 <td><span class="status-badge {{ commission.status }}">{{ commission.status|capitalize }}</span></td>
                 <td>
                     {% if commission.paid_date %}

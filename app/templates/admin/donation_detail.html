@@ -156,7 +156,7 @@
         <div class="detail-card">
             <h2>{{ t('my_commissions.donation') }} #{{ donation.id }}</h2>
 
-            <div class="amount-large">${{ "%.2f"|format(donation.amount_dollars) }}</div>
+            <div class="amount-large">{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.amount_dollars) }}</div>
             <span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span>
 
             <div style="margin-top: 25px;">
@@ -178,19 +178,19 @@
                 {% if donation.stripe_fee %}
                 <div class="detail-row">
                     <div class="detail-label">{{ t('common.stripe_fee') }}</div>
-                    <div class="detail-value">${{ "%.2f"|format(donation.stripe_fee_dollars) }}</div>
+                    <div class="detail-value">{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.stripe_fee_dollars) }}</div>
                 </div>
 
                 <div class="detail-row">
                     <div class="detail-label">{{ t('common.net_amount') }}</div>
-                    <div class="detail-value">${{ "%.2f"|format(donation.amount_dollars - donation.stripe_fee_dollars) }}</div>
+                    <div class="detail-value">{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.amount_dollars - donation.stripe_fee_dollars) }}</div>
                 </div>
                 {% endif %}
 
                 {% if donation.status == 'refunded' and donation.refund_amount %}
                 <div class="detail-row">
                     <div class="detail-label">{{ t('common.refund_amount') }}</div>
-                    <div class="detail-value" style="color: #e74c3c;">${{ "%.2f"|format(donation.refund_amount / 100) }}</div>
+                    <div class="detail-value" style="color: #e74c3c;">{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.refund_amount / 100) }}</div>
                 </div>
                 {% endif %}
             </div>

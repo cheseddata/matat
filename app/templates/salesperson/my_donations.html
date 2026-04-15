@@ -196,9 +196,9 @@
                         {% endif %}
                     </td>
                     <td>
-                        <strong>${{ "%.2f"|format(donation.amount_dollars) }}</strong>
+                        <strong>{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.amount_dollars) }}</strong>
                         {% if donation.stripe_fee %}
-                        <br><span style="font-size: 11px; color: #999;">{{ t('common.fee') }}: ${{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
+                        <br><span style="font-size: 11px; color: #999;">{{ t('common.fee') }}: {% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.stripe_fee_dollars) }}</span>
                         {% endif %}
                     </td>
                     <td>
@@ -217,7 +217,7 @@
                         </span>
                         {% if donation.status == 'refunded' and donation.refund_amount %}
                         <br><span style="font-size: 11px; color: #666;">
-                            {{ t('common.refunded') }}: ${{ "%.2f"|format(donation.refund_amount / 100) }}
+                            {{ t('common.refunded') }}: {% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.refund_amount / 100) }}
                         </span>
                         {% endif %}
                     </td>

@@ -296,7 +296,7 @@
                     {% for d in donations %}
                     <tr>
                         <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td>${{ "%.2f"|format(d.amount / 100) }}</td>
+                        <td>{% if (d.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(d.amount / 100) }}</td>
                         <td>{{ d.donation_type | replace('_', ' ') | title }}</td>
                         <td>
                             <span class="status-badge {{ d.status }}">{{ d.status | title }}</span>

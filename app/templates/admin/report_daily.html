@@ -198,9 +198,9 @@
                         <span style="color: #999;">{{ t('common.unknown') }}</span>
                         {% endif %}
                     </td>
-                    <td><strong>${{ "%.2f"|format(donation.amount_dollars) }}</strong></td>
-                    <td>${{ "%.2f"|format(donation.stripe_fee_dollars) }}</td>
-                    <td>${{ "%.2f"|format(donation.amount_dollars - donation.stripe_fee_dollars) }}</td>
+                    <td><strong>{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.amount_dollars) }}</strong></td>
+                    <td>{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.stripe_fee_dollars) }}</td>
+                    <td>{% if (donation.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(donation.amount_dollars - donation.stripe_fee_dollars) }}</td>
                     <td>
                         {% if donation.salesperson %}
                         {{ donation.salesperson.full_name }}
