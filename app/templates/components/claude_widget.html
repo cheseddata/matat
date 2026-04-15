@@ -283,45 +283,12 @@
     font-size: 14px;
 }
 
-/* Developer terminal mode */
-.claude-chat-box.developer-mode {
-    height: 600px;
-}
-
-.claude-chat-body {
-    flex: 1;
-    background: #1a1a2e;
-}
-
-.claude-chat-body iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-}
-
-.claude-chat-footer {
-    padding: 8px 12px;
-    background: #f5f5f5;
-    border-top: 1px solid #e0e0e0;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-}
-
-.claude-screenshot-btn {
-    padding: 5px 10px;
-    background: #3498db;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 11px;
-}
-
+/* Upload status */
 .claude-upload-status {
-    flex: 1;
     font-size: 11px;
     color: #666;
+    padding: 0 12px 8px;
+    min-height: 16px;
 }
 
 @media (max-width: 500px) {
@@ -339,12 +306,12 @@
         💬
     </button>
 
-    <div class="claude-chat-box {% if current_user.username == 'admin' %}developer-mode{% endif %}" id="claudeChatBox">
+    <div class="claude-chat-box" id="claudeChatBox">
         <div class="claude-chat-header" id="claudeChatHeader">
             <div class="claude-chat-avatar">🤖</div>
             <div class="claude-chat-info">
                 <div class="name">Claude Assistant</div>
-                <div class="status">{% if current_user.username == 'admin' %}Developer Mode{% else %}Here to help!{% endif %}</div>
+                <div class="status">Here to help!</div>
             </div>
             <div class="claude-chat-controls">
                 <button onclick="toggleMaximize()" title="Maximize">⬜</button>
@@ -352,43 +319,47 @@
             </div>
         </div>
 
-        {% if current_user.username == 'admin' %}
-        <!-- Developer: Terminal -->
-        <div class="claude-chat-body">
-            <iframe id="claudeFrame" src="/help" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
-        </div>
-        <div class="claude-chat-footer">
-            <button class="claude-screenshot-btn" onclick="captureScreen()">🐛 Report</button>
-            <button class="claude-screenshot-btn" onclick="document.getElementById('claudeFileInput').click()" style="background:#9b59b6">📁 Upload</button>
-            <input type="file" id="claudeFileInput" accept="image/*" style="display:none" onchange="uploadFile(this)">
-            <div class="claude-upload-status" id="claudeUploadStatus"></div>
-        </div>
-        {% else %}
-        <!-- Users: Live Chat -->
+        {% if current_user.role == 'admin' %}
+        <!-- Admin: Chat + Screenshots -->
         <div class="claude-messages" id="claudeMessages">
             <div class="claude-welcome">
                 <h3>Hi {{ current_user.first_name or current_user.username }}! 👋</h3>
-                <p>How can I help you today?<br>Just type your question below.</p>
+                <p>Ask me anything about the system.<br>Ctrl+V to paste a screenshot.</p>
             </div>
         </div>
         <div class="claude-input-area">
             <div class="claude-input-row">
                 <div class="claude-input-wrapper">
-                    <textarea class="claude-input" id="claudeInput" placeholder="Type your message..." rows="1" onkeydown="handleInputKey(event)"></textarea>
+                    <textarea class="claude-input" id="claudeInput" placeholder="Type your message... (Ctrl+V to paste screenshot)" rows="1" onkeydown="handleInputKey(event)"></textarea>
                 </div>
                 <button class="claude-send-btn" id="claudeSendBtn" onclick="sendMessage()">➤</button>
             </div>
             <div class="claude-input-actions">
-                <button class="claude-action-btn" onclick="captureAndAsk()">📸 Screenshot</button>
+                <button class="claude-action-btn" onclick="takeScreenshot()">📸 Screenshot</button>
+                <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()">📁 Upload</button>
                 <button class="claude-action-btn" onclick="clearChat()">🗑️ Clear</button>
+                <input type="file" id="claudeFileInput" accept="image/*" style="display:none" onchange="uploadFileWidget(this)">
+            </div>
+            <div class="claude-upload-status" id="claudeUploadStatus"></div>
+        </div>
+        {% else %}
+        <!-- Non-admin: Screenshots only -->
+        <div style="padding: 20px; text-align: center; flex: 1; display: flex; flex-direction: column; justify-content: center; background: #f8f9fa;">
+            <div style="font-size: 48px; margin-bottom: 10px;">📸</div>
+            <h3 style="margin: 0 0 8px;">Screenshot Tool</h3>
+            <p style="color: #666; font-size: 13px; margin: 0 0 15px;">Capture or paste (Ctrl+V) a screenshot to share with the admin.</p>
+            <div style="display: flex; gap: 8px; justify-content: center;">
+                <button class="claude-action-btn" onclick="takeScreenshot()" style="padding: 8px 16px;">📸 Take Screenshot</button>
+                <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()" style="padding: 8px 16px;">📁 Upload File</button>
+                <input type="file" id="claudeFileInput" accept="image/*" style="display:none" onchange="uploadFileWidget(this)">
             </div>
         </div>
+        <div class="claude-upload-status" id="claudeUploadStatus"></div>
         {% endif %}
     </div>
 </div>
 
 <script>
-const isDeveloper = {{ 'true' if current_user.username == 'admin' else 'false' }};
 const chatBox = document.getElementById('claudeChatBox');
 const btn = document.getElementById('claudeWidgetBtn');
 
@@ -399,15 +370,8 @@ window.toggleClaudeChat = function() {
     } else {
         chatBox.classList.add('open');
         btn.style.display = 'none';
-        if (!isDeveloper) {
-            loadChatHistory();
-            document.getElementById('claudeInput')?.focus();
-        } else {
-            const frame = document.getElementById('claudeFrame');
-            if (frame && (!frame.src || frame.src === 'about:blank')) {
-                frame.src = '/help';
-            }
-        }
+        if (typeof loadChatHistory === 'function') loadChatHistory();
+        if (document.getElementById('claudeInput')) document.getElementById('claudeInput').focus();
     }
 };
 
@@ -439,8 +403,8 @@ document.addEventListener('mousemove', function(e) {
 });
 document.addEventListener('mouseup', function() { isDragging = false; });
 
-{% if current_user.username != 'admin' %}
-// Chat functions
+{% if current_user.role == 'admin' %}
+// Chat functions (admin only)
 async function loadChatHistory() {
     try {
         const res = await fetch('/claude/chat/history');
@@ -578,8 +542,12 @@ async function clearChat() {
     }
 }
 
-async function captureAndAsk() {
-    const input = document.getElementById('claudeInput');
+{% endif %}
+
+// Screenshot: capture current page, upload, show URL
+async function takeScreenshot() {
+    const status = document.getElementById('claudeUploadStatus');
+    status.textContent = 'Capturing...';
     chatBox.style.display = 'none';
 
     try {
@@ -587,72 +555,42 @@ async function captureAndAsk() {
         chatBox.style.display = 'flex';
         chatBox.classList.add('open');
 
-        // Upload screenshot
         const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
         const form = new FormData();
         form.append('file', blob, 'screenshot.png');
+        form.append('description', 'Page: ' + location.href);
 
+        status.textContent = 'Uploading...';
         const res = await fetch('/claude/screenshot/upload', { method: 'POST', body: form });
         const data = await res.json();
 
         if (data.success) {
-            input.value = '[Screenshot attached]\n';
-            input.focus();
-            input.setSelectionRange(input.value.length, input.value.length);
+            const fullUrl = window.location.origin + data.url;
+            status.innerHTML = '✓ <a href="' + data.url + '" target="_blank" style="color:#3498db">' + data.filename + '</a> <span style="cursor:pointer;color:#27ae60" onclick="navigator.clipboard.writeText(\'' + fullUrl + '\');this.textContent=\'Copied!\'">[Copy URL]</span>';
+        } else {
+            status.textContent = 'Error: ' + (data.error || 'Upload failed');
         }
     } catch (err) {
         chatBox.style.display = 'flex';
         chatBox.classList.add('open');
-        alert('Screenshot failed: ' + err.message);
-    }
-}
-{% endif %}
-
-// Developer functions
-{% if current_user.username == 'admin' %}
-async function captureScreen() {
-    const issue = prompt('What is the issue?');
-    if (!issue) return;
-
-    const status = document.getElementById('claudeUploadStatus');
-    chatBox.style.display = 'none';
-
-    try {
-        const canvas = await html2canvas(document.body, { useCORS: true });
-        chatBox.style.display = 'flex';
-        chatBox.classList.add('open');
-
-        canvas.toBlob(async blob => {
-            const form = new FormData();
-            form.append('file', blob, 'screenshot.png');
-            form.append('description', 'Page: ' + location.href + '\n\nIssue: ' + issue);
-
-            const res = await fetch('/claude/screenshot/upload', { method: 'POST', body: form });
-            const data = await res.json();
-            status.textContent = data.success ? '✓ Uploaded' : 'Error';
-        }, 'image/png');
-    } catch (err) {
-        chatBox.style.display = 'flex';
         status.textContent = 'Error: ' + err.message;
     }
 }
 
-function uploadFile(input) {
+// Upload file
+function uploadFileWidget(input) {
     if (!input.files.length) return;
+    const status = document.getElementById('claudeUploadStatus');
+    status.textContent = 'Uploading...';
+
     const form = new FormData();
     form.append('file', input.files[0]);
     fetch('/claude/screenshot/upload', { method: 'POST', body: form })
         .then(r => r.json())
         .then(d => {
-            const status = document.getElementById('claudeUploadStatus');
             if (d.success) {
                 const fullUrl = window.location.origin + d.url;
-                status.innerHTML = '<a href="' + d.url + '" target="_blank">' + fullUrl + '</a>';
-                status.onclick = () => {
-                    navigator.clipboard.writeText(fullUrl);
-                    status.textContent = 'Copied!';
-                    setTimeout(() => { status.innerHTML = '<a href="' + d.url + '" target="_blank">' + fullUrl + '</a>'; }, 1500);
-                };
+                status.innerHTML = '✓ <a href="' + d.url + '" target="_blank" style="color:#3498db">' + d.filename + '</a> <span style="cursor:pointer;color:#27ae60" onclick="navigator.clipboard.writeText(\'' + fullUrl + '\');this.textContent=\'Copied!\'">[Copy URL]</span>';
             } else {
                 status.textContent = 'Error';
             }
@@ -660,20 +598,28 @@ function uploadFile(input) {
     input.value = '';
 }
 
-// Paste screenshot handling (Ctrl+V)
+// Ctrl+V paste screenshot from clipboard (works on any screen)
 document.addEventListener('paste', async function(e) {
-    if (!chatBox.classList.contains('open')) return;
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
 
-    const items = e.clipboardData.items;
-    for (let item of items) {
-        if (item.type.indexOf('image') !== -1) {
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
             e.preventDefault();
-            const file = item.getAsFile();
+            const file = items[i].getAsFile();
             const status = document.getElementById('claudeUploadStatus');
-            status.textContent = 'Uploading...';
+
+            // Open widget if not open
+            if (!chatBox.classList.contains('open')) {
+                chatBox.classList.add('open');
+                btn.style.display = 'none';
+            }
+
+            status.textContent = 'Uploading pasted image...';
 
             const form = new FormData();
             form.append('file', file, 'pasted-image.png');
+            form.append('description', 'Pasted from: ' + location.href);
 
             try {
                 const res = await fetch('/claude/screenshot/upload', { method: 'POST', body: form });
@@ -681,12 +627,7 @@ document.addEventListener('paste', async function(e) {
 
                 if (data.success) {
                     const fullUrl = window.location.origin + data.url;
-                    status.innerHTML = '<a href="' + data.url + '" target="_blank">' + fullUrl + '</a> (click to copy)';
-                    status.onclick = () => {
-                        navigator.clipboard.writeText(fullUrl);
-                        status.textContent = 'Copied!';
-                        setTimeout(() => { status.innerHTML = '<a href="' + data.url + '" target="_blank">' + fullUrl + '</a>'; }, 1500);
-                    };
+                    status.innerHTML = '✓ <a href="' + data.url + '" target="_blank" style="color:#3498db">' + data.filename + '</a> <span style="cursor:pointer;color:#27ae60" onclick="navigator.clipboard.writeText(\'' + fullUrl + '\');this.textContent=\'Copied!\'">[Copy URL]</span>';
                 } else {
                     status.textContent = 'Error: ' + (data.error || 'Upload failed');
                 }
@@ -697,5 +638,4 @@ document.addEventListener('paste', async function(e) {
         }
     }
 });
-{% endif %}
 </script>
