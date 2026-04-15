@@ -321,7 +321,7 @@
 
         {% if current_user.username == 'admin' %}
         <!-- Admin: Terminal (ttyd) -->
-        <div style="flex:1; background:#1a1a2e; overflow:hidden;">
+        <div style="flex:1; min-height:0; background:#1a1a2e; overflow:hidden;">
             <iframe id="claudeFrame" src="/help" style="width:100%;height:100%;border:none;"></iframe>
         </div>
         {% else %}
@@ -343,15 +343,15 @@
         {% endif %}
 
         <!-- Screenshot / Upload bar (everyone) -->
-        <div class="claude-input-actions" style="padding:6px 12px; background:#f5f5f5; border-top:1px solid #e0e0e0;">
-            <button class="claude-action-btn" onclick="takeScreenshot()">📸 Screenshot</button>
-            <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()">📁 Upload</button>
+        <div style="padding:8px 12px; background:#f0f0f0; border-top:1px solid #ccc; display:flex; gap:6px; align-items:center; flex-shrink:0;">
+            <button class="claude-action-btn" onclick="takeScreenshot()" style="padding:5px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📸 Screenshot</button>
+            <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()" style="padding:5px 12px; background:#9b59b6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📁 Upload</button>
             {% if current_user.username != 'admin' %}
-            <button class="claude-action-btn" onclick="clearChat()">🗑️ Clear</button>
+            <button class="claude-action-btn" onclick="clearChat()" style="padding:5px 12px;">🗑️ Clear</button>
             {% endif %}
             <input type="file" id="claudeFileInput" accept="image/*" style="display:none" onchange="uploadFileWidget(this)">
+            <div class="claude-upload-status" id="claudeUploadStatus" style="flex:1; font-size:11px; color:#666;"></div>
         </div>
-        <div class="claude-upload-status" id="claudeUploadStatus"></div>
     </div>
 </div>
 
