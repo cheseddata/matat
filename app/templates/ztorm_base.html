@@ -232,6 +232,7 @@
         {% endif %}
         <div style="flex-grow:1;"></div>
         <a href="/ztorm/" style="color:#FFD700; text-decoration:none; font-weight:bold; padding:0 10px;">🏛 ZTorm</a>
+        {% if current_user.is_authenticated and current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" style="color:#90EE90; text-decoration:none; font-weight:bold; padding:0 10px;">💚 Gemach</a>{% endif %}
         <button onclick="toggleLanguage()" style="background:#3498db; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px; margin:0 5px;">
             {% if lang == 'he' %}{{ t('nav.switch_to_english') }}{% else %}{{ t('nav.switch_to_hebrew') }}{% endif %}
         </button>

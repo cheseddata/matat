@@ -744,5 +744,196 @@
       "method_hafkada": "Deposit",
       "method_transfer": "Transfer"
     }
+  },
+  "gemach": {
+    "nav": {
+      "home": "Home",
+      "members": "Members",
+      "loans": "Loans",
+      "transactions": "Transactions",
+      "reports": "Reports",
+      "new_loan": "New Loan",
+      "payments": "Payments"
+    },
+    "common": {
+      "all": "All",
+      "search": "Search",
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page",
+      "linked": "Linked",
+      "back_to_members": "← Back to Members",
+      "back_to_loans": "← Back to Loans",
+      "showing_first_100": "Showing first 100 results. Refine your search to see more.",
+      "view_member": "View Member",
+      "close": "Close",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "new": "New",
+      "print": "Print",
+      "delete": "Delete",
+      "yes": "Yes",
+      "no": "No",
+      "ok": "OK"
+    },
+    "switchboard": {
+      "title": "Gmach — Charitable Fund",
+      "org_subtitle": "Charitable Fund",
+      "about_title": "About Gmach",
+      "about_text": "The Gmach (Gmilut Chasadim — acts of kindness) manages the interest-free loan fund of Matat Mordechai. This system replicates the original Access 2003 application, preserving 32 years of data since 1994.",
+      "status_bar_ready": "Ready",
+      "menu_title": "Main Menu"
+    },
+    "stats": {
+      "members": "Members",
+      "active_loans": "Active Loans",
+      "cancelled_loans": "Cancelled Loans",
+      "loan_transactions": "Loan Transactions",
+      "transactions": "General Transactions"
+    },
+    "status": {
+      "active": "Active",
+      "cancelled": "Cancelled",
+      "satisfied": "Completed"
+    },
+    "category": {
+      "loan": "Loan",
+      "deposit": "Deposit",
+      "donation": "Donation",
+      "support": "Support",
+      "expense": "Expense"
+    },
+    "tabs": {
+      "overview": "Overview",
+      "loans": "Standing Orders",
+      "transactions": "Transactions",
+      "memorials": "Memorial Names",
+      "linked": "Linked Records"
+    },
+    "members": {
+      "title": "Members — Donor Card",
+      "card_no": "Card #",
+      "name": "Name",
+      "tz": "ID #",
+      "phone": "Phone",
+      "city": "City",
+      "active_loans": "Loans",
+      "search_placeholder": "Search name, phone, TZ, or card #…",
+      "sort_name": "By Name",
+      "sort_card_no": "By Card #",
+      "no_results": "No members match your search.",
+      "record_count": "records"
+    },
+    "member": {
+      "title": "Member",
+      "first_name": "First Name",
+      "last_name": "Last Name",
+      "name": "Name",
+      "suffix": "Suffix",
+      "type": "Type",
+      "address": "Address",
+      "city": "City",
+      "zip": "ZIP",
+      "phone": "Phone",
+      "fax": "Fax",
+      "classifications": "Classifications",
+      "no_tags": "No classifications",
+      "notes": "Notes",
+      "registration_date": "Registration Date"
+    },
+    "member_detail": {
+      "title": "Member Details",
+      "personal": "Personal Information",
+      "primary_contact": "Primary Contact",
+      "secondary_contact": "Secondary Contact"
+    },
+    "linked": {
+      "title": "Linked Records",
+      "explanation": "This Gmach member has been cross-referenced with records in other Matat systems.",
+      "how_linking_works": "How Linking Works: Members are matched to donors by Israeli ID (TZ), email, phone, and name when imported. A match gives you a unified view of donations and loans for each person.",
+      "no_donor": "No linked Matat donor record.",
+      "none": "No linked records yet.",
+      "view_in_matat": "View in Matat",
+      "view_in_ztorm": "View in ZTorm"
+    },
+    "loans": {
+      "filter_status": "Filter by Status",
+      "filter_institution": "Institution",
+      "none": "No loans found",
+      "no_results": "No loans found"
+    },
+    "loan": {
+      "member": "Member",
+      "amount": "Amount",
+      "amount_paid": "Paid",
+      "currency": "Currency",
+      "period": "Period",
+      "type": "Type",
+      "status": "Status",
+      "start": "Start Date",
+      "last_charge": "Last Charge",
+      "charge_day": "Charge Day",
+      "bank": "Bank",
+      "branch": "Branch",
+      "account": "Account",
+      "institution": "Institution",
+      "asmachta": "Reference",
+      "committed": "Committed",
+      "total_expected": "Total Expected",
+      "payments_made": "Payments Made",
+      "payments": "Payments",
+      "bounces": "Bounces",
+      "unlimited": "Unlimited",
+      "notes": "Notes"
+    },
+    "loan_detail": {
+      "title": "Loan Details",
+      "overview": "Loan Overview",
+      "progress": "Progress",
+      "bank": "Bank Details",
+      "transactions": "Loan Transactions",
+      "no_transactions": "No transactions recorded for this loan yet."
+    },
+    "transactions": {
+      "filter_category": "Category",
+      "none": "No transactions found"
+    },
+    "transaction": {
+      "date": "Date",
+      "member": "Member",
+      "category": "Category",
+      "amount_ils": "Amount (NIS)",
+      "amount_usd": "Amount (USD)",
+      "asmachta": "Reference",
+      "description": "Description",
+      "method": "Method",
+      "reason": "Reason",
+      "status": "Status",
+      "bounced": "Bounced",
+      "receipt": "Receipt"
+    },
+    "memorial": {
+      "name": "Memorial Name",
+      "date": "Date",
+      "active": "Active"
+    },
+    "memorials": {
+      "none": "No memorial names recorded."
+    },
+    "reports": {
+      "title": "Reports",
+      "coming_soon_title": "Reports — Coming Soon",
+      "coming_soon_text": "Detailed reports matching the Access application are being built. The data is all available and can be accessed via the members, loans, and transactions screens in the meantime.",
+      "note": "Note",
+      "summaries": "Summary Reports",
+      "gmach_totals": "Gmach Totals",
+      "msv_totals": "Masav Totals",
+      "loans": "Loan Reports",
+      "deposits": "Deposit Reports",
+      "donations": "Donation Reports",
+      "supports": "Support Reports",
+      "addresses": "Address Lists"
+    }
   }
 }

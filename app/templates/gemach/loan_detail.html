@@ -1,0 +1,141 @@
+{% extends "gemach_base.html" %}
+{% block title %}{{ t('gemach.loan.type') }} #{{ loan.gmach_num_hork }} — {{ t('gemach.switchboard.title') }}{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-hand-holding-usd"></i> {{ t('gemach.loan_detail.title') }}</span>
+        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+    </div>
+
+    <!-- Header band: loan# + member + quick links (Access hork edit navy theme) -->
+    <div style="background: var(--gmach-navy); color: white; padding: 10px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <a href="{{ url_for('gemach.loans') }}" class="tb-btn" style="background: var(--gmach-cyan); border-color: white; color: #000; padding: 3px 10px;">
+            {{ t('gemach.common.back_to_loans') }}
+        </a>
+        <span style="font-size: 14px;">
+            <strong>{{ t('gemach.loan.type') }} {{ t('gemach.members.card_no') }}:</strong>
+            <span style="background: var(--gmach-cyan); color: #000; padding: 2px 10px; margin-{{ 'right' if is_rtl else 'left' }}: 6px; font-family: 'Courier New', monospace; font-weight: bold;">{{ loan.gmach_num_hork }}</span>
+        </span>
+        {% if loan.member %}
+        <span style="font-size: 14px;">
+            <strong>{{ t('gemach.loan.member') }}:</strong>
+            <a href="{{ url_for('gemach.member_detail', member_id=loan.member.id) }}" style="color: var(--gmach-cyan); text-decoration: underline;">
+                {{ loan.member.full_name }}
+            </a>
+        </span>
+        {% endif %}
+        <span style="flex: 1"></span>
+        {% if loan.status == 'p' %}<span class="badge-status badge-active">{{ t('gemach.status.active') }}</span>
+        {% elif loan.status == 's' %}<span class="badge-status badge-satisfied">{{ t('gemach.status.satisfied') }}</span>
+        {% elif loan.status == 'b' %}<span class="badge-status badge-cancelled">{{ t('gemach.status.cancelled') }}</span>
+        {% endif %}
+    </div>
+
+    <!-- Navy edit panel (mimics Access "hork edit" form) -->
+    <div class="gmach-navy-panel" style="margin: 4px;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <!-- Overview -->
+            <div>
+                <h6 style="color: var(--gmach-cyan); border-bottom: 1px dashed var(--gmach-cyan); padding-bottom: 4px; margin-bottom: 10px;">
+                    <i class="fas fa-info-circle"></i> {{ t('gemach.loan_detail.overview') }}
+                </h6>
+                <table style="width: 100%; font-size: 13px;">
+                    <tr><td style="width: 130px; padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.amount') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 120px; font-family: 'Courier New', monospace; font-size: 14px;">{{ "{:,.2f}".format(loan.amount or 0) }} {{ loan.currency }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.type') }}:</strong></td>
+                        <td><span class="field-ro">{{ loan.loan_type or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.start') }}:</strong></td>
+                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ loan.start_date or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.last_charge') }}:</strong></td>
+                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ loan.last_charge_date or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.charge_day') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 40px;">{{ loan.charge_day or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.period') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 40px;">{{ loan.period_months }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.institution') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 180px;">{{ loan.institution.name if loan.institution else '—' }}</span></td></tr>
+                </table>
+            </div>
+
+            <!-- Progress & bank -->
+            <div>
+                <h6 style="color: var(--gmach-cyan); border-bottom: 1px dashed var(--gmach-cyan); padding-bottom: 4px; margin-bottom: 10px;">
+                    <i class="fas fa-chart-line"></i> {{ t('gemach.loan_detail.progress') }}
+                </h6>
+                <table style="width: 100%; font-size: 13px; margin-bottom: 14px;">
+                    <tr><td style="width: 160px; padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.payments_made') }}:</strong></td>
+                        <td><span class="field-ro">{{ loan.payments_made or 0 }} / {{ loan.committed_payments if loan.committed_payments and loan.committed_payments != 999 else t('gemach.loan.unlimited') }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.amount_paid') }}:</strong></td>
+                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ "{:,.2f}".format(loan.amount_paid or 0) }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.total_expected') }}:</strong></td>
+                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ loan.total_expected or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.bounces') }}:</strong></td>
+                        <td>{% if (loan.bounces or 0) > 0 %}<span class="field-ro" style="background: #FFCDD2; color: #B71C1C; font-weight: bold;">{{ loan.bounces }}</span>{% else %}<span class="field-ro">0</span>{% endif %}</td></tr>
+                </table>
+
+                <h6 style="color: var(--gmach-cyan); border-bottom: 1px dashed var(--gmach-cyan); padding-bottom: 4px; margin-bottom: 10px;">
+                    <i class="fas fa-university"></i> {{ t('gemach.loan_detail.bank') }}
+                </h6>
+                <table style="width: 100%; font-size: 13px;">
+                    <tr><td style="width: 130px; padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.bank') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 60px;">{{ loan.bank_code or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.branch') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 60px;">{{ loan.branch_code or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.account') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 120px; font-family: 'Courier New', monospace;">{{ loan.account_number or '—' }}</span></td></tr>
+                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.asmachta') }}:</strong></td>
+                        <td><span class="field-ro" style="min-width: 80px; font-family: 'Courier New', monospace;">{{ loan.asmachta or '—' }}</span></td></tr>
+                </table>
+            </div>
+        </div>
+
+        {% if loan.notes %}
+        <div style="margin-top: 14px; background: #FFFDE7; border: 2px solid #FBC02D; padding: 10px 14px;">
+            <strong style="color: #5D4037;">📝 {{ t('gemach.loan.notes') }}:</strong>
+            <div style="margin-top: 4px; color: #3E2723; white-space: pre-wrap;">{{ loan.notes }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Transactions (cyan Access sub-form style) -->
+    <div style="margin: 10px 4px;">
+        <div class="gmach-cyan-panel" style="padding: 8px;">
+            <h6 style="background: var(--gmach-navy); color: var(--gmach-cyan); padding: 6px 10px; margin: -8px -8px 8px -8px; font-size: 13px;">
+                <i class="fas fa-list"></i> {{ t('gemach.loan_detail.transactions') }} ({{ transactions|length }})
+            </h6>
+            <table class="access-grid">
+                <thead>
+                    <tr>
+                        <th style="width: 110px;">{{ t('gemach.transaction.date') }}</th>
+                        <th style="width: 120px;">{{ t('gemach.transaction.asmachta') }}</th>
+                        <th style="width: 120px; text-align: {{ 'left' if is_rtl else 'right' }};">{{ t('gemach.transaction.amount_ils') }}</th>
+                        <th style="width: 100px; text-align: {{ 'left' if is_rtl else 'right' }};">{{ t('gemach.transaction.amount_usd') }}</th>
+                        <th style="width: 100px;">{{ t('gemach.transaction.status') }}</th>
+                        <th>{{ t('gemach.transaction.reason') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tx in transactions %}
+                    <tr>
+                        <td style="font-family: 'Courier New', monospace;">{{ tx.transaction_date }}</td>
+                        <td style="font-family: 'Courier New', monospace;">{{ tx.asmachta or '' }}</td>
+                        <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{{ "{:,.2f}".format(tx.amount_ils or 0) }}</td>
+                        <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{% if tx.amount_usd %}{{ "{:,.2f}".format(tx.amount_usd) }}{% endif %}</td>
+                        <td>{% if tx.bounced %}<span class="badge-status badge-cancelled">{{ t('gemach.transaction.bounced') }}</span>{% else %}<span class="badge-status badge-active">OK</span>{% endif %}</td>
+                        <td>{{ tx.bounce_reason or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align: center; color: #666; padding: 24px;">{{ t('gemach.loan_detail.no_transactions') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block status %}
+{{ t('gemach.loan.type') }} #{{ loan.gmach_num_hork }}
+{% if loan.member %} &middot; {{ loan.member.full_name }}{% endif %}
+{% endblock %}

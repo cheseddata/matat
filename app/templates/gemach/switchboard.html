@@ -1,0 +1,104 @@
+{% extends "gemach_base.html" %}
+
+{% block title %}{{ t('gemach.switchboard.title') }}{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-home"></i> {{ t('gemach.switchboard.title') }}</span>
+        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+    </div>
+
+    <!-- Stat strip (mirrors Access summary header) -->
+    <div style="padding: 10px 14px 0 14px;">
+        <div class="stat-strip">
+            <div class="stat-chip">
+                <div class="k">{{ t('gemach.stats.members') }}</div>
+                <div class="v">{{ '{:,}'.format(stats.members) }}</div>
+            </div>
+            <div class="stat-chip" style="background:#C8E6C9; border-color:#2E7D32;">
+                <div class="k">{{ t('gemach.stats.active_loans') }}</div>
+                <div class="v" style="color:#1B5E20;">{{ '{:,}'.format(stats.active_loans) }}</div>
+            </div>
+            <div class="stat-chip" style="background:#FFCDD2; border-color:#B71C1C;">
+                <div class="k">{{ t('gemach.stats.cancelled_loans') }}</div>
+                <div class="v" style="color:#B71C1C;">{{ '{:,}'.format(stats.cancelled_loans) }}</div>
+            </div>
+            <div class="stat-chip" style="background:#BBDEFB; border-color:#1565C0;">
+                <div class="k">{{ t('gemach.stats.loan_transactions') }}</div>
+                <div class="v" style="color:#0D47A1;">{{ '{:,}'.format(stats.loan_transactions) }}</div>
+            </div>
+            <div class="stat-chip" style="background:#E1BEE7; border-color:#6A1B9A;">
+                <div class="k">{{ t('gemach.stats.transactions') }}</div>
+                <div class="v" style="color:#4A148C;">{{ '{:,}'.format(stats.transactions) }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navy switchboard (mimics Access "menu: main" form) -->
+    <div class="switchboard-panel">
+        <div class="switchboard-heading">{{ t('gemach.switchboard.title') }}</div>
+        <div class="switchboard-sub">{{ t('gemach.switchboard.org_subtitle') }} &middot; מתת מרדכי</div>
+
+        <a href="{{ url_for('gemach.members') }}" class="switchboard-btn">
+            <span class="num">1</span>
+            <i class="fas fa-users" style="font-size:18px; color:#2F5597; width:22px; text-align:center;"></i>
+            <span>{{ t('gemach.nav.members') }}</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px; color:#666; font-weight:normal;">{{ '{:,}'.format(stats.members) }} רשומות</span>
+        </a>
+
+        <a href="{{ url_for('gemach.loans') }}" class="switchboard-btn">
+            <span class="num green">2</span>
+            <i class="fas fa-hand-holding-usd" style="font-size:18px; color:#2E7D32; width:22px; text-align:center;"></i>
+            <span>{{ t('gemach.nav.loans') }}</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px; color:#666; font-weight:normal;">{{ '{:,}'.format(stats.active_loans) }} {{ t('gemach.status.active') }}</span>
+        </a>
+
+        <a href="{{ url_for('gemach.transactions') }}" class="switchboard-btn">
+            <span class="num purple">3</span>
+            <i class="fas fa-exchange-alt" style="font-size:18px; color:#6A1B9A; width:22px; text-align:center;"></i>
+            <span>{{ t('gemach.nav.transactions') }}</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px; color:#666; font-weight:normal;">{{ '{:,}'.format(stats.transactions) }} רשומות</span>
+        </a>
+
+        <a href="{{ url_for('gemach.reports') }}" class="switchboard-btn">
+            <span class="num orange">4</span>
+            <i class="fas fa-chart-bar" style="font-size:18px; color:#E65100; width:22px; text-align:center;"></i>
+            <span>{{ t('gemach.nav.reports') }}</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px; color:#666; font-weight:normal;">&mdash;</span>
+        </a>
+
+        <div class="switchboard-btn disabled" title="Coming soon">
+            <span class="num red">5</span>
+            <i class="fas fa-piggy-bank" style="font-size:18px; color:#C62828; width:22px; text-align:center;"></i>
+            <span>Masav Collection &nbsp;&middot;&nbsp; מס״ב</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px; color:#999; font-weight:normal;">{{ t('gemach.reports.coming_soon_title') }}</span>
+        </div>
+
+        <div class="switchboard-btn disabled" title="Coming soon">
+            <span class="num gray">6</span>
+            <i class="fas fa-file-export" style="font-size:18px; color:#424242; width:22px; text-align:center;"></i>
+            <span>Hash Export &nbsp;&middot;&nbsp; ייצוא חשבונאי</span>
+            <span style="flex:1"></span>
+            <span style="font-size:12px; color:#999; font-weight:normal;">{{ t('gemach.reports.coming_soon_title') }}</span>
+        </div>
+    </div>
+
+    <!-- About strip -->
+    <div style="padding: 4px 14px 16px 14px;">
+        <div style="background:#FFFDE7; border:1px solid #FBC02D; padding: 10px 14px; font-size: 12px; color: #5D4037; line-height: 1.5;">
+            <strong style="font-size:13px;">ℹ️ {{ t('gemach.switchboard.about_title') }}</strong><br>
+            {{ t('gemach.switchboard.about_text') }}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block status %}
+{{ t('gemach.switchboard.status_bar_ready') }} &middot; {{ stats.members }} חברים &middot; {{ stats.active_loans }} הו״ק פעילים
+{% endblock %}

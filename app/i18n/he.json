@@ -744,5 +744,196 @@
       "method_hafkada": "הפקדה",
       "method_transfer": "העברה"
     }
+  },
+  "gemach": {
+    "nav": {
+      "home": "דף הבית",
+      "members": "חברים",
+      "loans": "הו״ק",
+      "transactions": "תנועות",
+      "reports": "דוחות",
+      "new_loan": "הו״ק חדשה",
+      "payments": "תשלומים"
+    },
+    "common": {
+      "all": "הכל",
+      "search": "חיפוש",
+      "prev": "הקודם",
+      "next": "הבא",
+      "page": "עמוד",
+      "linked": "מקושר",
+      "back_to_members": "→ חזרה לחברים",
+      "back_to_loans": "→ חזרה להו״ק",
+      "showing_first_100": "מוצגות 100 התוצאות הראשונות. לצמצום את החיפוש כדי לראות עוד.",
+      "view_member": "הצג חבר",
+      "close": "סגור",
+      "save": "שמור",
+      "cancel": "ביטול",
+      "edit": "עריכה",
+      "new": "חדש",
+      "print": "הדפסה",
+      "delete": "מחיקה",
+      "yes": "כן",
+      "no": "לא",
+      "ok": "אישור"
+    },
+    "switchboard": {
+      "title": "גמ״ח — קרן גמ״ח",
+      "org_subtitle": "קרן גמ״ח",
+      "about_title": "אודות הגמ״ח",
+      "about_text": "מערכת הגמ״ח (גמילות חסדים) של מתת מרדכי מנהלת את קרן ההלוואות ללא ריבית. מערכת זו מחקה את האפליקציה המקורית ב־Access 2003 ושומרת 32 שנים של נתונים משנת 1994.",
+      "status_bar_ready": "מוכן",
+      "menu_title": "תפריט ראשי"
+    },
+    "stats": {
+      "members": "חברים",
+      "active_loans": "הו״ק פעילים",
+      "cancelled_loans": "הו״ק בוטלו",
+      "loan_transactions": "פעולות הו״ק",
+      "transactions": "תנועות"
+    },
+    "status": {
+      "active": "פעיל",
+      "cancelled": "בוטל",
+      "satisfied": "הושלם"
+    },
+    "category": {
+      "loan": "הלוואה",
+      "deposit": "פיקדון",
+      "donation": "תרומה",
+      "support": "תמיכה",
+      "expense": "הוצאה"
+    },
+    "tabs": {
+      "overview": "סקירה",
+      "loans": "הו״ק",
+      "transactions": "תנועות",
+      "memorials": "הזכרות נשמות",
+      "linked": "רשומות מקושרות"
+    },
+    "members": {
+      "title": "חברים — כרטיס תורם",
+      "card_no": "מס׳ כרטיס",
+      "name": "שם",
+      "tz": "ת.ז.",
+      "phone": "טלפון",
+      "city": "עיר",
+      "active_loans": "הו״ק",
+      "search_placeholder": "חיפוש לפי שם, טלפון, ת.ז. או מס׳ כרטיס…",
+      "sort_name": "לפי שם",
+      "sort_card_no": "לפי מס׳ כרטיס",
+      "no_results": "לא נמצאו חברים תואמים לחיפוש.",
+      "record_count": "רשומות"
+    },
+    "member": {
+      "title": "תואר",
+      "first_name": "שם פרטי",
+      "last_name": "שם משפחה",
+      "name": "שם",
+      "suffix": "כינוי",
+      "type": "סיווג",
+      "address": "כתובת",
+      "city": "עיר",
+      "zip": "מיקוד",
+      "phone": "טלפון",
+      "fax": "פקס",
+      "classifications": "סיווגים",
+      "no_tags": "אין סיווגים",
+      "notes": "הערות",
+      "registration_date": "תאריך רישום"
+    },
+    "member_detail": {
+      "title": "כרטיס תורם",
+      "personal": "פרטים אישיים",
+      "primary_contact": "איש קשר ראשי",
+      "secondary_contact": "איש קשר נוסף"
+    },
+    "linked": {
+      "title": "רשומות מקושרות",
+      "explanation": "החבר הזה בגמ״ח קיבל קישור לרשומות במערכות אחרות של מתת.",
+      "how_linking_works": "איך עובד הקישור: חברים מוצמדים לתורמים לפי ת.ז., דוא״ל, טלפון ושם בעת היבוא. הקישור מציג תמונה מאוחדת של תרומות והלוואות לכל אדם.",
+      "no_donor": "אין תורם מתת מקושר.",
+      "none": "אין עדיין רשומות מקושרות.",
+      "view_in_matat": "צפה במתת",
+      "view_in_ztorm": "צפה ב־ZTorm"
+    },
+    "loans": {
+      "filter_status": "סינון לפי סטטוס",
+      "filter_institution": "מוסד",
+      "none": "לא נמצאו הו״ק",
+      "no_results": "לא נמצאו הו״ק"
+    },
+    "loan": {
+      "member": "חבר",
+      "amount": "סכום",
+      "amount_paid": "שולם",
+      "currency": "מטבע",
+      "period": "תקופה",
+      "type": "סוג",
+      "status": "סטטוס",
+      "start": "תאריך התחלה",
+      "last_charge": "חיוב אחרון",
+      "charge_day": "יום חיוב",
+      "bank": "בנק",
+      "branch": "סניף",
+      "account": "חשבון",
+      "institution": "מוסד",
+      "asmachta": "אסמכתא",
+      "committed": "פעילות מחוייבת",
+      "total_expected": "סה״כ צפוי",
+      "payments_made": "תשלומים שבוצעו",
+      "payments": "תשלומים",
+      "bounces": "החזרות",
+      "unlimited": "ללא הגבלה",
+      "notes": "הערות"
+    },
+    "loan_detail": {
+      "title": "פרטי הלוואה",
+      "overview": "סקירת הלוואה",
+      "progress": "התקדמות",
+      "bank": "פרטי בנק",
+      "transactions": "תנועות הלוואה",
+      "no_transactions": "עדיין לא נרשמו תנועות עבור הלוואה זו."
+    },
+    "transactions": {
+      "filter_category": "קטגוריה",
+      "none": "לא נמצאו תנועות"
+    },
+    "transaction": {
+      "date": "תאריך",
+      "member": "חבר",
+      "category": "קטגוריה",
+      "amount_ils": "ש״ח",
+      "amount_usd": "$",
+      "asmachta": "אסמכתא",
+      "description": "הערה",
+      "method": "שיטה",
+      "reason": "סיבה",
+      "status": "סטטוס",
+      "bounced": "הוחזר",
+      "receipt": "קבלה"
+    },
+    "memorial": {
+      "name": "שם להזכרה",
+      "date": "תאריך",
+      "active": "פעיל"
+    },
+    "memorials": {
+      "none": "אין שמות להזכרה רשומים."
+    },
+    "reports": {
+      "title": "דוחות",
+      "coming_soon_title": "דוחות — בקרוב",
+      "coming_soon_text": "דוחות מפורטים בדיוק כמו במערכת ה־Access המקורית בהליך בנייה. בינתיים ניתן לעיין באט במסךי החברים, ההו״ק והתנועות.",
+      "note": "הערה",
+      "summaries": "דוחות סיכום",
+      "gmach_totals": "סיכום גמ״ח",
+      "msv_totals": "סיכום מס״ב",
+      "loans": "דוחות הו״ק",
+      "deposits": "דוחות פיקדונות",
+      "donations": "דוחות תרומות",
+      "supports": "דוחות תמיכות",
+      "addresses": "רשימת כתובות"
+    }
   }
 }

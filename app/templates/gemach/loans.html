@@ -1,0 +1,112 @@
+{% extends "gemach_base.html" %}
+{% block title %}{{ t('gemach.nav.loans') }} — {{ t('gemach.switchboard.title') }}{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-hand-holding-usd"></i> {{ t('gemach.nav.loans') }} &middot; {{ '{:,}'.format(loans.total) }}</span>
+        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+    </div>
+
+    <!-- Filter bar (mimics Access filter toolbar) -->
+    <div style="background: var(--gmach-navy); color: white; padding: 8px 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <form method="get" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <label style="font-size: 12px; margin: 0; color: var(--gmach-cyan); font-weight: bold;">
+                <i class="fas fa-filter"></i> {{ t('gemach.loans.filter_status') }}:
+            </label>
+            <select name="status" onchange="this.form.submit()"
+                    style="font-size: 13px; padding: 3px 6px; border: 1px solid white; background: white;">
+                <option value="">{{ t('gemach.common.all') }}</option>
+                <option value="p" {% if status == 'p' %}selected{% endif %}>{{ t('gemach.status.active') }}</option>
+                <option value="s" {% if status == 's' %}selected{% endif %}>{{ t('gemach.status.satisfied') }}</option>
+                <option value="b" {% if status == 'b' %}selected{% endif %}>{{ t('gemach.status.cancelled') }}</option>
+            </select>
+
+            <label style="font-size: 12px; margin: 0; color: var(--gmach-cyan); font-weight: bold;">
+                {{ t('gemach.loans.filter_institution') }}:
+            </label>
+            <select name="institution_id" onchange="this.form.submit()"
+                    style="font-size: 13px; padding: 3px 6px; border: 1px solid white; background: white;">
+                <option value="">{{ t('gemach.common.all') }}</option>
+                {% for inst in institutions %}
+                <option value="{{ inst.id }}" {% if institution_id == inst.id %}selected{% endif %}>{{ inst.name }}</option>
+                {% endfor %}
+            </select>
+
+            {% if status or institution_id %}
+            <a href="{{ url_for('gemach.loans') }}" style="font-size: 12px; color: var(--gmach-cyan); text-decoration: underline;">
+                ✕ {{ t('gemach.common.cancel') or 'Clear' }}
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Grid -->
+    <div style="padding: 0; max-height: calc(100vh - 280px); overflow: auto;">
+        <table class="access-grid">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">{{ t('gemach.loan.type') }} #</th>
+                    <th>{{ t('gemach.loan.member') }}</th>
+                    <th style="width: 90px;">{{ t('gemach.loan.status') }}</th>
+                    <th style="width: 130px; text-align: {{ 'left' if is_rtl else 'right' }};">{{ t('gemach.loan.amount') }}</th>
+                    <th style="width: 80px;">{{ t('gemach.loan.type') }}</th>
+                    <th style="width: 100px;">{{ t('gemach.loan.start') }}</th>
+                    <th style="width: 100px;">{{ t('gemach.loan.payments') }}</th>
+                    <th style="width: 140px;">{{ t('gemach.loan.institution') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for l in loans.items %}
+                <tr onclick="location.href='{{ url_for('gemach.loan_detail', loan_id=l.id) }}'">
+                    <td style="font-weight: bold; color: var(--gmach-navy);">{{ l.gmach_num_hork }}</td>
+                    <td>
+                        {% if l.member %}
+                        <strong>{{ l.member.last_name or '' }}</strong>{% if l.member.first_name %}, {{ l.member.first_name }}{% endif %}
+                        {% else %}—{% endif %}
+                    </td>
+                    <td>
+                        {% if l.status == 'p' %}<span class="badge-status badge-active">{{ t('gemach.status.active') }}</span>
+                        {% elif l.status == 's' %}<span class="badge-status badge-satisfied">{{ t('gemach.status.satisfied') }}</span>
+                        {% elif l.status == 'b' %}<span class="badge-status badge-cancelled">{{ t('gemach.status.cancelled') }}</span>
+                        {% else %}{{ l.status }}{% endif %}
+                    </td>
+                    <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">
+                        {{ "{:,.2f}".format(l.amount or 0) }} {{ l.currency }}
+                    </td>
+                    <td>{{ l.loan_type or '' }}</td>
+                    <td style="font-family: 'Courier New', monospace;">{{ l.start_date or '—' }}</td>
+                    <td>{{ l.payments_made or 0 }} / {{ l.committed_payments if l.committed_payments and l.committed_payments != 999 else '∞' }}</td>
+                    <td>{{ l.institution.name if l.institution else '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="8" style="text-align: center; color: #888; padding: 40px;">{{ t('gemach.loans.none') }}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if loans.pages > 1 %}
+    <div style="background: var(--access-toolbar); border-top: 1px solid var(--access-border); padding: 6px 14px; display: flex; justify-content: center; align-items: center; gap: 4px; font-size: 12px;">
+        <span style="margin-{{ 'left' if is_rtl else 'right' }}: 10px;">
+            {{ t('gemach.common.page') }} <strong>{{ loans.page }}</strong> / {{ loans.pages }}
+            &nbsp;|&nbsp;
+            {{ '{:,}'.format(loans.total) }} {{ t('gemach.nav.loans')|lower }}
+        </span>
+        {% if loans.has_prev %}
+        <a href="{{ url_for('gemach.loans', page=1, status=status, institution_id=institution_id) }}" class="tb-btn" style="padding: 2px 8px;">⏮</a>
+        <a href="{{ url_for('gemach.loans', page=loans.prev_num, status=status, institution_id=institution_id) }}" class="tb-btn" style="padding: 2px 8px;">◀ {{ t('gemach.common.prev') }}</a>
+        {% endif %}
+        {% if loans.has_next %}
+        <a href="{{ url_for('gemach.loans', page=loans.next_num, status=status, institution_id=institution_id) }}" class="tb-btn" style="padding: 2px 8px;">{{ t('gemach.common.next') }} ▶</a>
+        <a href="{{ url_for('gemach.loans', page=loans.pages, status=status, institution_id=institution_id) }}" class="tb-btn" style="padding: 2px 8px;">⏭</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block status %}
+{{ '{:,}'.format(loans.total) }} {{ t('gemach.nav.loans')|lower }}
+{% endblock %}

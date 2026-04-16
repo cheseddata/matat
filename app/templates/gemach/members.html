@@ -1,0 +1,110 @@
+{% extends "gemach_base.html" %}
+
+{% block title %}{{ t('gemach.nav.members') }} — {{ t('gemach.switchboard.title') }}{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-users"></i> {{ t('gemach.nav.members') }} &middot; {{ '{:,}'.format(members.total) }} {{ t('gemach.common.all')|lower }}</span>
+        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+    </div>
+
+    <!-- Search form (mimics the Access חיפוש form) -->
+    <div style="background: var(--gmach-navy); color: white; padding: 10px 14px; border-bottom: 1px solid var(--access-border);">
+        <form method="get" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <i class="fas fa-search" style="color: var(--gmach-cyan); font-size: 16px;"></i>
+            <input type="text"
+                   name="q"
+                   value="{{ search }}"
+                   placeholder="{{ t('gemach.members.search_placeholder') }}"
+                   autofocus
+                   style="flex: 1; min-width: 260px; padding: 5px 10px; font-size: 14px; border: 1px solid white; background: white; color: #000;">
+            <select name="sort" onchange="this.form.submit()"
+                    style="padding: 5px 8px; font-size: 13px; border: 1px solid white; background: white;">
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>{{ t('gemach.members.sort_name') }}</option>
+                <option value="card_no" {% if sort == 'card_no' %}selected{% endif %}>{{ t('gemach.members.sort_card_no') }}</option>
+            </select>
+            <button type="submit"
+                    style="padding: 5px 16px; font-size: 13px; background: var(--gmach-cyan); color: #000; border: 1px solid white; font-weight: bold; cursor: pointer;">
+                <i class="fas fa-search"></i> {{ t('gemach.common.search') }}
+            </button>
+            {% if search %}
+            <a href="{{ url_for('gemach.members') }}"
+               style="padding: 5px 12px; font-size: 12px; background: #888; color: white; border: 1px solid white; text-decoration: none;">
+                ✕ {{ t('gemach.common.cancel') or 'Clear' }}
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Results grid -->
+    <div style="padding: 0; max-height: calc(100vh - 260px); overflow: auto;">
+        <table class="access-grid">
+            <thead>
+                <tr>
+                    <th style="width: 90px;">{{ t('gemach.members.card_no') }}</th>
+                    <th>{{ t('gemach.members.name') }}</th>
+                    <th style="width: 110px;">{{ t('gemach.members.tz') }}</th>
+                    <th style="width: 130px;">{{ t('gemach.members.phone') }}</th>
+                    <th style="width: 140px;">{{ t('gemach.members.city') }}</th>
+                    <th style="width: 70px; text-align: center;">{{ t('gemach.members.active_loans') }}</th>
+                    <th style="width: 60px; text-align: center;">{{ t('gemach.common.linked') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in members.items %}
+                <tr onclick="location.href='{{ url_for('gemach.member_detail', member_id=m.id) }}'">
+                    <td style="font-weight: bold; color: var(--gmach-navy);">{{ m.gmach_card_no }}</td>
+                    <td>
+                        <strong>{{ m.last_name or '' }}</strong>{% if m.first_name %}, {{ m.first_name }}{% endif %}
+                        {% if m.title %}<span style="color:#666;">&nbsp;({{ m.title }})</span>{% endif %}
+                    </td>
+                    <td style="color: #666; font-family: 'Courier New', monospace;">{{ m.teudat_zehut or '' }}</td>
+                    <td style="font-family: 'Courier New', monospace;">{{ m.primary_phone or '' }}</td>
+                    <td>{{ m.city or '' }}</td>
+                    <td style="text-align: center;">
+                        {% set active_count = m.loans.filter_by(status='p').count() %}
+                        {% if active_count > 0 %}<span class="badge-status badge-active">{{ active_count }}</span>{% endif %}
+                    </td>
+                    <td style="text-align: center;">
+                        {% if m.ztorm_donor_id %}<span title="ZTorm #{{ m.ztorm_donor_id }}" style="color:#DAA520; font-size: 14px;">🏛</span>{% endif %}
+                        {% if m.donor_id %}<span title="Matat donor #{{ m.donor_id }}" style="color:#E65100; font-weight: bold;">Ⓜ</span>{% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center; color:#888; padding: 40px;">
+                        {{ t('gemach.members.no_results') }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination / record navigator (mimics Access record nav bar) -->
+    {% if members.pages > 1 %}
+    <div style="background: var(--access-toolbar); border-top: 1px solid var(--access-border); padding: 6px 14px; display: flex; justify-content: center; align-items: center; gap: 4px; font-size: 12px;">
+        <span style="margin-{{ 'left' if is_rtl else 'right' }}: 10px;">
+            {{ t('gemach.common.page') }}
+            <strong>{{ members.page }}</strong> / {{ members.pages }}
+            &nbsp;|&nbsp;
+            {{ '{:,}'.format(members.total) }} {{ t('gemach.members.record_count') or '' }}{{ t('gemach.common.all')|lower }}
+        </span>
+        {% if members.has_prev %}
+        <a href="{{ url_for('gemach.members', page=1, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">⏮</a>
+        <a href="{{ url_for('gemach.members', page=members.prev_num, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">◀ {{ t('gemach.common.prev') }}</a>
+        {% endif %}
+        {% if members.has_next %}
+        <a href="{{ url_for('gemach.members', page=members.next_num, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">{{ t('gemach.common.next') }} ▶</a>
+        <a href="{{ url_for('gemach.members', page=members.pages, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">⏭</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block status %}
+{{ '{:,}'.format(members.total) }} {{ t('gemach.stats.members')|lower }}
+{% if search %} · "{{ search }}"{% endif %}
+{% endblock %}

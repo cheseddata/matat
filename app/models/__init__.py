@@ -29,6 +29,21 @@ from .donation_event import DonationEvent
 from .account import Account, AccountAllocation, AccountingCredit
 from .collection_batch import CollectionBatch
 
+# Gemach (charitable fund) models
+from .gemach_member import GemachMember
+from .gemach_institution import GemachInstitution
+from .gemach_loan import GemachLoan
+from .gemach_loan_transaction import GemachLoanTransaction
+from .gemach_transaction import GemachTransaction
+from .gemach_cancelled_loan import GemachCancelledLoan
+from .gemach_lookups import (
+    GemachCancellationReason,
+    GemachTransactionType,
+    GemachHashAccount,
+    GemachMemorial,
+    GemachSetup,
+)
+
 __all__ = [
     'User',
     'Donor',
@@ -67,4 +82,16 @@ __all__ = [
     'AccountAllocation',
     'AccountingCredit',
     'CollectionBatch',
+    # Gemach
+    'GemachMember',
+    'GemachInstitution',
+    'GemachLoan',
+    'GemachLoanTransaction',
+    'GemachTransaction',
+    'GemachCancelledLoan',
+    'GemachCancellationReason',
+    'GemachTransactionType',
+    'GemachHashAccount',
+    'GemachMemorial',
+    'GemachSetup',
 ]
