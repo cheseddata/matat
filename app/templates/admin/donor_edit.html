@@ -112,87 +112,14 @@
             </div>
         </div>
 
-        <!-- Israeli Address (ILS / Nedarim Plus) - FIRST -->
-        <div class="edit-card il-card">
-            <h3><span class="flag">🇮🇱</span> {% if lang == 'he' %}כתובת בישראל (שקלים / נדרים פלוס){% else %}Israeli Address (ILS / Nedarim Plus){% endif %}</h3>
-            <div class="field-row">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}ת.ז. (תעודת זהות){% else %}Teudat Zehut (ID){% endif %} <span class="he">{% if lang != 'he' %}ת.ז.{% endif %}</span></label>
-                    <input type="text" name="teudat_zehut" value="{{ donor.teudat_zehut or '' }}" maxlength="9" pattern="[0-9]{5,9}" placeholder="{% if lang == 'he' %}מספר ת.ז.{% else %}Israeli ID number{% endif %}">
-                </div>
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}טלפון בישראל{% else %}Israeli Phone{% endif %} <span class="he">{% if lang != 'he' %}טלפון{% endif %}</span></label>
-                    <input type="tel" name="il_phone" value="{{ donor.il_phone or '' }}" placeholder="05x-xxx-xxxx">
-                </div>
-            </div>
-            <div class="field-row single">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}כתובת שורה 1{% else %}Address Line 1{% endif %} <span class="he">{% if lang != 'he' %}כתובת{% endif %}</span></label>
-                    <input type="text" name="il_address_line1" value="{{ donor.il_address_line1 or '' }}" placeholder="{% if lang == 'he' %}רחוב ומספר{% else %}Street and number{% endif %}">
-                </div>
-            </div>
-            <div class="field-row single">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}כתובת שורה 2{% else %}Address Line 2{% endif %}</label>
-                    <input type="text" name="il_address_line2" value="{{ donor.il_address_line2 or '' }}" placeholder="{% if lang == 'he' %}דירה, כניסה{% else %}Apt, entrance{% endif %}">
-                </div>
-            </div>
-            <div class="field-row">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}עיר{% else %}City{% endif %} <span class="he">{% if lang != 'he' %}עיר{% endif %}</span></label>
-                    <input type="text" name="il_city" value="{{ donor.il_city or '' }}">
-                </div>
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}מיקוד{% else %}Zip{% endif %} <span class="he">{% if lang != 'he' %}מיקוד{% endif %}</span></label>
-                    <input type="text" name="il_zip" value="{{ donor.il_zip or '' }}">
-                </div>
-            </div>
-        </div>
-
-        <!-- Foreign Address (USD / Stripe) - SECOND -->
-        <div class="edit-card foreign-card">
-            <h3><span class="flag">🌍</span> {% if lang == 'he' %}כתובת חו"ל (דולר / Stripe){% else %}Foreign Address (USD / Stripe){% endif %}</h3>
-            <div class="field-row single">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}כתובת שורה 1{% else %}Address Line 1{% endif %}</label>
-                    <input type="text" name="address_line1" value="{{ donor.address_line1 or '' }}">
-                </div>
-            </div>
-            <div class="field-row single">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}כתובת שורה 2{% else %}Address Line 2{% endif %}</label>
-                    <input type="text" name="address_line2" value="{{ donor.address_line2 or '' }}">
-                </div>
-            </div>
-            <div class="field-row triple">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}עיר{% else %}City{% endif %}</label>
-                    <input type="text" name="city" value="{{ donor.city or '' }}">
-                </div>
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}מדינה/מחוז{% else %}State{% endif %}</label>
-                    <input type="text" name="state" value="{{ donor.state or '' }}">
-                </div>
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}מיקוד{% else %}Zip{% endif %}</label>
-                    <input type="text" name="zip" value="{{ donor.zip or '' }}">
-                </div>
-            </div>
-            <div class="field-row">
-                <div class="field-group">
-                    <label>{% if lang == 'he' %}מדינה{% else %}Country{% endif %}</label>
-                    <select name="country">
-                        <option value="US" {{ 'selected' if donor.country == 'US' }}>{% if lang == 'he' %}ארה"ב{% else %}United States{% endif %}</option>
-                        <option value="CA" {{ 'selected' if donor.country == 'CA' }}>{% if lang == 'he' %}קנדה{% else %}Canada{% endif %}</option>
-                        <option value="GB" {{ 'selected' if donor.country == 'GB' }}>{% if lang == 'he' %}בריטניה{% else %}United Kingdom{% endif %}</option>
-                        <option value="AU" {{ 'selected' if donor.country == 'AU' }}>{% if lang == 'he' %}אוסטרליה{% else %}Australia{% endif %}</option>
-                        <option value="FR" {{ 'selected' if donor.country == 'FR' }}>{% if lang == 'he' %}צרפת{% else %}France{% endif %}</option>
-                        <option value="DE" {{ 'selected' if donor.country == 'DE' }}>{% if lang == 'he' %}גרמניה{% else %}Germany{% endif %}</option>
-                        <option value="IL" {{ 'selected' if donor.country == 'IL' }}>{% if lang == 'he' %}ישראל{% else %}Israel{% endif %}</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+        {# Address order: Hebrew = Israeli first, English = Foreign first #}
+        {% if lang != 'he' %}
+        {% include 'admin/_donor_address_foreign.html' %}
+        {% include 'admin/_donor_address_israel.html' %}
+        {% else %}
+        {% include 'admin/_donor_address_israel.html' %}
+        {% include 'admin/_donor_address_foreign.html' %}
+        {% endif %}
 
         <div class="btn-bar">
             <button type="submit" class="btn-save" name="action" value="save">{% if lang == 'he' %}שמור{% else %}Save{% endif %}</button>
