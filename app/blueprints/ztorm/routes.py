@@ -803,24 +803,8 @@ def charge_card():
 
     if request.method == 'POST':
         address_type = request.form.get('address_type', 'il')
-        processor_code = request.form.get('processor', 'shva')
-        proc = get_processor(processor_code)
-
-        amount_str = request.form.get('amount', '0')
-        amount_cents = int(float(amount_str) * 100)
         currency = request.form.get('currency', 'ILS')
-
-        card_data = {
-            'card_number': request.form.get('card_number', ''),
-            'expiry': request.form.get('expiry', ''),
-            'cvv': request.form.get('cvv', ''),
-        }
-
-        donor_data = {
-            'tz': request.form.get('tz', ''),
-        }
-
-        installments = int(request.form.get('installments', 1))
+        amount_str = request.form.get('amount', '').strip()
 
         # === STEP 1: SAVE DONOR INFO FIRST (before charging) ===
         try:
@@ -910,10 +894,28 @@ def charge_card():
         # Handle save-donor-only (no charge)
         if request.form.get('save_donor_only') == '1':
             db.session.commit()
-            flash(f'פרטי תורם נשמרו: {donor.full_name}', 'success')
-            return render_template('ztorm/charge_form.html', processors=processors)
+            flash(f'פרטי תורם עודכנו: {donor.full_name}', 'success')
+            return redirect(url_for('ztorm.charge_card', donor_id=donor.id))
 
         # === STEP 2: CHARGE THE CARD ===
+        if not amount_str:
+            flash('יש להזין סכום לחיוב', 'error')
+            return render_template('ztorm/charge_form.html', processors=processors)
+
+        amount_cents = int(float(amount_str) * 100)
+        processor_code = request.form.get('processor', 'shva')
+        proc = get_processor(processor_code)
+
+        card_data = {
+            'card_number': request.form.get('card_number', ''),
+            'expiry': request.form.get('expiry', ''),
+            'cvv': request.form.get('cvv', ''),
+        }
+        donor_data = {
+            'tz': request.form.get('tz', ''),
+        }
+        installments = int(request.form.get('installments', 1))
+
         result = proc.create_payment(
             amount=amount_cents,
             currency=currency,
@@ -1030,7 +1032,13 @@ def charge_card():
 
         return render_template('ztorm/charge_result.html', result=result, processors=processors)
 
-    return render_template('ztorm/charge_form.html', processors=processors)
+    # Pre-fill donor if donor_id is passed
+    prefill_donor = None
+    donor_id = request.args.get('donor_id', type=int)
+    if donor_id:
+        prefill_donor = Donor.query.get(donor_id)
+
+    return render_template('ztorm/charge_form.html', processors=processors, prefill_donor=prefill_donor)
 
 
 # ============================================================
