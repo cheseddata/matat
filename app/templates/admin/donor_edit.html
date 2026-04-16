@@ -58,7 +58,7 @@
         {% if lang == 'he' %}עריכת תורם{% else %}Edit Donor{% endif %} #{{ donor.id }}
     </h1>
 
-    <form method="POST">
+    <form method="POST" id="donorForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <!-- Personal Details -->
@@ -195,9 +195,56 @@
         </div>
 
         <div class="btn-bar">
-            <button type="submit" class="btn-save">{% if lang == 'he' %}שמור שינויים{% else %}Save Changes{% endif %}</button>
-            <a href="{{ url_for('admin.donor_detail', id=donor.id) }}" class="btn-cancel">{% if lang == 'he' %}ביטול{% else %}Cancel{% endif %}</a>
+            <button type="submit" class="btn-save" name="action" value="save">{% if lang == 'he' %}שמור{% else %}Save{% endif %}</button>
+            <button type="submit" class="btn-save" name="action" value="save_and_charge" style="background:#3498db;">{% if lang == 'he' %}שמור וחייב{% else %}Save & Charge{% endif %}</button>
+            <a href="{{ url_for('admin.donor_detail', id=donor.id) }}" class="btn-cancel" id="cancelBtn">{% if lang == 'he' %}ביטול{% else %}Cancel{% endif %}</a>
+        </div>
+        <div id="unsavedBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#fff3cd; border-top:2px solid #ffc107; padding:10px 20px; text-align:center; z-index:9999; font-size:14px;">
+            <strong>{% if lang == 'he' %}יש שינויים שלא נשמרו{% else %}You have unsaved changes{% endif %}</strong>
+            &mdash;
+            <button onclick="document.getElementById('donorForm').submit()" style="background:#27ae60; color:white; border:none; padding:6px 16px; border-radius:4px; cursor:pointer; font-size:13px;">
+                {% if lang == 'he' %}שמור עכשיו{% else %}Save Now{% endif %}
+            </button>
         </div>
     </form>
 </div>
+
+<script>
+(function() {
+    var form = document.getElementById('donorForm');
+    var initial = new FormData(form);
+    var initialValues = {};
+    for (var pair of initial.entries()) {
+        initialValues[pair[0]] = pair[1];
+    }
+    var hasChanges = false;
+
+    function checkChanges() {
+        var current = new FormData(form);
+        var changed = false;
+        for (var pair of current.entries()) {
+            if (pair[0] === 'csrf_token' || pair[0] === 'action') continue;
+            if ((initialValues[pair[0]] || '') !== (pair[1] || '')) {
+                changed = true;
+                break;
+            }
+        }
+        hasChanges = changed;
+        document.getElementById('unsavedBanner').style.display = changed ? 'block' : 'none';
+    }
+
+    form.addEventListener('input', checkChanges);
+    form.addEventListener('change', checkChanges);
+
+    // Warn before navigating away with unsaved changes
+    document.getElementById('cancelBtn').addEventListener('click', function(e) {
+        if (hasChanges) {
+            var msg = '{% if lang == "he" %}יש שינויים שלא נשמרו. לצאת בכל זאת?{% else %}You have unsaved changes. Leave anyway?{% endif %}';
+            if (!confirm(msg)) {
+                e.preventDefault();
+            }
+        }
+    });
+})();
+</script>
 {% endblock %}

@@ -1181,6 +1181,10 @@ def donor_edit(id):
         db.session.commit()
         logger.info(f'[admin] Donor {donor.id} edited by admin {current_user.id}')
         flash(f'Donor {donor.full_name} updated.', 'success')
+
+        action = request.form.get('action', 'save')
+        if action == 'save_and_charge':
+            return redirect(url_for('ztorm.charge_card', donor_id=donor.id))
         return redirect(url_for('admin.donor_detail', id=donor.id))
 
     return render_template('admin/donor_edit.html', donor=donor)
