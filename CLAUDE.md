@@ -293,6 +293,19 @@ estimate_fee()        # Estimate processing fee
 - **Donor Model Fix:** Added missing relationships (addresses, phones, memorial_names, communications)
 - **Dashboard Fix:** Missing `in processor_breakdown` on for loop
 
+### 2026-04-16
+- **Charge Form Redesign:** Completely rewritten `/ztorm/charge` form with 3-column RTL layout
+  - Column 1 (Right): Donor details with dual address toggle (Israeli / Foreign)
+  - Column 2 (Middle): Charge details, currency, installments, receipt section
+  - Column 3 (Left): Card details with masking, warning and info boxes
+  - Checkbox toggle switches between Israeli fields (TZ, IL address/city/zip) and Foreign fields (address, city, state, zip, country)
+  - Currency change auto-suggests matching address type (ILS -> Israeli, USD/EUR -> Foreign)
+  - Hidden `address_type` field submitted with form for backend logging
+  - "Save Donor" button saves donor info without charging
+  - Donor search API now returns both Israeli and foreign address fields
+  - Charge route logs `address_type`, `currency`, `amount` per charge
+  - Address fields saved to correct donor model columns based on address_type
+
 ### 2026-04-14 (ZTorm Integration)
 - **ZTorm Portal:** Full Access-lookalike donation management system integrated at 
   - Switchboard (main menu), Donor browser with search, Donor detail with 8 tabs

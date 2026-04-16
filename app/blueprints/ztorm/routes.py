@@ -1,8 +1,11 @@
+import logging
 from flask import render_template, request, jsonify, redirect, url_for, flash
 from flask_login import login_required, current_user
 from sqlalchemy import or_, func
 from . import ztorm_bp
 from ...extensions import db
+
+logger = logging.getLogger(__name__)
 from ...models import (
     Donor, Donation, Agreement, Payment, Receipt, Address, Phone,
     MemorialName, Communication, DonationEvent, DonorNote, Classification
@@ -294,7 +297,17 @@ def api_donor_search():
         'email': d.email or '',
         'phone': d.phone or '',
         'tz': d.teudat_zehut or '',
+        # Israeli address
+        'il_address': d.il_address_line1 or '',
+        'il_city': d.il_city or '',
+        'il_zip': d.il_zip or '',
+        'il_phone': d.il_phone or '',
+        # Foreign address
+        'address': d.address_line1 or '',
         'city': d.city or '',
+        'state': d.state or '',
+        'zip': d.zip or '',
+        'country': d.country or '',
     } for d in donors])
 
 
@@ -786,6 +799,7 @@ def charge_card():
     processors = get_available_processors()
 
     if request.method == 'POST':
+        address_type = request.form.get('address_type', 'il')
         processor_code = request.form.get('processor', 'shva')
         proc = get_processor(processor_code)
 
@@ -856,7 +870,31 @@ def charge_card():
             if not donor.last_name:
                 donor.last_name = form_last or 'Unknown'
 
+            # Save address fields based on address_type
+            if address_type == 'il':
+                form_il_address = request.form.get('il_address', '').strip()
+                form_il_city = request.form.get('il_city', '').strip()
+                form_il_zip = request.form.get('il_zip', '').strip()
+                if form_il_address and form_il_address != (donor.il_address_line1 or ''):
+                    donor.il_address_line1 = form_il_address
+                if form_il_city and form_il_city != (donor.il_city or ''):
+                    donor.il_city = form_il_city
+                if form_il_zip and form_il_zip != (donor.il_zip or ''):
+                    donor.il_zip = form_il_zip
+            else:
+                form_state = request.form.get('state', '').strip()
+                form_zip = request.form.get('zip', '').strip()
+                form_country = request.form.get('country', '').strip()
+                if form_state and form_state != (donor.state or ''):
+                    donor.state = form_state
+                if form_zip and form_zip != (donor.zip or ''):
+                    donor.zip = form_zip
+                if form_country and form_country != (donor.country or ''):
+                    donor.country = form_country
+
             db.session.flush()
+
+            logger.info(f'[charge] Donor {donor.id}: address_type={address_type}, currency={currency}, amount={amount_str}')
 
             if changed_fields:
                 flash(f'פרטי תורם עודכנו: {", ".join(changed_fields[:3])}', 'info')
@@ -864,6 +902,12 @@ def charge_card():
         except Exception as e:
             db.session.rollback()
             flash(f'שגיאה בשמירת פרטי תורם: {str(e)}', 'error')
+            return render_template('ztorm/charge_form.html', processors=processors)
+
+        # Handle save-donor-only (no charge)
+        if request.form.get('save_donor_only') == '1':
+            db.session.commit()
+            flash(f'פרטי תורם נשמרו: {donor.full_name}', 'success')
             return render_template('ztorm/charge_form.html', processors=processors)
 
         # === STEP 2: CHARGE THE CARD ===

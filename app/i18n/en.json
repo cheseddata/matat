@@ -621,7 +621,14 @@
       "info_step1": "Credit card will be charged",
       "info_step2": "Receipt will be created automatically",
       "info_step3": "Receipt will be emailed to donor",
-      "btn_charge": "Charge Card & Send Receipt"
+      "btn_charge": "Charge Card & Send Receipt",
+      "btn_save_donor": "Save Donor",
+      "use_il_address": "Israeli Address",
+      "use_foreign_address": "Foreign Address",
+      "il_address": "Address (Israel):",
+      "il_city": "City (Israel):",
+      "il_zip": "Zip (Israel):",
+      "state": "State:"
     },
     "charge_result": {
       "page_title": "Charge Result",
