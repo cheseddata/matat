@@ -4,6 +4,7 @@
 <div class="access-window">
     <div class="access-title-bar"><span><i class="fas fa-credit-card"></i> {{ t('ztorm.charge.title_bar') }}</span></div>
     <form method="post" id="chargeForm" style="padding: 16px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="address_type" id="addressType" value="il">
         <div class="row">
 
