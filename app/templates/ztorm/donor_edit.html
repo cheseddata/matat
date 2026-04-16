@@ -95,24 +95,59 @@
                         </select>
                     </div>
 
-                    <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">
-                        <i class="fas fa-map-marker-alt"></i> {{ t('ztorm.donor_edit.section_address') }}
+                    <h6 style="color: #0038b8; border-bottom: 2px solid #0038b8; padding-bottom: 4px; margin-top: 16px;">
+                        🇮🇱 {% if lang == 'he' %}כתובת בישראל (שקלים / נדרים פלוס){% else %}Israeli Address (ILS / Nedarim Plus){% endif %}
                     </h6>
                     <div class="access-form-group">
-                        <label>{{ t('ztorm.common.label_address') }}</label>
+                        <label>{% if lang == 'he' %}כתובת{% else %}Address{% endif %}</label>
+                        <input type="text" name="il_address_line1" value="{{ donor.il_address_line1 or '' }}" style="width: 250px;" placeholder="{% if lang == 'he' %}רחוב ומספר{% else %}Street and number{% endif %}">
+                    </div>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}שורה 2{% else %}Line 2{% endif %}</label>
+                        <input type="text" name="il_address_line2" value="{{ donor.il_address_line2 or '' }}" style="width: 250px;" placeholder="{% if lang == 'he' %}דירה, כניסה{% else %}Apt, entrance{% endif %}">
+                    </div>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}עיר{% else %}City{% endif %}</label>
+                        <input type="text" name="il_city" value="{{ donor.il_city or '' }}" style="width: 200px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}מיקוד{% else %}Zip{% endif %}</label>
+                        <input type="text" name="il_zip" value="{{ donor.il_zip or '' }}" style="width: 100px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}טלפון ישראלי{% else %}Israeli Phone{% endif %}</label>
+                        <input type="tel" name="il_phone" value="{{ donor.il_phone or '' }}" style="width: 150px;" placeholder="05x-xxx-xxxx">
+                    </div>
+
+                    <h6 style="color: #3498db; border-bottom: 2px solid #3498db; padding-bottom: 4px; margin-top: 16px;">
+                        🌍 {% if lang == 'he' %}כתובת חו"ל (דולר / Stripe){% else %}Foreign Address (USD / Stripe){% endif %}
+                    </h6>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}כתובת{% else %}Address{% endif %}</label>
                         <input type="text" name="address_line1" value="{{ donor.address_line1 or '' }}" style="width: 250px;">
                     </div>
                     <div class="access-form-group">
-                        <label>{{ t('ztorm.common.label_city') }}</label>
+                        <label>{% if lang == 'he' %}עיר{% else %}City{% endif %}</label>
                         <input type="text" name="city" value="{{ donor.city or '' }}" style="width: 200px;">
                     </div>
                     <div class="access-form-group">
-                        <label>{{ t('ztorm.common.label_zip') }}</label>
+                        <label>{% if lang == 'he' %}מדינה/מחוז{% else %}State{% endif %}</label>
+                        <input type="text" name="state" value="{{ donor.state or '' }}" style="width: 100px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}מיקוד{% else %}Zip{% endif %}</label>
                         <input type="text" name="zip" value="{{ donor.zip or '' }}" style="width: 100px;">
                     </div>
                     <div class="access-form-group">
-                        <label>{{ t('ztorm.common.label_country') }}</label>
-                        <input type="text" name="country" value="{{ donor.country or 'IL' }}" style="width: 100px;">
+                        <label>{% if lang == 'he' %}מדינה{% else %}Country{% endif %}</label>
+                        <select name="country" style="width: 120px;">
+                            <option value="US" {{ 'selected' if donor.country == 'US' }}>{% if lang == 'he' %}ארה"ב{% else %}US{% endif %}</option>
+                            <option value="IL" {{ 'selected' if donor.country == 'IL' }}>{% if lang == 'he' %}ישראל{% else %}IL{% endif %}</option>
+                            <option value="CA" {{ 'selected' if donor.country == 'CA' }}>{% if lang == 'he' %}קנדה{% else %}CA{% endif %}</option>
+                            <option value="GB" {{ 'selected' if donor.country == 'GB' }}>{% if lang == 'he' %}בריטניה{% else %}GB{% endif %}</option>
+                            <option value="FR" {{ 'selected' if donor.country == 'FR' }}>{% if lang == 'he' %}צרפת{% else %}FR{% endif %}</option>
+                            <option value="DE" {{ 'selected' if donor.country == 'DE' }}>{% if lang == 'he' %}גרמניה{% else %}DE{% endif %}</option>
+                        </select>
                     </div>
 
                     <h6 style="color: #2F5597; border-bottom: 1px solid #4472C4; padding-bottom: 4px; margin-top: 16px;">

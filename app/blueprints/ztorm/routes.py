@@ -353,9 +353,10 @@ def donor_save(donor_id):
     for field in ['first_name', 'last_name', 'email', 'phone', 'teudat_zehut',
                   'title', 'suffix', 'gender', 'spouse_name', 'spouse_tz',
                   'father_name', 'mother_name', 'occupation', 'receipt_name',
-                  'receipt_tz', 'address_line1', 'city', 'zip', 'country',
+                  'receipt_tz', 'address_line1', 'city', 'state', 'zip', 'country',
                   'language_pref', 'classification_1', 'classification_2',
-                  'classification_3', 'letter_first_name', 'letter_last_name']:
+                  'classification_3', 'letter_first_name', 'letter_last_name',
+                  'il_address_line1', 'il_address_line2', 'il_city', 'il_zip', 'il_phone']:
         val = request.form.get(field, '').strip()
         setattr(donor, field, val if val else None)
 
