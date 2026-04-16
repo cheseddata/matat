@@ -21,6 +21,7 @@
                     <td>
                         {% if not r.is_cancelled %}
                         <form method="post" action="{{ url_for('ztorm.receipt_cancel', receipt_id=r.id) }}" style="display:inline;" onsubmit="return confirm('{{ t('ztorm.receipts.confirm_cancel') }}')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:10px;padding:1px 6px;">{{ t('ztorm.common.btn_cancel') }}</button>
                         </form>
                         {% endif %}

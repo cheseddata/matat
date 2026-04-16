@@ -6,6 +6,7 @@
     <div style="padding: 20px;">
         <p>{{ t('ztorm.receipts_batch.description') }}</p>
         <form method="post" action="{{ url_for('ztorm.receipts_batch') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-primary" onclick="return confirm('{{ t('ztorm.receipts_batch.confirm') }}')">
                 <i class="fas fa-play"></i> {{ t('ztorm.receipts_batch.btn_start') }}
             </button>

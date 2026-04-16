@@ -52,6 +52,7 @@
             <h1>{{ t('admin.edit_salesperson') if salesperson else t('admin.add_salesperson') }}</h1>
 
             <form method="POST" style="margin-top: 20px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if not salesperson %}
                 <div class="form-group">
                     <label>{{ t('admin.username') }} *</label>

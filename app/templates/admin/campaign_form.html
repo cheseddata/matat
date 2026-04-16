@@ -74,6 +74,7 @@
             <h1>{{ t('admin.edit_campaign') if campaign else t('admin.create_campaign') }}</h1>
 
             <form method="POST" style="margin-top: 20px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label>{{ t('admin.campaign_name') }} *</label>
                     <input type="text" name="name" required

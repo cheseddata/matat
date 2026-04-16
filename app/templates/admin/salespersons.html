@@ -187,6 +187,7 @@
                     <a href="{{ url_for('admin.edit_salesperson', id=sp.id) }}" class="action-btn edit">{{ t('common.edit') }}</a>
                     <button class="action-btn reset" onclick="resetPassword({{ sp.id }})">{{ t('admin.password') }}</button>
                     <form method="POST" action="{{ url_for('admin.delete_salesperson', id=sp.id) }}" style="display: inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="action-btn delete" onclick="return confirm('{{ t('common.delete') }}?')">{{ t('common.delete') }}</button>
                     </form>
                 </td>

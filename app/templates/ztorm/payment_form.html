@@ -4,6 +4,7 @@
 <div class="access-window">
     <div class="access-title-bar"><span><i class="fas fa-plus"></i> {{ t('ztorm.payment_form.title_bar_prefix') }}{{ donation.id }}</span></div>
     <form method="post" style="padding: 12px;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="access-form-group"><label>{{ t('ztorm.common.label_amount') }}</label><input type="number" name="amount" required style="width:120px;" step="0.01"></div>
         <div class="access-form-group"><label>{{ t('ztorm.common.label_currency') }}</label>
             <select name="currency" style="width:100px;">
