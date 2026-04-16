@@ -55,6 +55,14 @@
                         <span id="tzStatus" style="font-size: 11px; margin-right: 4px;"></span>
                     </div>
                     <div class="access-form-group">
+                        <label>{% if lang == 'he' %}טלפון בית{% else %}Home{% endif %}</label>
+                        <input type="tel" name="il_phone" id="ilPhone" style="width: 130px;" placeholder="02/03-xxx-xxxx">
+                    </div>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}נייד{% else %}Cell{% endif %}</label>
+                        <input type="tel" name="il_phone_cell" id="ilPhoneCell" style="width: 130px;" placeholder="05x-xxx-xxxx">
+                    </div>
+                    <div class="access-form-group">
                         <label>{{ t('ztorm.charge.il_address') }}</label>
                         <input type="text" name="il_address" id="ilAddress" style="width: 200px;">
                     </div>
@@ -70,6 +78,14 @@
 
                 <!-- Foreign Address Fields -->
                 <div id="foreignAddressSection" style="margin-top: 6px; display: none;">
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}טלפון בית{% else %}Home{% endif %}</label>
+                        <input type="tel" name="phone_home" id="phoneHome" style="width: 130px;">
+                    </div>
+                    <div class="access-form-group">
+                        <label>{% if lang == 'he' %}נייד{% else %}Cell{% endif %}</label>
+                        <input type="tel" name="phone_cell" id="phoneCell" style="width: 130px;">
+                    </div>
                     <div class="access-form-group">
                         <label>{{ t('ztorm.common.label_address') }}</label>
                         <input type="text" name="address" id="address" style="width: 200px;">
@@ -315,17 +331,21 @@ function selectDonor(d) {
     if (d.phone) document.getElementById('phone').value = d.phone;
     if (d.tz) document.getElementById('tz').value = d.tz;
 
-    // Israeli address fields
+    // Israeli address + phones
     if (d.il_address) document.getElementById('ilAddress').value = d.il_address;
     if (d.il_city) document.getElementById('ilCity').value = d.il_city;
     if (d.il_zip) document.getElementById('ilZip').value = d.il_zip;
+    if (d.il_phone) document.getElementById('ilPhone').value = d.il_phone;
+    if (d.il_phone_cell) document.getElementById('ilPhoneCell').value = d.il_phone_cell;
 
-    // Foreign address fields
+    // Foreign address + phones
     if (d.address) document.getElementById('address').value = d.address;
     if (d.city) document.getElementById('city').value = d.city;
     if (d.state) document.getElementById('state').value = d.state;
     if (d.zip) document.getElementById('zip').value = d.zip;
     if (d.country) document.getElementById('country').value = d.country;
+    if (d.phone) document.getElementById('phoneHome').value = d.phone;
+    if (d.phone_cell) document.getElementById('phoneCell').value = d.phone_cell;
 
     // Receipt name
     document.getElementById('receiptName').value = d.name;

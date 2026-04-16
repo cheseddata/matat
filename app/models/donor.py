@@ -26,7 +26,9 @@ class Donor(db.Model):
     il_address_line2 = db.Column(db.String(255), nullable=True)
     il_city = db.Column(db.String(100), nullable=True)
     il_zip = db.Column(db.String(20), nullable=True)
-    il_phone = db.Column(db.String(50), nullable=True)
+    il_phone = db.Column(db.String(50), nullable=True)       # Israeli home phone
+    il_phone_cell = db.Column(db.String(50), nullable=True)  # Israeli cell phone
+    phone_cell = db.Column(db.String(50), nullable=True)     # Foreign cell phone
 
     comm_pref_email = db.Column(db.Boolean, default=True)
     comm_pref_sms = db.Column(db.Boolean, default=False)

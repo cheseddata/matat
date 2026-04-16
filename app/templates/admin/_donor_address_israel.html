@@ -6,9 +6,15 @@
                     <label>{% if lang == 'he' %}ת.ז. (תעודת זהות){% else %}Teudat Zehut (ID){% endif %}</label>
                     <input type="text" name="teudat_zehut" value="{{ donor.teudat_zehut or '' }}" maxlength="9" pattern="[0-9]{5,9}" placeholder="{% if lang == 'he' %}מספר ת.ז.{% else %}Israeli ID number{% endif %}">
                 </div>
+            </div>
+            <div class="field-row">
                 <div class="field-group">
-                    <label>{% if lang == 'he' %}טלפון בישראל{% else %}Israeli Phone{% endif %}</label>
-                    <input type="tel" name="il_phone" value="{{ donor.il_phone or '' }}" placeholder="05x-xxx-xxxx">
+                    <label>{% if lang == 'he' %}טלפון בית{% else %}Home Phone{% endif %}</label>
+                    <input type="tel" name="il_phone" value="{{ donor.il_phone or '' }}" placeholder="02/03/04-xxx-xxxx">
+                </div>
+                <div class="field-group">
+                    <label>{% if lang == 'he' %}טלפון נייד{% else %}Cell Phone{% endif %}</label>
+                    <input type="tel" name="il_phone_cell" value="{{ donor.il_phone_cell or '' }}" placeholder="05x-xxx-xxxx">
                 </div>
             </div>
             <div class="field-row single">

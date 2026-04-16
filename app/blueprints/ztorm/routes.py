@@ -302,7 +302,9 @@ def api_donor_search():
         'il_city': d.il_city or '',
         'il_zip': d.il_zip or '',
         'il_phone': d.il_phone or '',
+        'il_phone_cell': d.il_phone_cell or '',
         # Foreign address
+        'phone_cell': d.phone_cell or '',
         'address': d.address_line1 or '',
         'city': d.city or '',
         'state': d.state or '',
@@ -369,7 +371,8 @@ def donor_save(donor_id):
                   'receipt_tz', 'address_line1', 'city', 'state', 'zip', 'country',
                   'language_pref', 'classification_1', 'classification_2',
                   'classification_3', 'letter_first_name', 'letter_last_name',
-                  'il_address_line1', 'il_address_line2', 'il_city', 'il_zip', 'il_phone']:
+                  'il_address_line1', 'il_address_line2', 'il_city', 'il_zip', 'il_phone',
+                  'il_phone_cell', 'phone_cell']:
         val = request.form.get(field, '').strip()
         setattr(donor, field, val if val else None)
 

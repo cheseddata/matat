@@ -1,6 +1,16 @@
         <!-- Foreign Address (USD / Stripe) -->
         <div class="edit-card foreign-card">
-            <h3><span class="flag">🌍</span> {% if lang == 'he' %}כתובת חו"ל (דולר / Stripe){% else %}Foreign Address (USD / Stripe){% endif %}</h3>
+            <h3><span class="flag">🌍</span> {% if lang == 'he' %}כתובת חו״ל (דולר / Stripe){% else %}Foreign Address (USD / Stripe){% endif %}</h3>
+            <div class="field-row">
+                <div class="field-group">
+                    <label>{% if lang == 'he' %}טלפון בית{% else %}Home Phone{% endif %}</label>
+                    <input type="tel" name="phone" value="{{ donor.phone or '' }}">
+                </div>
+                <div class="field-group">
+                    <label>{% if lang == 'he' %}טלפון נייד{% else %}Cell Phone{% endif %}</label>
+                    <input type="tel" name="phone_cell" value="{{ donor.phone_cell or '' }}">
+                </div>
+            </div>
             <div class="field-row single">
                 <div class="field-group">
                     <label>{% if lang == 'he' %}כתובת שורה 1{% else %}Address Line 1{% endif %}</label>
@@ -31,7 +41,7 @@
                 <div class="field-group">
                     <label>{% if lang == 'he' %}מדינה{% else %}Country{% endif %}</label>
                     <select name="country">
-                        <option value="US" {{ 'selected' if donor.country == 'US' }}>{% if lang == 'he' %}ארה"ב{% else %}United States{% endif %}</option>
+                        <option value="US" {{ 'selected' if donor.country == 'US' }}>{% if lang == 'he' %}ארה״ב{% else %}United States{% endif %}</option>
                         <option value="CA" {{ 'selected' if donor.country == 'CA' }}>{% if lang == 'he' %}קנדה{% else %}Canada{% endif %}</option>
                         <option value="GB" {{ 'selected' if donor.country == 'GB' }}>{% if lang == 'he' %}בריטניה{% else %}United Kingdom{% endif %}</option>
                         <option value="AU" {{ 'selected' if donor.country == 'AU' }}>{% if lang == 'he' %}אוסטרליה{% else %}Australia{% endif %}</option>
