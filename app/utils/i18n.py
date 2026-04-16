@@ -132,11 +132,17 @@ def init_i18n(app):
 
     @app.context_processor
     def inject_i18n():
-        """Inject translation functions into templates."""
+        """Inject translation functions + global flags into templates."""
         lang = get_locale()
+        try:
+            from .sandbox import is_sandbox
+            sbx = is_sandbox()
+        except Exception:
+            sbx = False
         return {
             't': t,
             'lang': lang,
             'is_rtl': is_rtl(lang),
-            'text_dir': 'rtl' if is_rtl(lang) else 'ltr'
+            'text_dir': 'rtl' if is_rtl(lang) else 'ltr',
+            'sandbox_mode': sbx,
         }

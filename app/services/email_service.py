@@ -102,6 +102,28 @@ def send_email(to, subject, html_body, text_body=None, attachments=None,
     """Send email and log to message queue."""
     logger.info(f'send_email: to={to}, subject={subject[:50]}..., type={message_type}')
 
+    # SANDBOX_MODE short-circuit: log the email to the queue but never hit a
+    # real provider.
+    from ..utils.sandbox import is_sandbox, sandbox_email_success
+    if is_sandbox():
+        message = MessageQueue(
+            channel='email',
+            recipient_address=to,
+            message_type=message_type,
+            subject=subject,
+            body_html=html_body,
+            body_text=text_body,
+            attachment_path=attachments[0] if attachments else None,
+            related_donation_id=related_donation_id,
+            related_link_id=related_link_id,
+            provider='sandbox',
+            status='sent',
+            sent_at=datetime.utcnow(),
+        )
+        db.session.add(message)
+        db.session.commit()
+        return sandbox_email_success(to=to, subject=subject)
+
     email_config = get_email_config()
     provider = email_config.get('provider', 'sendgrid')
     logger.info(f'Email provider: {provider}')

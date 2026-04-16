@@ -374,6 +374,12 @@
     </script>
 </head>
 <body>
+    {% if sandbox_mode %}
+    <div style="background:#FFECB3; color:#6D4C41; padding:6px 14px; border-bottom:2px solid #FB8C00; font-size:12px; font-weight:bold; text-align:center; font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
+        ⚠️ SANDBOX MODE — תצוגת הדגמה / No live transactions, emails, or SMS will be sent ⚠️
+    </div>
+    {% endif %}
+
     <!-- Matat main nav bar -->
     {% if current_user.is_authenticated %}
     <nav class="matat-nav">

@@ -58,12 +58,38 @@ PROCESSOR_REGISTRY = {
 
 
 def get_processor(code, config=None):
-    """Get a processor instance by code."""
+    """Get a processor instance by code.
+
+    When SANDBOX_MODE is active, every processor is wrapped so that
+    create_payment() returns a fake-success response without hitting the
+    real gateway. All other methods still run as normal (validation,
+    client_config, etc.) to preserve the operator's UX.
+    """
     if code not in PROCESSOR_REGISTRY:
         raise ValueError(f"Unknown processor: {code}")
 
     proc_info = PROCESSOR_REGISTRY[code]
-    return proc_info['class'](config=config)
+    instance = proc_info['class'](config=config)
+
+    from ...utils.sandbox import is_sandbox, sandbox_charge_success
+    if is_sandbox():
+        # Monkey-patch just the money-moving method on this instance.
+        real_name = instance.name
+
+        def _sandbox_charge(amount, currency, card_data, donor_data=None, **kwargs):
+            return sandbox_charge_success(
+                amount=amount, currency=currency,
+                processor=real_name, sandbox_note='SANDBOX_MODE active'
+            )
+
+        def _sandbox_refund(transaction_id, amount=None):
+            return {'success': True, 'sandbox': True,
+                    'refund_id': f'sbx_refund_{transaction_id}'}
+
+        instance.create_payment = _sandbox_charge
+        instance.refund = _sandbox_refund
+
+    return instance
 
 
 def get_available_processors(enabled_only=True):

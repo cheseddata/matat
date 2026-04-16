@@ -105,6 +105,11 @@
     </script>
 </head>
 <body>
+    {% if sandbox_mode %}
+    <div style="background:#FFECB3; color:#6D4C41; padding:6px 14px; border-bottom:2px solid #FB8C00; font-size:12px; font-weight:bold; text-align:center; font-family:'Segoe UI',Tahoma,Arial,sans-serif;">
+        ⚠️ SANDBOX MODE — תצוגת הדגמה / No live transactions, emails, or SMS will be sent ⚠️
+    </div>
+    {% endif %}
     {% if current_user.is_authenticated %}
     <nav class="nav">
         <a href="/" class="brand"><img src="{{ url_for('static', filename='logo.png') }}" alt="Matat Mordechai" style="height: 32px; vertical-align: middle; margin-{% if is_rtl %}left{% else %}right{% endif %}: 8px;">מתת מרדכי | Matat</a>
