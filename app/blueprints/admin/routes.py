@@ -1171,6 +1171,13 @@ def donor_edit(id):
         donor.suffix = request.form.get('suffix', '').strip() or None
         donor.spouse_name = request.form.get('spouse_name', '').strip() or None
 
+        # Israeli address
+        donor.il_address_line1 = request.form.get('il_address_line1', '').strip() or None
+        donor.il_address_line2 = request.form.get('il_address_line2', '').strip() or None
+        donor.il_city = request.form.get('il_city', '').strip() or None
+        donor.il_zip = request.form.get('il_zip', '').strip() or None
+        donor.il_phone = request.form.get('il_phone', '').strip() or None
+
         db.session.commit()
         logger.info(f'[admin] Donor {donor.id} edited by admin {current_user.id}')
         flash(f'Donor {donor.full_name} updated.', 'success')

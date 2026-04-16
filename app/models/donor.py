@@ -20,6 +20,14 @@ class Donor(db.Model):
     state = db.Column(db.String(100), nullable=True)
     zip = db.Column(db.String(20), nullable=True)
     country = db.Column(db.String(100), default='US')
+
+    # Israeli address (for donors with dual addresses)
+    il_address_line1 = db.Column(db.String(255), nullable=True)
+    il_address_line2 = db.Column(db.String(255), nullable=True)
+    il_city = db.Column(db.String(100), nullable=True)
+    il_zip = db.Column(db.String(20), nullable=True)
+    il_phone = db.Column(db.String(50), nullable=True)
+
     comm_pref_email = db.Column(db.Boolean, default=True)
     comm_pref_sms = db.Column(db.Boolean, default=False)
     comm_pref_whatsapp = db.Column(db.Boolean, default=False)
