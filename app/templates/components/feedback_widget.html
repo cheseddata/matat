@@ -1,0 +1,281 @@
+{# Operator feedback widget — file a ticket with auto screenshot + console errors. #}
+{# Positioned bottom-LEFT so it doesn't collide with the existing chat widget (bottom-right). #}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+.fb-widget {
+    position: fixed !important;
+    bottom: 20px !important;
+    {% if is_rtl %}right: 20px !important; left: auto !important;{% else %}left: 20px !important; right: auto !important;{% endif %}
+    z-index: 99998 !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Assistant', Tahoma, sans-serif;
+}
+.fb-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    color: white; border: none; border-radius: 28px;
+    box-shadow: 0 4px 14px rgba(211, 84, 0, 0.35);
+    cursor: pointer; font-size: 14px; font-weight: 600;
+    transition: transform .15s, box-shadow .15s;
+}
+.fb-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(211, 84, 0, 0.45); }
+.fb-btn .fb-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #fff; opacity: .9;
+    {% if is_rtl %}margin-left: 4px;{% else %}margin-right: 4px;{% endif %}
+}
+.fb-btn.has-errors .fb-dot { background: #ffeb3b; animation: fb-blink 1s infinite; }
+@keyframes fb-blink { 50% { opacity: .3; } }
+
+.fb-modal-backdrop {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 100001;
+    align-items: center; justify-content: center; padding: 20px;
+}
+.fb-modal-backdrop.open { display: flex; }
+.fb-modal {
+    background: white; border-radius: 14px;
+    width: 520px; max-width: 100%; max-height: 90vh;
+    display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.fb-modal-header {
+    background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    color: white; padding: 14px 18px;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.fb-modal-header h3 { margin: 0; font-size: 16px; font-weight: 600; color: white; }
+.fb-modal-close {
+    background: rgba(255,255,255,0.2); border: none; color: white;
+    width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 16px;
+}
+.fb-modal-body { padding: 16px 18px; overflow-y: auto; }
+.fb-modal-body label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
+.fb-modal-body textarea {
+    width: 100%; min-height: 90px; padding: 10px;
+    border: 2px solid #e0e0e0; border-radius: 8px;
+    font-family: inherit; font-size: 14px; resize: vertical;
+    direction: {{ text_dir }};
+}
+.fb-modal-body textarea:focus { outline: none; border-color: #e67e22; }
+.fb-meta {
+    margin-top: 10px; padding: 10px 12px;
+    background: #f7f7f7; border-radius: 8px; font-size: 12px; color: #555;
+    direction: ltr; text-align: left;
+}
+.fb-meta .fb-meta-row { margin: 2px 0; word-break: break-all; }
+.fb-meta strong { color: #222; }
+.fb-errors {
+    margin-top: 8px; max-height: 120px; overflow-y: auto;
+    background: #fff5f5; border: 1px solid #fecaca; border-radius: 6px;
+    padding: 6px 8px; font-family: ui-monospace, 'Courier New', monospace;
+    font-size: 11px; color: #991b1b; direction: ltr; text-align: left;
+}
+.fb-errors:empty { display: none; }
+.fb-preview-wrap { margin-top: 12px; }
+.fb-preview-wrap img {
+    max-width: 100%; max-height: 180px; border: 1px solid #ddd; border-radius: 6px;
+    display: block; margin: 4px auto;
+}
+.fb-modal-footer {
+    padding: 12px 18px; border-top: 1px solid #eee;
+    display: flex; justify-content: flex-end; gap: 8px; background: #fafafa;
+}
+.fb-modal-footer button {
+    padding: 8px 16px; border-radius: 6px; border: none;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.fb-cancel { background: #e0e0e0; color: #333; }
+.fb-submit { background: #e67e22; color: white; }
+.fb-submit:disabled { opacity: .5; cursor: wait; }
+.fb-status { font-size: 12px; color: #666; {% if is_rtl %}margin-left{% else %}margin-right{% endif %}: auto; align-self: center; }
+.fb-status.ok { color: #15803d; }
+.fb-status.err { color: #b91c1c; }
+</style>
+
+<div class="fb-widget" id="fbWidget">
+    <button class="fb-btn" id="fbOpenBtn" type="button" onclick="fbOpen()">
+        <span class="fb-dot" id="fbDot"></span>
+        <span>{% if lang == 'he' %}דווח על בעיה{% else %}Report issue{% endif %}</span>
+    </button>
+</div>
+
+<div class="fb-modal-backdrop" id="fbBackdrop">
+    <div class="fb-modal" role="dialog" aria-modal="true">
+        <div class="fb-modal-header">
+            <h3>{% if lang == 'he' %}דווח על בעיה{% else %}Report an issue{% endif %}</h3>
+            <button class="fb-modal-close" type="button" onclick="fbClose()">✕</button>
+        </div>
+        <div class="fb-modal-body">
+            <label for="fbIssue">{% if lang == 'he' %}מה לא עבד?{% else %}What went wrong?{% endif %}</label>
+            <textarea id="fbIssue" placeholder="{% if lang == 'he' %}לדוגמה: לחצתי על שמור והדף הלך לבן...{% else %}e.g. I clicked Save and the page went blank...{% endif %}"></textarea>
+
+            <div class="fb-meta">
+                <div class="fb-meta-row"><strong>URL:</strong> <span id="fbMetaUrl"></span></div>
+                <div class="fb-meta-row"><strong>User:</strong> {{ current_user.username }}</div>
+                <div class="fb-meta-row"><strong>When:</strong> <span id="fbMetaTime"></span></div>
+            </div>
+
+            <div class="fb-errors" id="fbErrors"></div>
+
+            <div class="fb-preview-wrap">
+                <label style="margin-top:10px;">{% if lang == 'he' %}צילום מסך (אוטומטי){% else %}Screenshot (auto-captured){% endif %}</label>
+                <img id="fbPreview" alt="screenshot preview" />
+            </div>
+        </div>
+        <div class="fb-modal-footer">
+            <div class="fb-status" id="fbStatus"></div>
+            <button class="fb-cancel" type="button" onclick="fbClose()">{% if lang == 'he' %}ביטול{% else %}Cancel{% endif %}</button>
+            <button class="fb-submit" type="button" id="fbSubmitBtn" onclick="fbSubmit()">{% if lang == 'he' %}שלח{% else %}Submit{% endif %}</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // --- rolling buffer of browser-side errors -----------------------------
+    const MAX_ERRORS = 30;
+    const fbErrorBuf = [];
+    function pushError(entry) {
+        fbErrorBuf.push({ ts: new Date().toISOString(), ...entry });
+        if (fbErrorBuf.length > MAX_ERRORS) fbErrorBuf.shift();
+        const dot = document.getElementById('fbDot');
+        const btn = document.getElementById('fbOpenBtn');
+        if (btn && dot) btn.classList.add('has-errors');
+    }
+    window.addEventListener('error', function (ev) {
+        pushError({
+            type: 'error',
+            message: ev.message || String(ev.error || ''),
+            source: ev.filename || '',
+            line: ev.lineno || 0,
+            col: ev.colno || 0,
+            stack: (ev.error && ev.error.stack) ? String(ev.error.stack).slice(0, 2000) : ''
+        });
+    });
+    window.addEventListener('unhandledrejection', function (ev) {
+        const r = ev.reason;
+        pushError({
+            type: 'unhandledrejection',
+            message: (r && r.message) ? r.message : String(r || ''),
+            stack: (r && r.stack) ? String(r.stack).slice(0, 2000) : ''
+        });
+    });
+    const origErr = console.error.bind(console);
+    console.error = function (...args) {
+        try {
+            pushError({
+                type: 'console.error',
+                message: args.map(a => {
+                    if (a instanceof Error) return a.message + '\n' + (a.stack || '');
+                    if (typeof a === 'object') { try { return JSON.stringify(a); } catch { return String(a); } }
+                    return String(a);
+                }).join(' ').slice(0, 2000)
+            });
+        } catch (e) { /* ignore */ }
+        origErr(...args);
+    };
+
+    // --- modal open / close / capture --------------------------------------
+    let capturedBlob = null;
+
+    window.fbOpen = async function () {
+        document.getElementById('fbMetaUrl').textContent = window.location.href;
+        document.getElementById('fbMetaTime').textContent = new Date().toLocaleString();
+        const errEl = document.getElementById('fbErrors');
+        if (fbErrorBuf.length === 0) {
+            errEl.textContent = '';
+        } else {
+            errEl.innerHTML = fbErrorBuf.map(e =>
+                '<div>[' + e.type + '] ' + (e.message || '').replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) +
+                (e.source ? ' @ ' + e.source + ':' + e.line : '') + '</div>'
+            ).join('');
+        }
+        document.getElementById('fbStatus').textContent = '';
+        document.getElementById('fbStatus').className = 'fb-status';
+        document.getElementById('fbSubmitBtn').disabled = false;
+        document.getElementById('fbBackdrop').classList.add('open');
+
+        // Capture the page now (before operator scrolls around inside the modal)
+        capturedBlob = null;
+        const preview = document.getElementById('fbPreview');
+        preview.style.display = 'none';
+        try {
+            // Render with modal hidden so the screenshot is the operator's actual view
+            const backdrop = document.getElementById('fbBackdrop');
+            backdrop.style.visibility = 'hidden';
+            const canvas = await html2canvas(document.body, {
+                useCORS: true,
+                logging: false,
+                windowWidth: document.documentElement.scrollWidth,
+                windowHeight: document.documentElement.scrollHeight,
+                scale: Math.min(window.devicePixelRatio || 1, 1.5)
+            });
+            backdrop.style.visibility = '';
+            capturedBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+            preview.src = canvas.toDataURL('image/png');
+            preview.style.display = 'block';
+        } catch (e) {
+            document.getElementById('fbBackdrop').style.visibility = '';
+            document.getElementById('fbStatus').textContent = 'Screenshot capture failed: ' + e.message;
+            document.getElementById('fbStatus').className = 'fb-status err';
+        }
+    };
+
+    window.fbClose = function () {
+        document.getElementById('fbBackdrop').classList.remove('open');
+        document.getElementById('fbIssue').value = '';
+    };
+
+    function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = reject;
+            fr.readAsDataURL(blob);
+        });
+    }
+
+    window.fbSubmit = async function () {
+        const issue = document.getElementById('fbIssue').value.trim();
+        const status = document.getElementById('fbStatus');
+        const btn = document.getElementById('fbSubmitBtn');
+        if (!issue) {
+            status.textContent = '{% if lang == "he" %}אנא תארי את הבעיה{% else %}Please describe the issue{% endif %}';
+            status.className = 'fb-status err';
+            return;
+        }
+        btn.disabled = true;
+        status.textContent = '{% if lang == "he" %}שולח...{% else %}Sending...{% endif %}';
+        status.className = 'fb-status';
+
+        const form = new FormData();
+        form.append('issue', issue);
+        form.append('page_url', window.location.href);
+        form.append('console_errors', JSON.stringify(fbErrorBuf));
+        if (capturedBlob) {
+            const b64 = await blobToBase64(capturedBlob);
+            form.append('image', b64);
+        }
+        try {
+            const res = await fetch('/claude/feedback/submit', { method: 'POST', body: form });
+            const data = await res.json();
+            if (data.success) {
+                status.textContent = '{% if lang == "he" %}נשלח ✓ כרטיס #{% else %}Sent ✓ ticket #{% endif %}' + data.id;
+                status.className = 'fb-status ok';
+                fbErrorBuf.length = 0;
+                document.getElementById('fbOpenBtn').classList.remove('has-errors');
+                setTimeout(fbClose, 1500);
+            } else {
+                status.textContent = 'Error: ' + (data.error || 'unknown');
+                status.className = 'fb-status err';
+                btn.disabled = false;
+            }
+        } catch (e) {
+            status.textContent = 'Network error: ' + e.message;
+            status.className = 'fb-status err';
+            btn.disabled = false;
+        }
+    };
+})();
+</script>

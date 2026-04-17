@@ -27,12 +27,25 @@ def get_anthropic_api_key():
     return os.environ.get('ANTHROPIC_API_KEY', '')
 
 # Configuration
-SCREENSHOT_FOLDER = '/var/www/matat/uploads/screenshots'
+# Screenshot folder: honor env override, else instance-relative on this box,
+# else fall back to the legacy server path. Instance-relative keeps the whole
+# sandbox self-contained under C:\Matat\ for easy backup/reset.
+SCREENSHOT_FOLDER = os.environ.get(
+    'SCREENSHOT_FOLDER',
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+                 'instance', 'feedback', 'screenshots')
+)
+FEEDBACK_ROOT = os.path.join(os.path.dirname(SCREENSHOT_FOLDER), 'tickets')
+FEEDBACK_GIT_DIR = os.environ.get(
+    'FEEDBACK_GIT_DIR',
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+                 'feedback_git')
+)
 TTYD_PORT = 7681
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
 
-# Ensure screenshot folder exists
 os.makedirs(SCREENSHOT_FOLDER, exist_ok=True)
+os.makedirs(FEEDBACK_ROOT, exist_ok=True)
 
 
 def get_tmux_session():
@@ -680,3 +693,142 @@ def view_archive(id):
     messages = json.loads(archive.messages_json)
 
     return render_template('claude/chat_archive_detail.html', archive=archive, messages=messages)
+
+
+# ---------------------------------------------------------------------------
+# Operator feedback widget — captures issue + screenshot + console errors,
+# persists to HelpRequest + feedback/tickets/<id>/, and pushes a git commit
+# to the operator-feedback branch so another Claude can pick it up remotely.
+# ---------------------------------------------------------------------------
+def _git_push_ticket_async(ticket_id):
+    """Background: copy ticket files into the git worktree and push."""
+    import threading, subprocess, shutil, json as _json
+
+    def _run():
+        try:
+            # .git may be a dir (regular clone) or a file (linked worktree pointer)
+            git_marker = os.path.join(FEEDBACK_GIT_DIR, '.git')
+            if not os.path.isdir(FEEDBACK_GIT_DIR) or not os.path.exists(git_marker):
+                logger.info(f'[feedback] git worktree not set up at {FEEDBACK_GIT_DIR}; skipping push')
+                return
+            src = os.path.join(FEEDBACK_ROOT, str(ticket_id))
+            if not os.path.isdir(src):
+                logger.warning(f'[feedback] ticket {ticket_id} dir missing, skip push')
+                return
+            dst = os.path.join(FEEDBACK_GIT_DIR, 'tickets', str(ticket_id))
+            os.makedirs(os.path.dirname(dst), exist_ok=True)
+            if os.path.isdir(dst):
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst)
+
+            env = os.environ.copy()
+            # Force non-interactive: fail fast if creds missing instead of hanging
+            # the background thread on a credential prompt (terminal or GCM GUI).
+            env['GIT_TERMINAL_PROMPT'] = '0'
+            env['GCM_INTERACTIVE'] = 'Never'
+            identity = ['-c', 'user.email=feedback@matat.local',
+                        '-c', 'user.name=Matat Operator Feedback',
+                        '-c', 'credential.interactive=never']
+            def git(*args, check=True, timeout=30):
+                return subprocess.run(['git', *identity, '-C', FEEDBACK_GIT_DIR, *args],
+                                      capture_output=True, text=True, env=env,
+                                      timeout=timeout, check=check)
+            git('add', '-A')
+            status = git('status', '--porcelain')
+            if not status.stdout.strip():
+                logger.info(f'[feedback] ticket {ticket_id}: no changes to commit')
+                return
+            git('commit', '-m', f'ticket #{ticket_id}')
+            push = git('push', 'origin', 'operator-feedback', check=False)
+            if push.returncode != 0:
+                logger.warning(f'[feedback] push failed (kept locally): {push.stderr.strip()}')
+            else:
+                logger.info(f'[feedback] ticket #{ticket_id} pushed to operator-feedback')
+        except Exception as e:
+            logger.exception(f'[feedback] background push error: {e}')
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
+@claude_bp.route('/feedback/submit', methods=['POST'])
+@login_required
+@csrf.exempt
+def submit_feedback():
+    """One-shot feedback submit: issue + base64 PNG + console errors."""
+    import base64, json as _json
+    try:
+        issue = (request.form.get('issue') or '').strip()
+        page_url = request.form.get('page_url') or ''
+        console_errors_raw = request.form.get('console_errors') or '[]'
+        image_data = request.form.get('image') or ''
+
+        if not issue:
+            return jsonify({'error': 'Please describe the issue'}), 400
+
+        try:
+            console_errors = _json.loads(console_errors_raw)
+            if not isinstance(console_errors, list):
+                console_errors = []
+        except Exception:
+            console_errors = []
+
+        screenshot = None
+        if image_data:
+            if ',' in image_data:
+                image_data = image_data.split(',', 1)[1]
+            image_bytes = base64.b64decode(image_data)
+            filename = f'{uuid.uuid4().hex}.png'
+            filepath = os.path.join(SCREENSHOT_FOLDER, filename)
+            with open(filepath, 'wb') as f:
+                f.write(image_bytes)
+            screenshot = ClaudeScreenshot(
+                session_id=None,
+                user_id=current_user.id,
+                filename=filename,
+                original_filename='feedback_screenshot.png',
+                file_path=filepath,
+                file_size=len(image_bytes),
+                description=f'Feedback: {page_url}'
+            )
+            db.session.add(screenshot)
+            db.session.flush()  # get screenshot.id
+
+        help_req = HelpRequest(
+            user_id=current_user.id,
+            page_url=page_url,
+            issue=issue,
+            screenshot_id=screenshot.id if screenshot else None,
+        )
+        db.session.add(help_req)
+        db.session.commit()
+
+        # Mirror to feedback/tickets/<id>/ for git-backed portability
+        ticket_dir = os.path.join(FEEDBACK_ROOT, str(help_req.id))
+        os.makedirs(ticket_dir, exist_ok=True)
+        ticket_meta = {
+            'id': help_req.id,
+            'created_at': help_req.created_at.isoformat() if help_req.created_at else None,
+            'user': {'id': current_user.id, 'username': current_user.username,
+                     'full_name': current_user.full_name},
+            'page_url': page_url,
+            'issue': issue,
+            'console_errors': console_errors,
+            'user_agent': request.headers.get('User-Agent', ''),
+            'screenshot_filename': screenshot.filename if screenshot else None,
+        }
+        with open(os.path.join(ticket_dir, 'ticket.json'), 'w', encoding='utf-8') as f:
+            _json.dump(ticket_meta, f, ensure_ascii=False, indent=2)
+        if screenshot:
+            import shutil as _shutil
+            _shutil.copyfile(screenshot.file_path,
+                             os.path.join(ticket_dir, 'screenshot.png'))
+
+        logger.info(f'[feedback] ticket #{help_req.id} from {current_user.username}: {issue[:60]}')
+
+        _git_push_ticket_async(help_req.id)
+
+        return jsonify({'success': True, 'id': help_req.id,
+                        'message': 'Reported — thank you.'})
+    except Exception as e:
+        logger.exception(f'[feedback] submit failed: {e}')
+        return jsonify({'error': str(e)}), 500
