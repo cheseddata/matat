@@ -35,8 +35,11 @@ def main():
             )
             if hasattr(admin, 'is_temp_password'):
                 admin.is_temp_password = False
-            if hasattr(admin, 'is_active'):
-                admin.is_active = True
+            # The column is `active`. `is_active` is UserMixin's read-only
+            # property (returns self.active) — assigning to it raises
+            # AttributeError on a fresh install.
+            if hasattr(User, 'active'):
+                admin.active = True
             admin.password_hash = bcrypt.generate_password_hash('admin123').decode('utf-8')
             db.session.add(admin)
             print('Created admin user (admin / admin123)')
