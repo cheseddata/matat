@@ -1,0 +1,14 @@
+{
+  "id": 3,
+  "created_at": "2026-04-17T10:17:14.679411",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "full_name": "Admin User"
+  },
+  "page_url": "http://localhost:5060/",
+  "issue": "TEST 3: verify fast-fail push with bad creds",
+  "console_errors": [],
+  "user_agent": "curl/8.18.0",
+  "screenshot_filename": "3a95639118334c3faaa78c6a6bf01559.png"
+}
