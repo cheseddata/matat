@@ -3,12 +3,11 @@
 Uses the access_parser library (pip install access-parser) because the
 ZTorm MDB is password-protected and Jet OLEDB can't open it.
 
-Scope: keep this safe and scoped. We only update fields on existing
-Donor rows matched by ztorm_donor_id; we do NOT create new donors or
-cascade into donations/payments. The shipped snapshot has the base
-data; this script just picks up edits since the snapshot was taken.
-
-If the operator needs NEW donors synced too, we add that next.
+Scope:
+  * Matches existing Donors by ztorm_donor_id and updates editable fields
+  * CREATES new Donor rows for Tormim the local DB has never seen
+    (so a fresh install on the operator's PC gets populated from her MDB)
+  * Does NOT touch donations / payments / agreements (follow-up)
 """
 from __future__ import annotations
 
@@ -102,28 +101,47 @@ def main():
         print(f'  Matat donors linked to ZTorm: {len(by_ztorm):,}')
 
         updated = 0
+        created = 0
+        skipped = 0
         for row in rows:
             # Column name varies; try common spellings.
             num = row.get('num_torem') or row.get('Num_Torem') or row.get('id')
             try:
                 num = int(num)
             except (TypeError, ValueError):
-                continue
-            donor = by_ztorm.get(num)
-            if not donor:
+                skipped += 1
                 continue
 
+            first = safe_str(row.get('shem_prati') or row.get('first_name'))
+            last  = safe_str(row.get('shem_mishpaha') or row.get('last_name'))
+            phone = safe_str(row.get('tel') or row.get('phone'))
+            email = safe_str(row.get('email'))
+            tz    = safe_str(row.get('t_z') or row.get('teudat_zehut'))
+
+            donor = by_ztorm.get(num)
+            if donor is None:
+                # Create new Donor row. first_name, last_name, email are
+                # NOT NULL on the current schema — default to '' when blank.
+                donor = Donor(
+                    ztorm_donor_id=num,
+                    first_name=first or '',
+                    last_name=last or '',
+                    email=email or '',
+                    phone=phone,
+                    teudat_zehut=tz,
+                    external_source='ztorm',
+                    external_id=str(num),
+                )
+                db.session.add(donor)
+                by_ztorm[num] = donor
+                created += 1
+                continue
+
+            # Existing donor: update only when MDB has a non-empty newer value.
             changed = False
-            # Only update fields that look newer (non-empty) on the live
-            # MDB side. Non-destructive.
-            updates = {
-                'first_name':  safe_str(row.get('shem_prati') or row.get('first_name')),
-                'last_name':   safe_str(row.get('shem_mishpaha') or row.get('last_name')),
-                'phone':       safe_str(row.get('tel') or row.get('phone')),
-                'email':       safe_str(row.get('email')),
-                'teudat_zehut': safe_str(row.get('t_z') or row.get('teudat_zehut')),
-            }
-            for k, v in updates.items():
+            for k, v in (('first_name', first), ('last_name', last),
+                         ('phone', phone), ('email', email),
+                         ('teudat_zehut', tz)):
                 if v and getattr(donor, k, None) != v:
                     setattr(donor, k, v)
                     changed = True
@@ -131,7 +149,7 @@ def main():
                 updated += 1
 
         db.session.commit()
-        print(f'  Donor records updated: {updated:,}')
+        print(f'  Donor records: {created:,} created, {updated:,} updated, {skipped:,} skipped')
 
 
 if __name__ == '__main__':
