@@ -48,23 +48,39 @@ if errorlevel 1 (
 
 REM --- Verify DB ---
 if exist instance\matat.db (
-    echo [4/5] Database found: instance\matat.db
+    echo [4/6] Database found: instance\matat.db
 ) else (
     echo [!] Database instance\matat.db not found.
     echo     If this is a fresh install, run create_db.bat first.
 )
 
+REM --- Write a local .env pointing at THIS install (SQLite, sandbox) ---
+echo.> .env
+echo DATABASE_URL=sqlite:///%cd:\=/%/instance/matat.db>> .env
+echo SECRET_KEY=operator-sandbox-local-key>> .env
+echo FLASK_APP=run.py>> .env
+echo FLASK_DEBUG=0>> .env
+echo SANDBOX_MODE=1>> .env
+echo APP_DOMAIN=http://localhost:5060>> .env
+echo ORG_NAME=Matat Mordechai>> .env
+echo STRIPE_MODE=test>> .env
+echo MAIL_PROVIDER=none>> .env
+echo       [i] wrote local .env ^(SQLite, SANDBOX_MODE=1^)
+
+REM --- Refresh data from operator's live C:\Gmach and C:\ztorm ---
+echo [5/6] Refreshing data from C:\Gmach and C:\ztorm ...
+if exist "C:\Gmach\MttData.mdb" (
+    echo     Found C:\Gmach\MttData.mdb -- running live sync.
+    call "%~dp0sync_live_data.bat"
+) else (
+    echo     C:\Gmach\MttData.mdb not found -- using shipped snapshot.
+)
+
 REM --- Create desktop shortcut ---
-echo [5/5] Creating start shortcut on the Desktop...
+echo [6/6] Creating start shortcut on the Desktop...
 set DESKTOP=%USERPROFILE%\Desktop
 set SHORTCUT=%DESKTOP%\Matat (Sandbox).lnk
-powershell -NoProfile -Command ^
-    "$w = New-Object -ComObject WScript.Shell; ^
-     $s = $w.CreateShortcut('%SHORTCUT%'); ^
-     $s.TargetPath = '%cd%\start.bat'; ^
-     $s.WorkingDirectory = '%cd%'; ^
-     $s.IconLocation = '%cd%\app\static\logo.ico,0'; ^
-     $s.Save()" 2>nul
+powershell -NoProfile -Command "$w = New-Object -ComObject WScript.Shell; $s = $w.CreateShortcut('%SHORTCUT%'); $s.TargetPath = '%cd%\start.bat'; $s.WorkingDirectory = '%cd%'; $s.Save()" 2>nul
 
 echo.
 echo ============================================================

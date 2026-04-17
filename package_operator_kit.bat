@@ -17,10 +17,12 @@ if exist "%DST%" (
     rmdir /s /q "%DST%"
 )
 
+REM NOTE: do NOT use "_*.py" as an exclusion — it matches __init__.py
+REM and breaks every Python package. Use explicit dev-only filenames.
 robocopy "%SRC%" "%DST%" ^
     /E ^
-    /XD .git venv __pycache__ node_modules instance\__pycache__ logs .pytest_cache ^
-    /XF *.log *.pid *.pyc .env package_operator_kit.bat ^
+    /XD .git venv __pycache__ node_modules instance\__pycache__ logs .pytest_cache .claude ^
+    /XF *.log *.pid *.pyc .env package_operator_kit.bat _sync_matat_from_old.py _add_gemach_i18n.py _add_gemach_i18n2.py ^
     /NFL /NDL /NJH /NJS /NP
 if errorlevel 8 (
     echo Robocopy failed with code %errorlevel%

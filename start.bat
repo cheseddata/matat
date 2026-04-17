@@ -22,11 +22,12 @@ if not exist instance\matat.db (
     exit /b 1
 )
 
-REM --- Pick a port (5050 default, fallback 5051 if busy) ---
-set PORT=5050
+REM --- Pick a port (5060 default for operator kit so it can run
+REM --- side-by-side with a 5050 dev server; 5061 fallback if busy).
+set PORT=5060
 netstat -ano | findstr ":%PORT% " | findstr "LISTENING" >nul
 if not errorlevel 1 (
-    set PORT=5051
+    set PORT=5061
 )
 
 REM --- Open browser to the app after a 2-second delay ---
