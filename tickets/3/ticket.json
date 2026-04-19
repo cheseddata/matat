@@ -1,0 +1,14 @@
+{
+  "id": 3,
+  "created_at": "2026-04-19T08:35:05.801018",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "full_name": "Admin User"
+  },
+  "page_url": "http://127.0.0.1:60925/gemach/loans",
+  "issue": "all הוראת קבע  need their card attach als we need a searc bar",
+  "console_errors": [],
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0",
+  "screenshot_filename": "806899e53ef24a73a91f33530a67bec1.png"
+}
