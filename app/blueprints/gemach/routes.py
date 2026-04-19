@@ -71,7 +71,9 @@ def member_detail(member_id):
     tab = request.args.get('tab', 'overview')
 
     loans = member.loans.order_by(GemachLoan.created_at.desc()).all()
-    transactions = member.transactions.order_by(GemachTransaction.transaction_date.desc()).limit(100).all()
+    transactions = list(reversed(
+        member.transactions.order_by(GemachTransaction.transaction_date.desc()).limit(100).all()
+    ))
     memorials = member.memorials.all()
 
     # Linked Donor (if any)
@@ -92,6 +94,7 @@ def loans():
     page = request.args.get('page', 1, type=int)
     status = request.args.get('status', '')
     institution_id = request.args.get('institution_id', type=int)
+    search = request.args.get('q', '').strip()
 
     # Explicit join on the borrower FK (member_id), since GemachLoan has TWO FKs
     # to GemachMember (member_id and beneficiary_member_id). The default join
@@ -101,12 +104,24 @@ def loans():
         q = q.filter(GemachLoan.status == status)
     if institution_id:
         q = q.filter(GemachLoan.institution_id == institution_id)
+    if search:
+        pat = f'%{search}%'
+        digits = int(search) if search.isdigit() else -1
+        q = q.filter(or_(
+            GemachMember.last_name.ilike(pat),
+            GemachMember.first_name.ilike(pat),
+            GemachMember.teudat_zehut.ilike(pat),
+            GemachMember.gmach_card_no == digits,
+            GemachLoan.gmach_num_hork == digits,
+            GemachLoan.account_number.ilike(pat),
+        ))
     q = q.order_by(GemachLoan.start_date.desc().nullslast())
 
     paged = q.paginate(page=page, per_page=50)
     institutions = GemachInstitution.query.order_by(GemachInstitution.name).all()
     return render_template('gemach/loans.html', loans=paged, status=status,
-                           institution_id=institution_id, institutions=institutions)
+                           institution_id=institution_id, institutions=institutions,
+                           search=search)
 
 
 @gemach_bp.route('/loans/<int:loan_id>')

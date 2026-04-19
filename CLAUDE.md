@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-19 (ticket 3 — loans search + Access-sync UI + detail polish)
+- **Ticket 3 fix on `/gemach/loans`** (operator feedback): free-text search bar (matches last_name, first_name, teudat_zehut, gmach_card_no, gmach_num_hork, or account_number); new `מס׳ כרטיס` column showing each loan's borrowing member card number; search preserved across pagination.
+- **Gemach Access-sync UI**: new `/gemach/sync-access` page (`app/blueprints/gemach/sync.py` + `app/templates/gemach/sync_access.html`) runs `sync_live_data.bat` in a background thread, streams live output via polling, persists each run to `instance/sync_logs/<timestamp>_<ok|fail>.log`, and shows history. Switchboard gained tile #7 "סנכרון נתונים מ-Access".
+- **Member detail polish** (`app/templates/gemach/member_detail.html`, `routes.py`): format transaction dates as DD/MM/YYYY; display oldest-first inside the most-recent-100 window.
+
 ### 2026-04-19 (continued)
 - **Shva processor added** as enabled PaymentProcessor (priority 8) so it appears as a tab between Nedarim Plus (5) and Stripe (10). Tab labels on `/admin/donations` now use `name` instead of the donor-facing `display_name`.
 - **Admins are no longer exempt** from `allowed_processors` — an empty/null list still means "all"; a non-empty list applies to every role. This lets specific admins be scoped to a single processor (e.g. Gittle Goldblum → stripe only).

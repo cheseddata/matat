@@ -1,0 +1,205 @@
+{% extends "gemach_base.html" %}
+
+{% block title %}סנכרון נתונים מ-Access{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-sync-alt"></i> סנכרון נתונים מ-Access</span>
+        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+    </div>
+
+    <div style="padding: 18px 22px;">
+        <div style="background:#FFFDE7; border:1px solid #FBC02D; padding: 12px 14px; font-size: 13px; color:#5D4037; line-height:1.6; margin-bottom:14px;">
+            <strong>ℹ️ מה הכפתור הזה עושה?</strong><br>
+            לוחץ יטען נתונים חדשים מ-<code>C:\Gmach\MttData.mdb</code> ו-<code>C:\ztorm\ztormdata.mdb</code>
+            אל המערכת המקומית. הפעולה בטוחה להרצה חוזרת — רשומות קיימות לא ישוכפלו.
+            <br>
+            <strong style="color:#B71C1C;">אין שליחת חיובים אמיתיים / דוא״ל / SMS.</strong>
+        </div>
+
+        <div id="syncIdle" style="text-align:center; padding: 16px 0;">
+            <button id="startBtn" type="button"
+                    style="padding: 14px 32px; font-size: 16px; font-weight: 700;
+                           background: linear-gradient(135deg,#2E7D32 0%,#1B5E20 100%);
+                           color: white; border: none; border-radius: 10px;
+                           box-shadow: 0 4px 12px rgba(46,125,50,0.3); cursor: pointer;">
+                <i class="fas fa-sync-alt"></i>&nbsp; התחל סנכרון
+            </button>
+            <div style="font-size:12px; color:#666; margin-top: 10px;">
+                הסנכרון אורך בדרך כלל 30-90 שניות. ניתן להשאיר את הדף פתוח.
+            </div>
+        </div>
+
+        <div id="syncRunning" style="display:none;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                <i class="fas fa-spinner fa-spin" style="color:#1565C0; font-size:20px;"></i>
+                <strong style="color:#1565C0;">סנכרון פועל...</strong>
+                <span id="elapsed" style="font-size:12px; color:#666;"></span>
+            </div>
+        </div>
+
+        <div id="syncResult" style="display:none; padding:12px 14px; border-radius:8px; margin-bottom:12px; font-weight:600;"></div>
+
+        <div>
+            <div style="font-size:12px; color:#666; margin-bottom:6px;">לוג:</div>
+            <pre id="syncLog"
+                 style="background:#1e1e1e; color:#d4d4d4; padding:12px;
+                        border-radius:6px; max-height:360px; overflow:auto;
+                        font-family: ui-monospace,'Consolas','Courier New',monospace;
+                        font-size:12px; direction:ltr; text-align:left; white-space:pre-wrap; margin:0;">(אין עדיין פלט)</pre>
+        </div>
+
+        <div style="margin-top:22px;">
+            <div style="font-size:13px; color:#444; font-weight:700; margin-bottom:8px;">היסטוריית סנכרונים</div>
+            {% if history %}
+            <table style="width:100%; border-collapse:collapse; font-size:12px; background:white;">
+                <thead>
+                    <tr style="background:#37474F; color:white; text-align:right;">
+                        <th style="padding:6px 10px;">תאריך התחלה</th>
+                        <th style="padding:6px 10px;">תאריך סיום</th>
+                        <th style="padding:6px 10px;">תוצאה</th>
+                        <th style="padding:6px 10px;">גודל</th>
+                        <th style="padding:6px 10px;">לוג</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                {% for r in history %}
+                    <tr style="border-bottom:1px solid #eee;">
+                        <td style="padding:5px 10px; direction:ltr; font-family:ui-monospace,monospace;">{{ r.started_at or '—' }}</td>
+                        <td style="padding:5px 10px; direction:ltr; font-family:ui-monospace,monospace;">{{ r.finished_at or '—' }}</td>
+                        <td style="padding:5px 10px;">
+                            {% if r.ok %}<span style="background:#c8e6c9; color:#1b5e20; padding:2px 8px; border-radius:10px; font-weight:600;">✓ הצליח</span>
+                            {% else %}<span style="background:#ffcdd2; color:#b71c1c; padding:2px 8px; border-radius:10px; font-weight:600;">✗ נכשל ({{ r.returncode }})</span>
+                            {% endif %}
+                        </td>
+                        <td style="padding:5px 10px; direction:ltr;">{{ (r.size_bytes / 1024) | round(1) }} KB</td>
+                        <td style="padding:5px 10px;">
+                            <a href="{{ url_for('gemach.sync_access_log', name=r.filename) }}"
+                               target="_blank"
+                               style="color:#0277BD; text-decoration:underline;">צפייה</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+                <div style="font-size:12px; color:#888; padding:8px 10px; background:#f5f5f5; border-radius:6px;">אין סנכרונים קודמים.</div>
+            {% endif %}
+        </div>
+
+        <div style="margin-top:20px; text-align:center;">
+            <a href="{{ url_for('gemach.switchboard') }}"
+               style="display:inline-block; padding:8px 20px;
+                      background:#e0e0e0; color:#333; text-decoration:none;
+                      border-radius:6px; font-weight:600;">
+                &larr; חזרה לתפריט
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const startBtn = document.getElementById('startBtn');
+    const idleBox = document.getElementById('syncIdle');
+    const runBox  = document.getElementById('syncRunning');
+    const resBox  = document.getElementById('syncResult');
+    const logEl   = document.getElementById('syncLog');
+    const elapsedEl = document.getElementById('elapsed');
+
+    let pollTimer = null;
+    let startTs = null;
+
+    function fmtElapsed() {
+        if (!startTs) return '';
+        const s = Math.round((Date.now() - startTs) / 1000);
+        const m = Math.floor(s / 60), ss = String(s % 60).padStart(2, '0');
+        return ' · ' + m + ':' + ss;
+    }
+
+    function showResult(ok, msg) {
+        resBox.style.display = 'block';
+        resBox.textContent = msg;
+        resBox.style.background = ok ? '#e8f5e9' : '#ffebee';
+        resBox.style.color      = ok ? '#1b5e20' : '#b71c1c';
+        resBox.style.border     = '1px solid ' + (ok ? '#a5d6a7' : '#ef9a9a');
+    }
+
+    async function poll() {
+        try {
+            const res = await fetch('{{ url_for("gemach.sync_access_status") }}', {cache: 'no-store'});
+            const d = await res.json();
+            if (d.output) logEl.textContent = d.output;
+            elapsedEl.textContent = fmtElapsed();
+            if (!d.running) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+                runBox.style.display = 'none';
+                if (d.error) {
+                    showResult(false, '❌ שגיאה: ' + d.error);
+                } else if (d.returncode === 0) {
+                    showResult(true, '✓ הסנכרון הסתיים בהצלחה');
+                } else {
+                    showResult(false, '❌ הסנכרון נכשל (קוד ' + d.returncode + ')');
+                }
+                startBtn.disabled = false;
+                startBtn.textContent = 'הרצה נוספת';
+                idleBox.style.display = 'block';
+            }
+        } catch (e) {
+            console.error('[sync] poll failed', e);
+        }
+    }
+
+    async function start() {
+        startBtn.disabled = true;
+        resBox.style.display = 'none';
+        logEl.textContent = '(מתחיל...)';
+        idleBox.style.display = 'none';
+        runBox.style.display = 'block';
+        startTs = Date.now();
+        try {
+            const r = await fetch('{{ url_for("gemach.sync_access_start") }}', {method: 'POST'});
+            const d = await r.json();
+            if (!d.ok) {
+                showResult(false, 'לא ניתן להתחיל: ' + (d.error || 'unknown'));
+                runBox.style.display = 'none';
+                idleBox.style.display = 'block';
+                startBtn.disabled = false;
+                return;
+            }
+            pollTimer = setInterval(poll, 1500);
+            poll();
+        } catch (e) {
+            showResult(false, 'שגיאת רשת: ' + e.message);
+            runBox.style.display = 'none';
+            idleBox.style.display = 'block';
+            startBtn.disabled = false;
+        }
+    }
+
+    startBtn.addEventListener('click', start);
+
+    // On page load, if a sync is already running (user hit back/forward), resume polling.
+    (async () => {
+        try {
+            const r = await fetch('{{ url_for("gemach.sync_access_status") }}', {cache: 'no-store'});
+            const d = await r.json();
+            if (d.running) {
+                startBtn.disabled = true;
+                idleBox.style.display = 'none';
+                runBox.style.display = 'block';
+                startTs = d.started_at ? new Date(d.started_at).getTime() : Date.now();
+                if (d.output) logEl.textContent = d.output;
+                pollTimer = setInterval(poll, 1500);
+            }
+        } catch (e) { /* first-load, ignore */ }
+    })();
+})();
+</script>
+{% endblock %}
+
+{% block status %}
+סנכרון Access · {{ t('gemach.switchboard.status_bar_ready') }}
+{% endblock %}

@@ -186,7 +186,7 @@
                 <tbody>
                     {% for tr in transactions %}
                     <tr>
-                        <td style="font-family: 'Courier New', monospace;">{{ tr.transaction_date }}</td>
+                        <td style="font-family: 'Courier New', monospace;">{{ tr.transaction_date.strftime('%d/%m/%Y') if tr.transaction_date else '' }}</td>
                         <td>{{ tr.category or '' }}</td>
                         <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{{ "{:,.2f}".format(tr.amount_ils or 0) }}</td>
                         <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{% if tr.amount_usd %}{{ "{:,.2f}".format(tr.amount_usd) }}{% endif %}</td>
