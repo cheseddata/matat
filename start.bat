@@ -38,8 +38,10 @@ echo   Close the app window (or this console) to stop.
 echo ============================================================
 echo.
 
-REM Suppress Flask's dev-server warning in the operator log.
-set WERKZEUG_RUN_MAIN=true
+REM Make sure Flask picks up its normal one-process mode.
+REM (WERKZEUG_RUN_MAIN must NOT be set here — it triggers reloader-child
+REM behavior in werkzeug which then crashes looking for a server FD.)
+set WERKZEUG_RUN_MAIN=
 set FLASK_DEBUG=0
 
 REM Launch desktop.py — creates a pywebview window + Flask on random port.
