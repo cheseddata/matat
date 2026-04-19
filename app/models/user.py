@@ -1,12 +1,13 @@
 from datetime import datetime
 from flask_login import UserMixin
+from sqlalchemy.ext.mutable import MutableList
 from ..extensions import db
 
 
 class User(UserMixin, db.Model):
     """Admin and salesperson accounts."""
     __tablename__ = 'users'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
@@ -22,6 +23,8 @@ class User(UserMixin, db.Model):
     commission_tiers = db.Column(db.JSON, nullable=True)  # For tiered rates
     language_pref = db.Column(db.String(5), default='en')  # en/he
     active = db.Column(db.Boolean, default=True)
+    # Processor permission: null/empty = all processors allowed; else list of processor codes
+    allowed_processors = db.Column(MutableList.as_mutable(db.JSON), nullable=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     claude_notes = db.Column(db.Text, nullable=True)  # Context for Claude about this user
@@ -47,6 +50,17 @@ class User(UserMixin, db.Model):
     @classmethod
     def query_active(cls):
         return cls.query.filter(cls.deleted_at.is_(None))
-    
+
+    def can_view_processor(self, processor_code):
+        """True if user may view donations from this processor.
+
+        Admins and users with no restriction list see everything.
+        """
+        if self.role == 'admin':
+            return True
+        if not self.allowed_processors:
+            return True
+        return processor_code in self.allowed_processors
+
     def __repr__(self):
         return f'<User {self.username}>'

@@ -242,14 +242,26 @@
         <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
     </div>
 
-    <!-- Filters -->
+    <!-- Status filters -->
     <div class="filters">
-        <a href="{{ url_for('admin.donations', status='all') }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">{{ t('common.all') }}</a>
-        <a href="{{ url_for('admin.donations', status='succeeded') }}" class="filter-btn {{ 'active' if status_filter == 'succeeded' else '' }}">{{ t('common.succeeded') }}</a>
-        <a href="{{ url_for('admin.donations', status='pending') }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">{{ t('common.pending') }}</a>
-        <a href="{{ url_for('admin.donations', status='failed') }}" class="filter-btn {{ 'active' if status_filter == 'failed' else '' }}">{{ t('common.failed') }}</a>
-        <a href="{{ url_for('admin.donations', status='refunded') }}" class="filter-btn {{ 'active' if status_filter == 'refunded' else '' }}">{{ t('common.refunded') }}</a>
+        <a href="{{ url_for('admin.donations', status='all', processor=processor_filter) }}" class="filter-btn {{ 'active' if status_filter == 'all' else '' }}">{{ t('common.all') }}</a>
+        <a href="{{ url_for('admin.donations', status='succeeded', processor=processor_filter) }}" class="filter-btn {{ 'active' if status_filter == 'succeeded' else '' }}">{{ t('common.succeeded') }}</a>
+        <a href="{{ url_for('admin.donations', status='pending', processor=processor_filter) }}" class="filter-btn {{ 'active' if status_filter == 'pending' else '' }}">{{ t('common.pending') }}</a>
+        <a href="{{ url_for('admin.donations', status='failed', processor=processor_filter) }}" class="filter-btn {{ 'active' if status_filter == 'failed' else '' }}">{{ t('common.failed') }}</a>
+        <a href="{{ url_for('admin.donations', status='refunded', processor=processor_filter) }}" class="filter-btn {{ 'active' if status_filter == 'refunded' else '' }}">{{ t('common.refunded') }}</a>
     </div>
+
+    {% if visible_processors %}
+    <!-- Processor tabs -->
+    <div class="filters">
+        {% if visible_processors|length > 1 or current_user.role == 'admin' or not current_user.allowed_processors %}
+        <a href="{{ url_for('admin.donations', status=status_filter, processor='all') }}" class="filter-btn {{ 'active' if processor_filter == 'all' else '' }}">{{ t('common.all') }}</a>
+        {% endif %}
+        {% for proc in visible_processors %}
+        <a href="{{ url_for('admin.donations', status=status_filter, processor=proc.code) }}" class="filter-btn {{ 'active' if processor_filter == proc.code else '' }}">{{ proc.display_name or proc.name }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     {% if donations.items %}
     <table class="data-table">
@@ -325,7 +337,7 @@
     {% if donations.pages > 1 %}
     <div class="pagination">
         {% if donations.has_prev %}
-        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.prev_num) }}">&laquo; {{ t('common.prev') }}</a>
+        <a href="{{ url_for('admin.donations', status=status_filter, processor=processor_filter, page=donations.prev_num) }}">&laquo; {{ t('common.prev') }}</a>
         {% else %}
         <span class="disabled">&laquo; {{ t('common.prev') }}</span>
         {% endif %}
@@ -335,7 +347,7 @@
                 {% if page_num == donations.page %}
                 <span class="active">{{ page_num }}</span>
                 {% else %}
-                <a href="{{ url_for('admin.donations', status=status_filter, page=page_num) }}">{{ page_num }}</a>
+                <a href="{{ url_for('admin.donations', status=status_filter, processor=processor_filter, page=page_num) }}">{{ page_num }}</a>
                 {% endif %}
             {% else %}
             <span>...</span>
@@ -343,7 +355,7 @@
         {% endfor %}
 
         {% if donations.has_next %}
-        <a href="{{ url_for('admin.donations', status=status_filter, page=donations.next_num) }}">{{ t('common.next') }} &raquo;</a>
+        <a href="{{ url_for('admin.donations', status=status_filter, processor=processor_filter, page=donations.next_num) }}">{{ t('common.next') }} &raquo;</a>
         {% else %}
         <span class="disabled">{{ t('common.next') }} &raquo;</span>
         {% endif %}

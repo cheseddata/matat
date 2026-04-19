@@ -115,6 +115,24 @@
                     </div>
                 </div>
 
+                {% if processors %}
+                <div class="form-section">
+                    <h3>Payment Processor Access</h3>
+                    <p style="color: #666; font-size: 13px; margin-bottom: 12px;">
+                        Check the processors this user may see on the Donations page. Leave all unchecked to grant access to every processor.
+                    </p>
+                    {% set allowed = (salesperson.allowed_processors if salesperson and salesperson.allowed_processors else []) %}
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    {% for proc in processors %}
+                        <label class="checkbox-group" style="padding: 6px 10px; background: #f8f9fa; border-radius: 4px;">
+                            <input type="checkbox" name="allowed_processors" value="{{ proc.code }}" {{ 'checked' if proc.code in allowed else '' }}>
+                            <span>{{ proc.display_name or proc.name }} <span style="color:#999; font-size:11px;">({{ proc.code }})</span></span>
+                        </label>
+                    {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
                 <div style="display: flex; gap: 10px; margin-top: 25px;">
                     <button type="submit" class="btn">{{ t('common.save') }}</button>
                     <a href="{{ url_for('admin.salespersons') }}" class="btn" style="background: #95a5a6;">{{ t('common.cancel') }}</a>

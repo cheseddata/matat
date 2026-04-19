@@ -265,6 +265,15 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-19
+- **Per-processor permission + tab filter on Donations page:**
+  - Added `allowed_processors` JSON column to `User` model (null/empty = access to all processors)
+  - `User.can_view_processor(code)` helper; admins bypass restrictions
+  - Admin donations page (`/admin/donations`) now shows a processor tab row below the status filters, listing each enabled processor the current user has permission to view
+  - `processor` query param filters donation list; restricted users viewing "All" are scoped to their allowed processors
+  - Pagination and status-tab links preserve the active processor filter
+  - Salesperson form gained a "Payment Processor Access" section with a checkbox per enabled processor; saved on create and edit
+  - Migration `03fc01b4e58c_add_allowed_processors_to_users`
 
 ### 2026-04-15
 - **ZTorm i18n:** Full English/Hebrew translation for all 17 ZTorm templates + base

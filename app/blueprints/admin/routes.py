@@ -297,6 +297,7 @@ def create_salesperson():
             is_temp_password=True,
             commission_type=commission_type if commission_type else None,
             commission_rate=Decimal(commission_rate) if commission_rate else None,
+            allowed_processors=request.form.getlist('allowed_processors') or None,
             active=True
         )
         db.session.add(user)
@@ -305,7 +306,9 @@ def create_salesperson():
         flash(f'Salesperson created! Username: {username}, Temp Password: {temp_password}', 'success')
         return redirect(url_for('admin.salespersons'))
 
-    return render_template('admin/salesperson_form.html', salesperson=None)
+    from ...models.payment_processor import PaymentProcessor
+    processors = PaymentProcessor.get_enabled()
+    return render_template('admin/salesperson_form.html', salesperson=None, processors=processors)
 
 
 @admin_bp.route('/salespersons/<int:id>/edit', methods=['GET', 'POST'])
@@ -330,12 +333,15 @@ def edit_salesperson(id):
 
         salesperson.commission_type = commission_type if commission_type else None
         salesperson.commission_rate = Decimal(commission_rate) if commission_rate else None
+        salesperson.allowed_processors = request.form.getlist('allowed_processors') or None
 
         db.session.commit()
         flash('Salesperson updated successfully.', 'success')
         return redirect(url_for('admin.salespersons'))
 
-    return render_template('admin/salesperson_form.html', salesperson=salesperson)
+    from ...models.payment_processor import PaymentProcessor
+    processors = PaymentProcessor.get_enabled()
+    return render_template('admin/salesperson_form.html', salesperson=salesperson, processors=processors)
 
 
 @admin_bp.route('/salespersons/<int:id>/reset-password', methods=['POST'])
@@ -769,14 +775,32 @@ def send_donation_receipt(id):
 @admin_required
 def donations():
     """List all donations with filters."""
+    from ...models.payment_processor import PaymentProcessor
+
     status = request.args.get('status', 'all')
+    processor = request.args.get('processor', 'all')
     page = int(request.args.get('page', 1))
     per_page = 50
+
+    # Tab list: enabled processors the current user is allowed to view.
+    all_enabled = PaymentProcessor.get_enabled()
+    visible_processors = [p for p in all_enabled if current_user.can_view_processor(p.code)]
+    visible_codes = [p.code for p in visible_processors]
+
+    # If the requested processor is outside the user's allow-list, reset to 'all'.
+    if processor != 'all' and processor not in visible_codes:
+        processor = 'all'
 
     query = Donation.query.filter(Donation.deleted_at.is_(None))
 
     if status != 'all':
         query = query.filter(Donation.status == status)
+
+    if processor != 'all':
+        query = query.filter(Donation.payment_processor == processor)
+    elif visible_codes and current_user.role != 'admin' and current_user.allowed_processors:
+        # Restricted user viewing "All" — scope to their allowed processors.
+        query = query.filter(Donation.payment_processor.in_(visible_codes))
 
     donations = query.order_by(Donation.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -792,6 +816,8 @@ def donations():
         'admin/donations.html',
         donations=donations,
         status_filter=status,
+        processor_filter=processor,
+        visible_processors=visible_processors,
         salespersons=salespersons
     )
 
