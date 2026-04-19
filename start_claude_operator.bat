@@ -1,12 +1,9 @@
 @echo off
 REM ============================================================
 REM Launch Claude Code in YOLO mode on the OPERATOR'S PC.
-REM
-REM Tries the GUI first (Claude desktop app), falls back to the CLI
-REM if the GUI isn't installed.
-REM
-REM Either way, this project gets "bypass permissions" mode enabled
-REM via .claude\settings.local.json so tool calls are auto-approved.
+REM Tries the GUI first, falls back to CLI if the GUI isn't installed.
+REM Writes .claude\settings.local.json so bypass-permissions is on
+REM for this project regardless of surface (GUI or CLI).
 REM ============================================================
 cd /d "%~dp0"
 
@@ -24,15 +21,10 @@ if not exist .claude\settings.local.json (
     echo   [i] Wrote .claude\settings.local.json ^(bypass permissions on^)
 )
 
-REM --- Try the Claude desktop GUI first ---
-powershell -NoProfile -Command ^
-    "$app = Get-StartApps | Where-Object { $_.Name -eq 'Claude' } | Select-Object -First 1; ^
-     if ($null -ne $app) { ^
-        Start-Process ('shell:AppsFolder\' + $app.AppID); ^
-        exit 0 ^
-     } else { exit 1 }"
+REM --- Try the Claude desktop GUI first (single-line PowerShell) ---
+powershell -NoProfile -Command "$app = Get-StartApps | Where-Object { $_.Name -eq 'Claude' } | Select-Object -First 1; if ($null -ne $app) { Start-Process ('shell:AppsFolder\' + $app.AppID); exit 0 } else { exit 1 }"
 if not errorlevel 1 (
-    echo GUI launched. Pick a session from the sidebar.
+    echo GUI launched. Pick this project from the sidebar.
     exit /b 0
 )
 
