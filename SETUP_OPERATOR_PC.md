@@ -61,10 +61,12 @@ no live transactions — no bank charges, no emails, no SMS.
 
 1. Double-click **"Matat (Sandbox)"** on the Desktop
    (or `C:\Matat\start.bat`)
-2. A black console window opens and stays open — this is the Flask server. **Do not close it.**
-3. The browser opens at `http://localhost:5060/login`
-4. Log in: `admin` / `admin123`
-5. Every page should show an amber banner across the top:
+2. A small console window opens briefly, then **a native desktop window opens**
+   showing the login page. This is the entire app — no browser involved.
+   (If the operator prefers to close the tiny console, that will also close
+   the app. Keep it open.)
+3. Log in: `admin` / `admin123`
+4. Every page should show an amber banner across the top:
    > ⚠️ SANDBOX MODE — תצוגת הדגמה / No live transactions…
 6. Navigate:
    - **💚 Gemach** (top nav, green link) — Hebrew switchboard with 5 menu buttons
@@ -88,9 +90,12 @@ Nothing she does moves real money, sends real email, or modifies the server — 
 
 ## Daily use (after install)
 
-- **Start:** double-click "Matat (Sandbox)" on Desktop → browser opens automatically
-- **Stop:** close the black console window
+- **Start:** double-click "Matat (Sandbox)" on Desktop → native app window opens
+- **Stop:** close the app window (console closes too)
 - **Refresh her live data** (re-pulls from C:\Gmach and C:\ztorm): double-click `C:\Matat\sync_live_data.bat`
+- **Launch Claude in YOLO mode** (for remote dev support): double-click
+  `C:\Matat\start_claude_operator.bat` — skips all approval prompts so a
+  remote Claude session can work autonomously.
 
 ---
 
@@ -103,8 +108,11 @@ PATH wasn't set during Python install. Run the installer again and tick "Add Pyt
 The 32-bit Access Database Engine redistributable is missing. Install it from
 https://www.microsoft.com/en-us/download/details.aspx?id=54920 (pick `AccessDatabaseEngine.exe` — the 32-bit one, not 64-bit).
 
-### Port 5060 already in use
-`start.bat` auto-falls back to 5061. If both are taken, edit `start.bat` and set `set PORT=<free port>`.
+### Port conflicts (old installs only)
+The new desktop launcher (`desktop.py`) binds to a **random free port** on
+127.0.0.1 — there's nothing to configure, and 5060/5061 conflicts don't
+matter anymore. If you see a "port in use" error, it's coming from a much
+older revision — pull the latest with `git pull`.
 
 ### Sync fails but install finished
 The empty DB and empty tables are OK — she can still log in and see the UI. To retry the sync later, double-click `sync_live_data.bat`.
