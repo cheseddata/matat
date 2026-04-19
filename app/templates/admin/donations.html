@@ -258,7 +258,7 @@
         <a href="{{ url_for('admin.donations', status=status_filter, processor='all') }}" class="filter-btn {{ 'active' if processor_filter == 'all' else '' }}">{{ t('common.all') }}</a>
         {% endif %}
         {% for proc in visible_processors %}
-        <a href="{{ url_for('admin.donations', status=status_filter, processor=proc.code) }}" class="filter-btn {{ 'active' if processor_filter == proc.code else '' }}">{{ proc.display_name or proc.name }}</a>
+        <a href="{{ url_for('admin.donations', status=status_filter, processor=proc.code) }}" class="filter-btn {{ 'active' if processor_filter == proc.code else '' }}">{{ proc.name }}</a>
         {% endfor %}
     </div>
     {% endif %}

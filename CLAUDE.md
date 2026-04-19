@@ -265,6 +265,10 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-19 (continued)
+- **Shva processor added** as enabled PaymentProcessor (priority 8) so it appears as a tab between Nedarim Plus (5) and Stripe (10). Tab labels on `/admin/donations` now use `name` instead of the donor-facing `display_name`.
+- **Admins are no longer exempt** from `allowed_processors` — an empty/null list still means "all"; a non-empty list applies to every role. This lets specific admins be scoped to a single processor (e.g. Gittle Goldblum → stripe only).
+
 ### 2026-04-19
 - **Per-processor permission + tab filter on Donations page:**
   - Added `allowed_processors` JSON column to `User` model (null/empty = access to all processors)

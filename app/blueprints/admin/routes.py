@@ -798,7 +798,7 @@ def donations():
 
     if processor != 'all':
         query = query.filter(Donation.payment_processor == processor)
-    elif visible_codes and current_user.role != 'admin' and current_user.allowed_processors:
+    elif current_user.allowed_processors:
         # Restricted user viewing "All" — scope to their allowed processors.
         query = query.filter(Donation.payment_processor.in_(visible_codes))
 

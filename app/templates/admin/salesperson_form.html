@@ -126,7 +126,7 @@
                     {% for proc in processors %}
                         <label class="checkbox-group" style="padding: 6px 10px; background: #f8f9fa; border-radius: 4px;">
                             <input type="checkbox" name="allowed_processors" value="{{ proc.code }}" {{ 'checked' if proc.code in allowed else '' }}>
-                            <span>{{ proc.display_name or proc.name }} <span style="color:#999; font-size:11px;">({{ proc.code }})</span></span>
+                            <span>{{ proc.name }} <span style="color:#999; font-size:11px;">({{ proc.code }})</span></span>
                         </label>
                     {% endfor %}
                     </div>

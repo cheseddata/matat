@@ -54,10 +54,10 @@ class User(UserMixin, db.Model):
     def can_view_processor(self, processor_code):
         """True if user may view donations from this processor.
 
-        Admins and users with no restriction list see everything.
+        An empty/null allow-list means access to every processor.
+        The restriction applies regardless of role (including admins) so
+        specific admins can be scoped to a single processor when needed.
         """
-        if self.role == 'admin':
-            return True
         if not self.allowed_processors:
             return True
         return processor_code in self.allowed_processors
