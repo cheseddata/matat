@@ -48,5 +48,5 @@ REM Launch desktop.py — creates a pywebview window + Flask on random port.
 venv\Scripts\python.exe desktop.py
 
 echo.
-echo App closed.
-pause
+echo App closed. Window will close in 5 seconds...
+timeout /t 5 /nobreak >nul

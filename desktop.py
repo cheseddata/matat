@@ -72,7 +72,7 @@ def main():
     # Import pywebview lazily so `python run.py` in dev has no extra deps.
     import webview
 
-    url = f'http://127.0.0.1:{port}/login'
+    url = f'http://127.0.0.1:{port}/sandbox-login'
     title = 'מתת מרדכי - Matat / ZTorm / Gemach  (SANDBOX)'
     webview.create_window(
         title,

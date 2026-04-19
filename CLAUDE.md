@@ -270,6 +270,13 @@ estimate_fee()        # Estimate processing fee
 - **Gemach Access-sync UI**: new `/gemach/sync-access` page (`app/blueprints/gemach/sync.py` + `app/templates/gemach/sync_access.html`) runs `sync_live_data.bat` in a background thread, streams live output via polling, persists each run to `instance/sync_logs/<timestamp>_<ok|fail>.log`, and shows history. Switchboard gained tile #7 "סנכרון נתונים מ-Access".
 - **Member detail polish** (`app/templates/gemach/member_detail.html`, `routes.py`): format transaction dates as DD/MM/YYYY; display oldest-first inside the most-recent-100 window.
 
+### 2026-04-19 (operator-PC polish)
+- **Sandbox auto-login** (`/sandbox-login` in `app/blueprints/auth/routes.py`): new route, gated on `is_sandbox()` so it returns 404 in production. Logs in the `admin` user, sets `lang=he` cookie, redirects to `/gemach/` — lets the non-technical operator double-click the desktop shortcut and land directly on the Hebrew Gemach switchboard with no login screen.
+- **Desktop launcher target change** (`desktop.py`): opens `/sandbox-login` instead of `/login` so the auto-login + language + landing page happen on startup.
+- **start.bat close behavior:** replaced `pause` at end of `start.bat` with `timeout /t 5 /nobreak` so the console window auto-closes 5s after the app exits (no keypress required).
+- **Claude ttyd widget hidden in sandbox:** `app/templates/base.html`, `gemach_base.html`, `ztorm_base.html` now wrap `components/claude_widget.html` in `{% if not sandbox_mode %}`. The operator PC has no ttyd service, so that widget was 404-ing on `/help`. Only the orange "Report issue" feedback widget (`components/feedback_widget.html`) is shown in sandbox mode.
+- **Icon asset:** `app/static/matat.ico` — multi-resolution (16/24/32/48/64/128/256) ICO built from `app/static/logo.png` for use by the operator's desktop shortcut.
+
 ### 2026-04-19 (continued)
 - **Shva processor added** as enabled PaymentProcessor (priority 8) so it appears as a tab between Nedarim Plus (5) and Stripe (10). Tab labels on `/admin/donations` now use `name` instead of the donor-facing `display_name`.
 - **Admins are no longer exempt** from `allowed_processors` — an empty/null list still means "all"; a non-empty list applies to every role. This lets specific admins be scoped to a single processor (e.g. Gittle Goldblum → stripe only).

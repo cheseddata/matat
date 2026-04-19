@@ -1,8 +1,9 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from . import auth_bp
 from ...extensions import db, bcrypt
 from ...models.user import User
+from ...utils.sandbox import is_sandbox
 
 
 @auth_bp.route('/')
@@ -31,6 +32,20 @@ def login():
         flash('Invalid username or password.', 'error')
     
     return render_template('auth/login.html')
+
+
+@auth_bp.route('/sandbox-login')
+def sandbox_login():
+    if not is_sandbox():
+        abort(404)
+    admin = User.query.filter_by(username='admin').first()
+    if not admin or not admin.active or admin.is_deleted:
+        flash('Sandbox admin account missing or disabled.', 'error')
+        return redirect(url_for('auth.login'))
+    login_user(admin)
+    resp = redirect(url_for('gemach.switchboard'))
+    resp.set_cookie('lang', 'he', max_age=60 * 60 * 24 * 365, samesite='Lax')
+    return resp
 
 
 @auth_bp.route('/logout')
