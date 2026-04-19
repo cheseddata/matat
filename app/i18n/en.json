@@ -775,7 +775,8 @@
       "delete": "Delete",
       "yes": "Yes",
       "no": "No",
-      "ok": "OK"
+      "ok": "OK",
+      "clear": "Clear"
     },
     "switchboard": {
       "title": "Gmach — Charitable Fund",
@@ -840,7 +841,8 @@
       "classifications": "Classifications",
       "no_tags": "No classifications",
       "notes": "Notes",
-      "registration_date": "Registration Date"
+      "registration_date": "Registration Date",
+      "card_no": "Card #"
     },
     "member_detail": {
       "title": "Member Details",
@@ -861,7 +863,8 @@
       "filter_status": "Filter by Status",
       "filter_institution": "Institution",
       "none": "No loans found",
-      "no_results": "No loans found"
+      "no_results": "No loans found",
+      "search_placeholder": "name / card# / hork# / TZ / account"
     },
     "loan": {
       "member": "Member",
@@ -885,7 +888,8 @@
       "payments": "Payments",
       "bounces": "Bounces",
       "unlimited": "Unlimited",
-      "notes": "Notes"
+      "notes": "Notes",
+      "hork_no": "Hork #"
     },
     "loan_detail": {
       "title": "Loan Details",

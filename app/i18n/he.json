@@ -775,7 +775,8 @@
       "delete": "מחיקה",
       "yes": "כן",
       "no": "לא",
-      "ok": "אישור"
+      "ok": "אישור",
+      "clear": "נקה"
     },
     "switchboard": {
       "title": "גמ״ח — קרן גמ״ח",
@@ -840,7 +841,8 @@
       "classifications": "סיווגים",
       "no_tags": "אין סיווגים",
       "notes": "הערות",
-      "registration_date": "תאריך רישום"
+      "registration_date": "תאריך רישום",
+      "card_no": "מס׳ כרטיס"
     },
     "member_detail": {
       "title": "כרטיס תורם",
@@ -861,7 +863,8 @@
       "filter_status": "סינון לפי סטטוס",
       "filter_institution": "מוסד",
       "none": "לא נמצאו הו״ק",
-      "no_results": "לא נמצאו הו״ק"
+      "no_results": "לא נמצאו הו״ק",
+      "search_placeholder": "שם / מס׳ כרטיס / מס׳ הו״ק / ת.ז. / חשבון"
     },
     "loan": {
       "member": "חבר",
@@ -885,7 +888,8 @@
       "payments": "תשלומים",
       "bounces": "החזרות",
       "unlimited": "ללא הגבלה",
-      "notes": "הערות"
+      "notes": "הערות",
+      "hork_no": "מס׳ הו״ק"
     },
     "loan_detail": {
       "title": "פרטי הלוואה",
