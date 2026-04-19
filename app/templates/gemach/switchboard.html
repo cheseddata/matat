@@ -69,24 +69,24 @@
             <i class="fas fa-chart-bar" style="font-size:18px; color:#E65100; width:22px; text-align:center;"></i>
             <span>{{ t('gemach.nav.reports') }}</span>
             <span style="flex:1"></span>
-            <span style="font-size:12px; color:#666; font-weight:normal;">&mdash;</span>
+            <span style="font-size:12px; color:#666; font-weight:normal;">8 דוחות</span>
         </a>
 
-        <div class="switchboard-btn disabled" title="Coming soon">
+        <a href="{{ url_for('gemach.masav_prep') }}" class="switchboard-btn">
             <span class="num red">5</span>
             <i class="fas fa-piggy-bank" style="font-size:18px; color:#C62828; width:22px; text-align:center;"></i>
             <span>Masav Collection &nbsp;&middot;&nbsp; מס״ב</span>
             <span style="flex:1"></span>
-            <span style="font-size:12px; color:#999; font-weight:normal;">{{ t('gemach.reports.coming_soon_title') }}</span>
-        </div>
+            {% if sandbox_mode %}<span style="font-size:10px; background:#FFECB3; color:#6D4C41; padding:2px 6px; border:1px solid #FB8C00;">SANDBOX</span>{% endif %}
+        </a>
 
-        <div class="switchboard-btn disabled" title="Coming soon">
+        <a href="{{ url_for('gemach.hash_export') }}" class="switchboard-btn">
             <span class="num gray">6</span>
             <i class="fas fa-file-export" style="font-size:18px; color:#424242; width:22px; text-align:center;"></i>
             <span>Hash Export &nbsp;&middot;&nbsp; ייצוא חשבונאי</span>
             <span style="flex:1"></span>
-            <span style="font-size:12px; color:#999; font-weight:normal;">{{ t('gemach.reports.coming_soon_title') }}</span>
-        </div>
+            {% if sandbox_mode %}<span style="font-size:10px; background:#FFECB3; color:#6D4C41; padding:2px 6px; border:1px solid #FB8C00;">SANDBOX</span>{% endif %}
+        </a>
     </div>
 
     <!-- About strip -->
