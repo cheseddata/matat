@@ -1,0 +1,81 @@
+{% extends "gemach_base.html" %}
+{% block title %}הכנת מס״ב — {{ t('gemach.switchboard.title') }}{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-university"></i> הכנת מס״ב (Masav Collection)</span>
+        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+    </div>
+
+    {% if sandbox %}
+    <div style="background:#FFE0B2; color:#E65100; border-bottom:2px solid #BF360C; padding:10px 14px; font-size:13px; font-weight:bold;">
+        ⚠️ מצב הדגמה — הקובץ ייוצר וישמר מקומית, אך <strong>לא יישלח לבנק</strong>.
+    </div>
+    {% endif %}
+
+    <form method="post" style="padding: 14px;">
+        <div style="background: var(--gmach-cyan); padding: 10px; border: 2px solid var(--gmach-green); margin-bottom: 10px;">
+            <strong>{{ loans|length }} הו״ק פעילות</strong> מוצגות למטה. סמן את ההו״ק שברצונך לכלול באצווה,
+            או השאר לא מסומן כדי לכלול את הכל.
+            {% if loans %}
+            <div style="margin-top: 6px;">
+                <a href="javascript:void(0)" onclick="document.querySelectorAll('input[name=loan_id]').forEach(e=>e.checked=true)" style="color: var(--gmach-navy); text-decoration: underline; font-size: 12px;">סמן הכל</a>
+                &middot;
+                <a href="javascript:void(0)" onclick="document.querySelectorAll('input[name=loan_id]').forEach(e=>e.checked=false)" style="color: var(--gmach-navy); text-decoration: underline; font-size: 12px;">נקה הכל</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="padding: 0; max-height: calc(100vh - 360px); overflow: auto; margin-bottom: 10px;">
+            <table class="access-grid">
+                <thead>
+                    <tr>
+                        <th style="width: 30px; text-align: center;"><input type="checkbox" onchange="document.querySelectorAll('input[name=loan_id]').forEach(e=>e.checked=this.checked)"></th>
+                        <th style="width: 80px;">מס׳ הו״ק</th>
+                        <th>חבר</th>
+                        <th style="width: 90px;">בנק</th>
+                        <th style="width: 90px;">סניף</th>
+                        <th style="width: 120px;">חשבון</th>
+                        <th style="width: 100px; text-align: left;">סכום</th>
+                        <th style="width: 80px;">יום חיוב</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for l in loans %}
+                    <tr>
+                        <td style="text-align: center;"><input type="checkbox" name="loan_id" value="{{ l.id }}" checked></td>
+                        <td style="font-weight: bold; color: var(--gmach-navy);">{{ l.gmach_num_hork }}</td>
+                        <td>{{ l.member.full_name if l.member else '—' }}</td>
+                        <td style="font-family: 'Courier New', monospace;">{{ l.bank_code or '—' }}</td>
+                        <td style="font-family: 'Courier New', monospace;">{{ l.branch_code or '—' }}</td>
+                        <td style="font-family: 'Courier New', monospace;">{{ l.account_number or '—' }}</td>
+                        <td style="text-align: left; font-family: 'Courier New', monospace;">{{ '{:,.2f}'.format(l.amount or 0) }}</td>
+                        <td style="text-align: center;">{{ l.charge_day or '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8" style="text-align: center; color: #888; padding: 30px;">
+                        אין הו״ק פעילות להכין לאצווה.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; padding: 10px; background: var(--access-toolbar); border: 1px solid var(--access-border);">
+            <button type="submit" style="padding: 6px 20px; font-size: 14px; font-weight: bold; background: #E65100; color: white; border: 1px outset #BF360C; cursor: pointer;">
+                <i class="fas fa-cog"></i> צור אצווה
+            </button>
+            <a href="{{ url_for('gemach.report_msv_totals') }}" style="padding: 6px 16px; font-size: 13px; background: #666; color: white; border: 1px outset #444; text-decoration: none;">
+                <i class="fas fa-list"></i> היסטוריית אצוות
+            </a>
+            <span style="flex: 1"></span>
+            <a href="{{ url_for('gemach.reports') }}" style="font-size: 12px; color: var(--gmach-navy); text-decoration: underline;">
+                ← חזרה לדוחות
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block status %}הכנת מס״ב{% endblock %}

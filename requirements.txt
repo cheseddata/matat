@@ -13,3 +13,11 @@ python-dotenv==1.0.*
 gunicorn==23.*
 shortuuid==1.0.*
 Pillow==11.*
+# Desktop window wrapper (operator sandbox, no browser required).
+# Uses WebView2 (Edge) on Windows, WebKit on macOS/Linux.
+pywebview>=5.0
+# Hebrew-aware PDF + Excel for reports.
+reportlab==4.*
+openpyxl==3.*
+# Reads password-protected Access MDBs for the ZTorm sync.
+access-parser==0.0.*

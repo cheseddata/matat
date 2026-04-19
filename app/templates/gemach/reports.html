@@ -8,75 +8,86 @@
         <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
     </div>
 
-    <!-- Navy panel resembles the Access "menu: reports" form -->
     <div class="switchboard-panel" style="max-width: 820px;">
-        <div class="switchboard-heading">
-            <i class="fas fa-chart-bar"></i> {{ t('gemach.reports.title') }}
-        </div>
-        <div class="switchboard-sub">{{ t('gemach.reports.coming_soon_title') }}</div>
+        <div class="switchboard-heading"><i class="fas fa-chart-bar"></i> {{ t('gemach.reports.title') }}</div>
+        <div class="switchboard-sub">בחר דו״ח</div>
 
-        <div style="background: rgba(255,255,255,0.08); padding: 14px; margin-bottom: 18px; color: var(--gmach-cyan-lt); font-size: 13px; line-height: 1.6;">
-            {{ t('gemach.reports.coming_soon_text') }}
-        </div>
-
-        <!-- Two-column list of planned reports (disabled tiles) -->
+        <!-- 8 reports -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
-            <div class="switchboard-btn disabled">
+
+            <a href="{{ url_for('gemach.report_loans') }}" class="switchboard-btn">
                 <span class="num">1</span>
-                <i class="fas fa-list" style="color: #2F5597;"></i>
-                <span style="flex: 1;">{{ t('gemach.reports.summaries') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
-            <div class="switchboard-btn disabled">
-                <span class="num green">2</span>
                 <i class="fas fa-hand-holding-usd" style="color: #2E7D32;"></i>
                 <span style="flex: 1;">{{ t('gemach.reports.loans') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
-            <div class="switchboard-btn disabled">
-                <span class="num purple">3</span>
-                <i class="fas fa-piggy-bank" style="color: #6A1B9A;"></i>
-                <span style="flex: 1;">{{ t('gemach.reports.deposits') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
-            <div class="switchboard-btn disabled">
-                <span class="num orange">4</span>
+            </a>
+
+            <a href="{{ url_for('gemach.report_summaries') }}" class="switchboard-btn">
+                <span class="num green">2</span>
+                <i class="fas fa-list" style="color: #2F5597;"></i>
+                <span style="flex: 1;">{{ t('gemach.reports.summaries') }}</span>
+            </a>
+
+            <a href="{{ url_for('gemach.report_donations') }}" class="switchboard-btn">
+                <span class="num orange">3</span>
                 <i class="fas fa-donate" style="color: #E65100;"></i>
                 <span style="flex: 1;">{{ t('gemach.reports.donations') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
-            <div class="switchboard-btn disabled">
+            </a>
+
+            <a href="{{ url_for('gemach.report_deposits') }}" class="switchboard-btn">
+                <span class="num purple">4</span>
+                <i class="fas fa-piggy-bank" style="color: #6A1B9A;"></i>
+                <span style="flex: 1;">{{ t('gemach.reports.deposits') }}</span>
+            </a>
+
+            <a href="{{ url_for('gemach.report_supports') }}" class="switchboard-btn">
                 <span class="num red">5</span>
                 <i class="fas fa-heart" style="color: #C62828;"></i>
                 <span style="flex: 1;">{{ t('gemach.reports.supports') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
-            <div class="switchboard-btn disabled">
+            </a>
+
+            <a href="{{ url_for('gemach.report_gmach_totals') }}" class="switchboard-btn">
                 <span class="num">6</span>
                 <i class="fas fa-calculator" style="color: #2F5597;"></i>
                 <span style="flex: 1;">{{ t('gemach.reports.gmach_totals') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
-            <div class="switchboard-btn disabled">
+            </a>
+
+            <a href="{{ url_for('gemach.report_addresses') }}" class="switchboard-btn">
                 <span class="num gray">7</span>
                 <i class="fas fa-envelope" style="color: #424242;"></i>
                 <span style="flex: 1;">{{ t('gemach.reports.addresses') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
-            <div class="switchboard-btn disabled">
+            </a>
+
+            <a href="{{ url_for('gemach.report_msv_totals') }}" class="switchboard-btn">
                 <span class="num gray">8</span>
                 <i class="fas fa-file-invoice-dollar" style="color: #424242;"></i>
                 <span style="flex: 1;">{{ t('gemach.reports.msv_totals') }}</span>
-                <span style="font-size: 11px; color: #999;">{{ t('gemach.reports.coming_soon_title') }}</span>
-            </div>
+            </a>
+
+            <!-- Operations (Masav prep + Hash export) — get their own distinct look -->
+            <a href="{{ url_for('gemach.masav_prep') }}" class="switchboard-btn" style="background: linear-gradient(to bottom,#FFE0B2,#FFB74D); border-color: #E65100;">
+                <span class="num orange">M</span>
+                <i class="fas fa-university" style="color: #E65100;"></i>
+                <span style="flex: 1; color: #BF360C;"><strong>הכנת מס״ב</strong> (Masav Collection)</span>
+                {% if sandbox_mode %}<span style="font-size: 10px; background: #FFF3E0; color: #E65100; padding: 2px 6px; border: 1px solid #E65100;">SANDBOX</span>{% endif %}
+            </a>
+
+            <a href="{{ url_for('gemach.hash_export') }}" class="switchboard-btn" style="background: linear-gradient(to bottom,#E8EAF6,#9FA8DA); border-color: #303F9F;">
+                <span class="num">H</span>
+                <i class="fas fa-file-export" style="color: #303F9F;"></i>
+                <span style="flex: 1; color: #1A237E;"><strong>ייצוא חשבונאי</strong> (Hash Export)</span>
+                {% if sandbox_mode %}<span style="font-size: 10px; background: #E8EAF6; color: #303F9F; padding: 2px 6px; border: 1px solid #303F9F;">SANDBOX</span>{% endif %}
+            </a>
         </div>
     </div>
 
     <div style="padding: 4px 14px 16px 14px;">
         <div style="background: #FFFDE7; border: 1px solid #FBC02D; padding: 10px 14px; font-size: 12px; color: #5D4037;">
             <strong>ℹ️ {{ t('gemach.reports.note') }}:</strong>
-            The Gmach system has 32 years of data (1994–2026). Reports will be wired up once the full
-            transaction data import has completed on the server.
+            כל דו״ח כולל כפתורי ייצוא ל־PDF ו־Excel.
+            {% if sandbox_mode %}
+            הכנת המס״ב וייצוא חשבונאי יוצרים קבצים ב־<code>instance/masav_batches/</code> ו־<code>instance/hash_exports/</code>
+            אך <strong>לא שולחים אותם</strong> לבנק או למערכת החשבונאות (מצב הדגמה).
+            {% endif %}
         </div>
     </div>
 </div>

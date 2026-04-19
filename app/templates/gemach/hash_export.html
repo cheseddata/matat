@@ -1,0 +1,76 @@
+{% extends "gemach_base.html" %}
+{% block title %}ייצוא חשבונאי — {{ t('gemach.switchboard.title') }}{% endblock %}
+
+{% block content %}
+<div class="access-window">
+    <div class="access-title-bar">
+        <span><i class="fas fa-file-export"></i> ייצוא חשבונאי (Hash Export)</span>
+        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+    </div>
+
+    {% if sandbox %}
+    <div style="background:#E8EAF6; color:#303F9F; border-bottom:2px solid #1A237E; padding:10px 14px; font-size:13px; font-weight:bold;">
+        ⚠️ מצב הדגמה — הקובץ ייוצר וישמר מקומית, אך <strong>לא יועלה למערכת החשבונאות</strong>.
+    </div>
+    {% endif %}
+
+    <form method="post" style="padding: 14px;">
+        <div style="background: var(--gmach-navy); color: white; padding: 10px 14px; margin-bottom: 10px;">
+            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                <label style="color: var(--gmach-cyan); font-weight: bold;">מתאריך:</label>
+                <input type="date" name="date_from" value="{{ date_from }}" style="padding: 4px 8px; border: 1px solid white; background: white;">
+                <label style="color: var(--gmach-cyan); font-weight: bold;">עד תאריך:</label>
+                <input type="date" name="date_to" value="{{ date_to }}" style="padding: 4px 8px; border: 1px solid white; background: white;">
+                <button formmethod="get" type="submit" style="padding: 4px 14px; background: var(--gmach-cyan); color: #000; border: 1px solid white; font-weight: bold; cursor: pointer;">
+                    <i class="fas fa-search"></i> טען
+                </button>
+                <span style="flex: 1;"></span>
+                <span style="background: white; color: var(--gmach-navy); padding: 3px 10px; font-weight: bold;">{{ '{:,}'.format(txns|length) }} תנועות</span>
+            </div>
+        </div>
+
+        <div style="padding: 0; max-height: calc(100vh - 400px); overflow: auto; margin-bottom: 10px;">
+            <table class="access-grid">
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">תאריך</th>
+                        <th style="width: 80px;">קטגוריה</th>
+                        <th>חבר</th>
+                        <th style="width: 110px; text-align: left;">ש״ח</th>
+                        <th style="width: 90px; text-align: left;">$</th>
+                        <th>הערה</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in txns %}
+                    <tr>
+                        <td style="font-family: 'Courier New', monospace;">{{ t.transaction_date.strftime('%d/%m/%Y') if t.transaction_date else '' }}</td>
+                        <td>{{ t.category or '' }}</td>
+                        <td>{{ t.member.full_name if t.member else '' }}</td>
+                        <td style="text-align: left; font-family: 'Courier New', monospace;">{{ '{:,.2f}'.format(t.amount_ils or 0) }}</td>
+                        <td style="text-align: left; font-family: 'Courier New', monospace;">{% if t.amount_usd %}{{ '{:,.2f}'.format(t.amount_usd) }}{% endif %}</td>
+                        <td>{{ t.description or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="text-align: center; color: #888; padding: 30px;">
+                        אין תנועות לטווח תאריכים זה.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center; padding: 10px; background: var(--access-toolbar); border: 1px solid var(--access-border);">
+            <button type="submit" style="padding: 6px 20px; font-size: 14px; font-weight: bold; background: #303F9F; color: white; border: 1px outset #1A237E; cursor: pointer;" {% if not txns %}disabled{% endif %}>
+                <i class="fas fa-file-export"></i> ייצא CSV
+            </button>
+            <span style="flex: 1"></span>
+            <a href="{{ url_for('gemach.reports') }}" style="font-size: 12px; color: var(--gmach-navy); text-decoration: underline;">
+                ← חזרה לדוחות
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block status %}ייצוא חשבונאי &middot; {{ date_from }} → {{ date_to }}{% endblock %}
