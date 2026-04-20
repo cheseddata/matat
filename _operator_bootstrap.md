@@ -1,131 +1,135 @@
-# Operator PC — Bootstrap Prompt
+# Operator PC — Bootstrap Prompt (2026-04-20)
 
-**Addressed to:** Claude Code running on the operator's Windows PC at `C:\Matat\`.
+**To Claude running on the operator's Windows PC at `C:\Matat\`:**
 **You have no memory of the dev-PC conversation.** Everything you need is here.
 
 ---
 
-## Your starting state
+## Quick summary — what changed today
 
-- You're on branch `operator-feedback-widget`
-- Last commit you made: `af139b0` (feedback widget + auto-git-push)
-- Master has moved forward with major upgrades (5 commits since your last sync)
-- The operator is a Hebrew-speaking non-technical user. **She does not touch code.** She'll test workflows and describe problems in plain language.
+Dev Claude (on the developer's PC) reproduced the Access Gmach UI to match the
+operator's reference screenshots. The goal is **pixel-faithful Access 2003 look**
+so the operator's muscle memory carries over.
 
-## What the main Claude shipped (commits you need to pull)
+Landed on master today (newest first):
 
 ```
-e421785  Wire Masav + Hash switchboard tiles (no more "Coming Soon")
-ae037ec  YOLO launcher for Claude Code GUI + settings.local.json
-8158993  Fix WERKZEUG_RUN_MAIN crash in start.bat
-067c052  Delegation playbook + operator setup guide updates
-361ebe1  ★ FULL REPORTS + MASAV + HASH + DESKTOP LAUNCHER (major)
-490c08a  Fix seed_admin.py AttributeError you caught earlier
+4bb7ee0  Member detail: faithful Access כרטיס תורם reproduction
+8d41def  Switchboard + submenus match Access תפריט ראשי look
+1fffe49  Fix url_for kwarg on member linked-donor link
+78787fa  Add 4 gemach.* i18n keys used by operator-merge templates
+dd6ebef  Operator sandbox polish: auto-login, Hebrew Gemach landing, icon, no-pause exit
+971e03b  Add operator feedback widget (Report issue button + auto git backup)
+a8286c0  Ticket 3 (loans search + card column) + Access-sync UI + detail polish
 ```
 
-### What changed in plain English
+### What the new look looks like
 
-1. **Desktop-app launcher (no browser)** — `start.bat` now opens the app in a native window via pywebview. No more port conflicts, no tabs, no timing popups. Random free port on 127.0.0.1.
+1. **Main menu (`/gemach/`)** — classic Windows 2000 gray window:
+   - Gray titlebar "תפריט ראשי"
+   - Cyan banner with black border: "מערכת ניהול גמ״ח"
+   - 5 centered beveled buttons: **כרטסת** / **תכניות** / **דוחות** / **תחזוקה** / **עזרה**
+   - Exit door icon bottom-left
 
-2. **All 8 Gemach reports are now LIVE:**
-   - Loans, Summaries, Donations, Deposits, Supports, Gmach Totals, Address Labels, Masav Totals
-   - Every report has **PDF + Excel + Print** buttons
-   - Hebrew labels throughout, RTL layout
+2. **כרטסת click → `/gemach/members`** (unchanged — member list)
 
-3. **Masav Collection (direct-debit) — works end-to-end in sandbox:**
-   - `/gemach/masav` lets her select active loans and generate a real Masav fixed-width bank file
-   - File written to `instance/masav_batches/MSV-YYYYMMDDHHMMSS.msv` + `.json` sidecar
-   - In sandbox mode: **no transmission to bank** — just the file she can inspect
+3. **Click a member → dark-teal kartis torem** with:
+   - Top-left toolbar: סגור / print / wrench / חפש (binoculars)
+   - Search header: מיון sort, מס׳ כרטיס yellow badge, שם, חיפוש
+   - 5 tab strip: `1: פרטים` / `2: פרטים` / `3: הו״ק` / `4: תנועות` / `5: מעקב`
+   - Left vertical nav: לקודם ↑ / לבא ↓ — jumps to prev/next member by card_no
+   - Bottom counter: `רשומה: N ◀ ▶ מתוך 4,112`
 
-4. **Hash Export (accounting) — works end-to-end in sandbox:**
-   - `/gemach/hash` lets her pick date range and generate a CSV of transactions
-   - File written to `instance/hash_exports/HASH-*.csv`
-   - In sandbox mode: **no upload to accounting system**
+4. **תכניות (programs) submenu**: Masav prep / Hash export / Access sync
+5. **תחזוקה (maintenance) submenu**: institutions/lookups stubs + link to admin users
+6. **עזרה (help)**: Hebrew how-to page
 
-5. **Main switchboard tiles 5 + 6 are now clickable** (were "Coming Soon" before)
+### Known placeholders (NOT BUGS to report unless they break)
+- On tab 3 (הו״ק): the 6 action buttons (קליטה / חידוש / ביטול / עדכון / מעקב / קבלה) are visual-only right now. In the sandbox they don't need to do anything yet.
+- On tabs 3 and 4: the sub-form below the grid shows the *first* row's details, not the clicked row's. Making it interactive needs JavaScript — not in scope yet.
+- On תחזוקה submenu: מוסדות / סיבות ביטול / סוגי תנועות links have `#todo-*` anchors. Admin users link works.
 
-6. **New Python dependencies to install:** `pywebview`, `reportlab`, `openpyxl`
+---
 
 ## What you need to do
 
-### Step 1 — Pull master, rebase your branch
+### Step 1 — Pull + rebase the operator branch
 ```
 cd C:\Matat
 git fetch origin
 git checkout operator-feedback-widget
 git rebase origin/master
 ```
+Expect conflicts only on CLAUDE.md (changelog). If any file has a real conflict on the template/code side, stop and ask the user.
 
-If the rebase conflicts on a file you don't care about (e.g. she didn't touch switchboard.html), resolve by taking master's version:
+Resolve CLAUDE.md by taking both sides' changelog entries (union-merge):
 ```
-git checkout --theirs <path>
-git add <path>
+git checkout --ours CLAUDE.md   # or --theirs depending on which has more
+# manually union if needed
+git add CLAUDE.md
 git rebase --continue
 ```
 
-Then force-push your branch:
+Then force-push:
 ```
 git push --force-with-lease origin operator-feedback-widget
 ```
 
-### Step 2 — Install new Python deps into the venv
+### Step 2 — Install new Python packages if any
 ```
 .\venv\Scripts\python.exe -m pip install -r requirements.txt --upgrade
 ```
-Takes ~1 minute. If `pywebview` install fails, try `.\venv\Scripts\python.exe -m pip install pywebview reportlab openpyxl` directly.
+(requirements haven't changed since the last pull, but run it to be safe)
 
 ### Step 3 — Re-launch the app
-1. Close the existing app window if open
-2. Double-click `C:\Matat\start.bat`
-3. **A native desktop window should open** (not a browser tab). Title: `מתת מרדכי - Matat / ZTorm / Gemach (SANDBOX)`
-4. Log in: `admin` / `admin123`
+1. Close the existing desktop window if open
+2. Double-click `C:\Matat\start.bat` (or `"Matat (Sandbox)"` on Desktop)
+3. Should open directly on the new Hebrew main menu (auto-login still works)
 
-### Step 4 — Smoke-test the new features (you do this yourself, quickly)
-In the app window:
-- Click **💚 Gemach** → switchboard should have **6 clickable tiles** (no more greyed-out "Coming Soon")
-- Click **Reports** (tile #4) → all 8 report tiles open + 2 operation tiles (Masav, Hash)
-- Click **Loans Report** → HTML table loads → click PDF button → file downloads
-- Click **Excel** button → .xlsx downloads
-- Back to Reports → click **Masav Collection** (orange M tile) → loans listed → click "צור אצווה" → sandbox flash in Hebrew → check `instance/masav_batches/` for the .msv file
-- Back to Reports → click **Hash Export** (blue H tile) → pick a date range → "ייצא CSV" → check `instance/hash_exports/`
+### Step 4 — Smoke-test the new UI (YOU, quickly, before handing to operator)
+1. **Main menu** — should look like Windows 2000 gray window with 5 vertical buttons and a cyan banner. **NOT** the old dark-navy numbered tiles.
+2. Click **כרטסת** → member list (unchanged)
+3. Click any member (try one with loans, e.g. card 3717) → should open the **dark-teal kartis torem** with the toolbar + 5 tabs
+4. Click through all 5 tabs — each should render without a 500
+5. Click the **left ↑/↓ arrows** (לקודם / לבא) — should jump to prev/next member
+6. Click **סגור** (door icon top-left) → back to member list
+7. Back to main menu → click **תכניות** → 3-button submenu; click Masav; back; click **תחזוקה** → 5-button submenu; click **עזרה** → help page
+8. Check the **bottom-left orange "דווח על בעיה" (Report issue)** button is still there — the feedback widget is preserved
 
-If any of those fail, commit a short issue note to `operator-feedback-widget` branch and push so main Claude sees it on origin.
+### Step 5 — Report issues via the feedback widget
+If anything looks visually wrong (colors, missing icons, broken layout), take a screenshot via the widget. It auto-pushes to `origin/operator-feedback` branch where dev Claude can pull + fix.
 
-### Step 5 — Hand the laptop to the operator
+### Step 6 — Hand to the operator
 Tell her:
-- "Click the green 💚 Gemach tab at the top right"
-- "Look around, click things, try to break it, run your usual reports"
-- "If something looks wrong or missing, click the orange 'Report issue' button (bottom-left) — it sends a screenshot + her note back to us"
+- "לחץ על כרטסת כדי לראות את רשימת החברים"
+- "המסך נראה עכשיו כמו התוכנית הישנה באקסס — אותם כפתורים, אותן לשוניות"
+- "אם משהו לא נכון או חסר — הכפתור הכתום למטה משמאל ישלח לנו דיווח עם צילום מסך"
 
-The feedback widget is already on this branch (commit `af139b0`); it auto-pushes each ticket to `origin/operator-feedback`.
-
-## What to commit back if you make fixes
-
-Small fixes for operator-PC-only concerns (window size, Hebrew font tweaks, etc.) → commit to `operator-feedback-widget`, push.
-Fixes that apply to everyone → commit to a new `fix/<thing>` branch and push; main Claude will pull + merge to master.
+---
 
 ## Things NOT to touch
-
-- `.claude/` folder (per-user settings, gitignored)
+- `.claude/` (per-dev settings, gitignored)
 - `C:\Gmach\` and `C:\ztorm\` (her live Access data — read-only)
-- `app/models/` and `migrations/` (schema changes must come from master)
+- `app/models/` and `migrations/` (schema changes come from dev master only)
+- Any .bat files that already work — if you find a bug, fix it minimally and commit
 
-## Report back expectations
-
-When done with Step 5, commit this summary to `operator-feedback-widget`:
+## Report back
+After Step 4 finishes, commit this summary to `operator-feedback-widget`:
 ```
-docs: operator-pc sync summary
+docs: operator PC sync summary 2026-04-20
 
-Pulled master up to e421785. Venv upgraded. Desktop window opens cleanly.
-Smoke test results:
-  - switchboard tiles:   [pass/fail]
-  - loans report html:   [pass/fail]
-  - loans report PDF:    [pass/fail]
-  - loans report Excel:  [pass/fail]
-  - masav batch gen:     [pass/fail]   file: <path>
-  - hash csv export:     [pass/fail]   file: <path>
+Pulled master up to 4bb7ee0.
+  - main menu:        [pass/fail]
+  - kartis tab 1:     [pass/fail]
+  - kartis tab 2:     [pass/fail]
+  - kartis tab 3:     [pass/fail]
+  - kartis tab 4:     [pass/fail]
+  - kartis tab 5:     [pass/fail]
+  - left nav prev/next: [pass/fail]
+  - bottom record counter: [pass/fail]
+  - תכניות / תחזוקה / עזרה submenus: [pass/fail]
+  - feedback widget:  [pass/fail]
 
-Operator notes: <whatever she said>
+Operator notes: <whatever she reports>
 ```
-
-Then push. That's the handoff complete.
+Then push.
