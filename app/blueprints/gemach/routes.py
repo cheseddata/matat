@@ -40,12 +40,33 @@ def switchboard():
 @gemach_bp.route('/members')
 @gemach_required
 def members():
+    """Access-style haverim search dialog.
+
+    Supports three structured search fields (card# / first / last) AND
+    the legacy ?q= free-text search (kept so saved links still work).
+    """
     page = request.args.get('page', 1, type=int)
-    search = request.args.get('q', '').strip()
+    search = request.args.get('q', '').strip()      # legacy catch-all
+    s_card = request.args.get('card', '').strip()
+    s_first = request.args.get('first', '').strip()
+    s_last = request.args.get('last', '').strip()
     sort = request.args.get('sort', 'name')
 
     q = GemachMember.query
-    if search:
+
+    # Three-field search (Access-style)
+    if s_card:
+        if s_card.isdigit():
+            q = q.filter(GemachMember.gmach_card_no == int(s_card))
+        else:
+            q = q.filter(GemachMember.gmach_card_no == -1)  # force 0 rows
+    if s_first:
+        q = q.filter(GemachMember.first_name.ilike(f'{s_first}%'))
+    if s_last:
+        q = q.filter(GemachMember.last_name.ilike(f'{s_last}%'))
+
+    # Legacy free-text (phone / TZ / any name)
+    if search and not (s_card or s_first or s_last):
         pat = f'{search}%'
         q = q.filter(or_(
             GemachMember.last_name.ilike(pat),
@@ -61,7 +82,9 @@ def members():
         q = q.order_by(GemachMember.last_name, GemachMember.first_name)
 
     paged = q.paginate(page=page, per_page=50)
-    return render_template('gemach/members.html', members=paged, search=search, sort=sort)
+    return render_template('gemach/members.html',
+                           members=paged, search=search, sort=sort,
+                           s_card=s_card, s_first=s_first, s_last=s_last)
 
 
 @gemach_bp.route('/members/<int:member_id>')

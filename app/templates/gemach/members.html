@@ -1,110 +1,240 @@
 {% extends "gemach_base.html" %}
+{% block title %}חיפוש — חברים{% endblock %}
 
-{% block title %}{{ t('gemach.nav.members') }} — {{ t('gemach.switchboard.title') }}{% endblock %}
+{% block extra_css %}
+<style>
+/* =======================================================
+   Haverim search dialog — faithful Access `07_haverim_search` repro.
+   Compact W2K popup with 3 search fields + 3-column grid.
+   ======================================================= */
+.hs-wrap {
+    background: #206B65;     /* teal Access form bg behind the dialog */
+    min-height: calc(100vh - 130px);
+    padding: 30px 12px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+.hs-dialog {
+    background: #D4D0C8;
+    border: 1px solid #0A246A;
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.5);
+    width: 560px;
+    max-width: 100%;
+    font-family: 'Segoe UI','David','Arial',sans-serif;
+}
+.hs-titlebar {
+    background: linear-gradient(to bottom, #B9B5AA, #7A7067);
+    color: white;
+    padding: 3px 8px;
+    font: bold 13px 'Segoe UI',sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.hs-titlebar .win-btns { display: flex; gap: 2px; }
+.hs-titlebar .win-btns a,
+.hs-titlebar .win-btns span {
+    background:#ECE9D8; color:#000; width:22px; height:18px;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #000; border-top-color:#FFF; border-left-color:#FFF;
+    font-size:10px; text-decoration:none; font-weight:bold;
+}
+.hs-titlebar .win-btns a.x { background:#C62828; color:white; border-color:#8B0000; }
+
+/* Search field row */
+.hs-search-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 90px;
+    gap: 0;
+    padding: 4px;
+    background: #D4D0C8;
+    border-bottom: 1px solid #808080;
+}
+.hs-search-row input {
+    background: white;
+    border: 1px inset #888;
+    padding: 2px 6px;
+    font: 13px 'Segoe UI',sans-serif;
+    margin: 0 1px;
+    min-width: 0;
+}
+
+/* Data grid — tight, single-line rows, Access-style */
+.hs-grid-wrap {
+    background: #C0C0C0;
+    padding: 0;
+    max-height: 60vh;
+    overflow: auto;
+    border: 1px inset #888;
+}
+.hs-grid {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-family: 'Segoe UI','David','Arial',sans-serif;
+    background: white;
+}
+.hs-grid td {
+    padding: 2px 8px;
+    border-bottom: 1px dotted #B0B0B0;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.hs-grid tr:hover td { background: #FFEE00; }
+.hs-grid td.card {
+    width: 70px;
+    font-family: 'Courier New',monospace;
+    color: #0000CC;
+    text-align: left;
+    direction: ltr;
+}
+.hs-grid td.first {
+    width: 140px;
+    text-align: right;
+}
+.hs-grid td.last {
+    text-align: right;
+}
+.hs-grid tr.selected td { background: #FFEE00; }
+.hs-grid .empty td {
+    text-align: center; padding: 30px 0; color: #888;
+    background: #C0C0C0; cursor: default;
+}
+
+/* Blue action-bar at the bottom (matches the binoculars / 9 / 10 icon row) */
+.hs-action-bar {
+    background: #1A3350;
+    padding: 8px 10px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    border-top: 1px solid #000;
+}
+.hs-action-btn {
+    background: #ECE9D8;
+    border: 1px outset #888;
+    padding: 4px 12px;
+    min-width: 54px;
+    height: 42px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #000;
+    font-size: 10px;
+    font-weight: bold;
+}
+.hs-action-btn i { font-size: 18px; margin-bottom: 2px; color: #000080; }
+.hs-action-btn:hover { background: #F5F3E8; }
+.hs-action-btn .num {
+    width: 24px; height: 24px; border-radius: 50%;
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 14px; font-family: 'Arial',sans-serif;
+}
+.hs-action-btn .num.red   { background: #C62828; }
+.hs-action-btn .num.green { background: #2E7D32; }
+
+/* Pagination strip — subtle, under the action bar */
+.hs-pager {
+    background: #D4D0C8; padding: 3px 10px;
+    display: flex; justify-content: center; gap: 6px;
+    font-size: 11px; align-items: center;
+    border-top: 1px solid #808080;
+}
+.hs-pager a, .hs-pager span.disabled {
+    background: #ECE9D8; border: 1px outset #888;
+    padding: 1px 8px; text-decoration: none; color: #000; font-size: 11px;
+}
+.hs-pager span.disabled { opacity: .4; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="access-window">
-    <div class="access-title-bar">
-        <span><i class="fas fa-users"></i> {{ t('gemach.nav.members') }} &middot; {{ '{:,}'.format(members.total) }} {{ t('gemach.common.all')|lower }}</span>
-        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
-    </div>
+<div class="hs-wrap">
+    <div class="hs-dialog">
+        <!-- Titlebar -->
+        <div class="hs-titlebar">
+            <span>חיפוש</span>
+            <span class="win-btns">
+                <span>_</span>
+                <span>□</span>
+                <a href="{{ url_for('gemach.switchboard') }}" class="x" title="סגור">✕</a>
+            </span>
+        </div>
 
-    <!-- Search form (mimics the Access חיפוש form) -->
-    <div style="background: var(--gmach-navy); color: white; padding: 10px 14px; border-bottom: 1px solid var(--access-border);">
-        <form method="get" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <i class="fas fa-search" style="color: var(--gmach-cyan); font-size: 16px;"></i>
-            <input type="text"
-                   name="q"
-                   value="{{ search }}"
-                   placeholder="{{ t('gemach.members.search_placeholder') }}"
-                   autofocus
-                   style="flex: 1; min-width: 260px; padding: 5px 10px; font-size: 14px; border: 1px solid white; background: white; color: #000;">
-            <select name="sort" onchange="this.form.submit()"
-                    style="padding: 5px 8px; font-size: 13px; border: 1px solid white; background: white;">
-                <option value="name" {% if sort == 'name' %}selected{% endif %}>{{ t('gemach.members.sort_name') }}</option>
-                <option value="card_no" {% if sort == 'card_no' %}selected{% endif %}>{{ t('gemach.members.sort_card_no') }}</option>
-            </select>
-            <button type="submit"
-                    style="padding: 5px 16px; font-size: 13px; background: var(--gmach-cyan); color: #000; border: 1px solid white; font-weight: bold; cursor: pointer;">
-                <i class="fas fa-search"></i> {{ t('gemach.common.search') }}
-            </button>
-            {% if search %}
-            <a href="{{ url_for('gemach.members') }}"
-               style="padding: 5px 12px; font-size: 12px; background: #888; color: white; border: 1px solid white; text-decoration: none;">
-                ✕ {{ t('gemach.common.cancel') or 'Clear' }}
+        <!-- 3 search fields (RTL order: card# on the left, first name middle, last name on the right) -->
+        <form method="get" id="hsForm">
+            <div class="hs-search-row">
+                <!-- In RTL the rightmost grid cell is first; fill with last_name search -->
+                <input type="text" name="last"  value="{{ s_last }}"  placeholder="שם משפחה" autofocus>
+                <input type="text" name="first" value="{{ s_first }}" placeholder="שם פרטי"  dir="rtl">
+                <input type="text" name="card"  value="{{ s_card }}"  placeholder="מס׳ כרטיס" dir="ltr"
+                       style="font-family:'Courier New',monospace; text-align:center;">
+            </div>
+            <!-- submit on Enter in any field; no visible button needed -->
+        </form>
+
+        <!-- Grid -->
+        <div class="hs-grid-wrap">
+            <table class="hs-grid">
+                <tbody>
+                    {% for m in members.items %}
+                    <tr onclick="location.href='{{ url_for('gemach.member_detail', member_id=m.id) }}'">
+                        <td class="card">{{ m.gmach_card_no }}</td>
+                        <td class="first">{{ m.first_name or '' }}</td>
+                        <td class="last">{{ m.last_name or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty"><td colspan="3">אין רשומות תואמות</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Action bar: binoculars (new search clears fields), red 9 (next page), green 10 (last page) -->
+        <div class="hs-action-bar">
+            <a href="{{ url_for('gemach.members') }}" class="hs-action-btn" title="חיפוש חדש">
+                <i class="fas fa-binoculars"></i>
+                <span>חדש</span>
+            </a>
+            {% if members.has_next %}
+            <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}"
+               class="hs-action-btn" title="עמוד הבא">
+                <span class="num red">{{ members.next_num }}</span>
             </a>
             {% endif %}
-        </form>
-    </div>
+            {% if members.has_prev %}
+            <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}"
+               class="hs-action-btn" title="עמוד אחרון">
+                <span class="num green">{{ members.pages }}</span>
+            </a>
+            {% endif %}
+        </div>
 
-    <!-- Results grid -->
-    <div style="padding: 0; max-height: calc(100vh - 260px); overflow: auto;">
-        <table class="access-grid">
-            <thead>
-                <tr>
-                    <th style="width: 90px;">{{ t('gemach.members.card_no') }}</th>
-                    <th>{{ t('gemach.members.name') }}</th>
-                    <th style="width: 110px;">{{ t('gemach.members.tz') }}</th>
-                    <th style="width: 130px;">{{ t('gemach.members.phone') }}</th>
-                    <th style="width: 140px;">{{ t('gemach.members.city') }}</th>
-                    <th style="width: 70px; text-align: center;">{{ t('gemach.members.active_loans') }}</th>
-                    <th style="width: 60px; text-align: center;">{{ t('gemach.common.linked') }}</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for m in members.items %}
-                <tr onclick="location.href='{{ url_for('gemach.member_detail', member_id=m.id) }}'">
-                    <td style="font-weight: bold; color: var(--gmach-navy);">{{ m.gmach_card_no }}</td>
-                    <td>
-                        <strong>{{ m.last_name or '' }}</strong>{% if m.first_name %}, {{ m.first_name }}{% endif %}
-                        {% if m.title %}<span style="color:#666;">&nbsp;({{ m.title }})</span>{% endif %}
-                    </td>
-                    <td style="color: #666; font-family: 'Courier New', monospace;">{{ m.teudat_zehut or '' }}</td>
-                    <td style="font-family: 'Courier New', monospace;">{{ m.primary_phone or '' }}</td>
-                    <td>{{ m.city or '' }}</td>
-                    <td style="text-align: center;">
-                        {% set active_count = m.loans.filter_by(status='p').count() %}
-                        {% if active_count > 0 %}<span class="badge-status badge-active">{{ active_count }}</span>{% endif %}
-                    </td>
-                    <td style="text-align: center;">
-                        {% if m.ztorm_donor_id %}<span title="ZTorm #{{ m.ztorm_donor_id }}" style="color:#DAA520; font-size: 14px;">🏛</span>{% endif %}
-                        {% if m.donor_id %}<span title="Matat donor #{{ m.donor_id }}" style="color:#E65100; font-weight: bold;">Ⓜ</span>{% endif %}
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="7" style="text-align:center; color:#888; padding: 40px;">
-                        {{ t('gemach.members.no_results') }}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Pagination / record navigator (mimics Access record nav bar) -->
-    {% if members.pages > 1 %}
-    <div style="background: var(--access-toolbar); border-top: 1px solid var(--access-border); padding: 6px 14px; display: flex; justify-content: center; align-items: center; gap: 4px; font-size: 12px;">
-        <span style="margin-{{ 'left' if is_rtl else 'right' }}: 10px;">
-            {{ t('gemach.common.page') }}
-            <strong>{{ members.page }}</strong> / {{ members.pages }}
-            &nbsp;|&nbsp;
-            {{ '{:,}'.format(members.total) }} {{ t('gemach.members.record_count') or '' }}{{ t('gemach.common.all')|lower }}
-        </span>
-        {% if members.has_prev %}
-        <a href="{{ url_for('gemach.members', page=1, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">⏮</a>
-        <a href="{{ url_for('gemach.members', page=members.prev_num, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">◀ {{ t('gemach.common.prev') }}</a>
-        {% endif %}
-        {% if members.has_next %}
-        <a href="{{ url_for('gemach.members', page=members.next_num, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">{{ t('gemach.common.next') }} ▶</a>
-        <a href="{{ url_for('gemach.members', page=members.pages, q=search, sort=sort) }}" class="tb-btn" style="padding: 2px 8px;">⏭</a>
+        <!-- Small pagination strip -->
+        {% if members.pages > 1 %}
+        <div class="hs-pager">
+            <span>עמוד</span>
+            {% if members.has_prev %}
+            <a href="{{ url_for('gemach.members', page=1, card=s_card, first=s_first, last=s_last) }}">⏮</a>
+            <a href="{{ url_for('gemach.members', page=members.prev_num, card=s_card, first=s_first, last=s_last) }}">◀</a>
+            {% endif %}
+            <span>{{ members.page }} / {{ members.pages }}</span>
+            {% if members.has_next %}
+            <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}">▶</a>
+            <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}">⏭</a>
+            {% endif %}
+            <span>&middot;</span>
+            <span>{{ '{:,}'.format(members.total) }} רשומות</span>
+        </div>
         {% endif %}
     </div>
-    {% endif %}
 </div>
 {% endblock %}
 
 {% block status %}
-{{ '{:,}'.format(members.total) }} {{ t('gemach.stats.members')|lower }}
-{% if search %} · "{{ search }}"{% endif %}
+חיפוש חברים &middot; {{ '{:,}'.format(members.total) }} רשומות
 {% endblock %}
