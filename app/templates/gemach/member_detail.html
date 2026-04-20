@@ -252,7 +252,7 @@
                     <strong>Ⓜ Matat:</strong>
                     {% if linked_donor %}
                         <span style="color: #FFD180;">{{ linked_donor.full_name }} (#{{ linked_donor.id }})</span>
-                        <a href="{{ url_for('admin.donor_detail', donor_id=linked_donor.id) }}" style="margin-inline-start: 10px; background: #FFD180; color: #000; padding: 2px 10px; text-decoration: none; font-size: 12px; font-weight: bold;">
+                        <a href="{{ url_for('admin.donor_detail', id=linked_donor.id) }}" style="margin-inline-start: 10px; background: #FFD180; color: #000; padding: 2px 10px; text-decoration: none; font-size: 12px; font-weight: bold;">
                             {{ t('gemach.linked.view_in_matat') }}
                         </a>
                         <div style="margin-top: 8px; font-size: 12px; color: #BBB;">
