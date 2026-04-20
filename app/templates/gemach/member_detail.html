@@ -196,7 +196,12 @@
 }
 
 /* Access-style data grids (tabs 3, 4, 5) */
-.kt-grid-wrap { background: #C0C0C0; border: 1px solid #808080; padding: 0; }
+.kt-grid-wrap {
+    background: #C0C0C0; border: 1px solid #808080; padding: 0;
+    max-height: 260px;   /* keep sub-form/totals visible below the grid */
+    overflow: auto;
+}
+.kt-grid-wrap.tall { max-height: 360px; }
 .kt-grid {
     width: 100%; border-collapse: collapse; font-size: 11px;
     font-family: 'Segoe UI','David',sans-serif; background: #C0C0C0;
@@ -205,6 +210,7 @@
     background: #000080; color: white; font-weight: normal;
     padding: 3px 6px; border: 1px solid #000; text-align: center;
     white-space: nowrap;
+    position: sticky; top: 0; z-index: 1;
 }
 .kt-grid tbody tr { background: white; }
 .kt-grid tbody tr:nth-child(even) { background: #F0F0F0; }
@@ -648,7 +654,7 @@
             <div class="kt-two-col">
                 <!-- LEFT grid: loan payments (Peulot) -->
                 <div>
-                    <div class="kt-grid-wrap">
+                    <div class="kt-grid-wrap tall">
                         <table class="kt-grid">
                             <thead>
                                 <tr>
@@ -676,7 +682,7 @@
 
                 <!-- RIGHT grid: general transactions -->
                 <div>
-                    <div class="kt-grid-wrap">
+                    <div class="kt-grid-wrap tall">
                         <table class="kt-grid">
                             <thead>
                                 <tr>
