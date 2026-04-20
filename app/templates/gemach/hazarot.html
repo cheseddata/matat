@@ -1,0 +1,78 @@
+{% extends "gemach_base.html" %}
+{% block title %}פעולות — החזרים{% endblock %}
+{% block extra_css %}
+<style>
+.haz-win { max-width: 1000px; margin: 20px auto; background:#D4D0C8; border:1px solid #0A246A; box-shadow:3px 3px 6px rgba(0,0,0,0.3); }
+.haz-tb  { background:linear-gradient(to bottom,#B9B5AA,#7A7067); color:white; padding:3px 8px; font:bold 13px 'Segoe UI',sans-serif; display:flex; justify-content:space-between; align-items:center; }
+.haz-tb .x { background:#C62828; color:white; width:22px; height:18px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #8B0000; text-decoration:none; font-weight:bold; }
+.haz-body { padding: 12px; }
+.haz-filter { background: #1A3350; color: white; padding: 6px 10px; margin-bottom: 10px; display: flex; gap: 10px; align-items: center; font-size: 12px; }
+.haz-filter input[type=date] { border:1px solid white; background:white; padding:2px 4px; }
+.haz-filter button { background: #ECE9D8; border: 1px outset #888; padding: 3px 12px; cursor: pointer; }
+.haz-grid { width: 100%; border-collapse: collapse; font-size: 12px; background: white; }
+.haz-grid thead th { background: #000080; color: white; padding: 4px 8px; border: 1px solid #000; font-weight: normal; position: sticky; top: 0; }
+.haz-grid td { padding: 3px 8px; border: 1px dotted #D0D0D0; background: white; }
+.haz-grid tr:hover td { background: #FFEE00; cursor: pointer; }
+.haz-grid .num { font-family: 'Courier New', monospace; text-align: right; }
+.haz-grid .empty td { text-align: center; padding: 30px; color: #888; cursor: default; }
+.haz-actions { margin-top: 10px; display: flex; gap: 8px; justify-content: center; }
+.haz-btn { background: #ECE9D8; border: 1px outset #888; padding: 5px 16px; font-size: 13px; text-decoration: none; color: #000; font-weight: bold; }
+.haz-btn:hover { background: #F5F3E8; }
+.haz-btn.primary { background: #D6E4F0; border-color: #000080; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="haz-win">
+    <div class="haz-tb">
+        <span>פעולות — החזרים</span>
+        <a href="{{ url_for('gemach.progs_menu') }}" class="x">✕</a>
+    </div>
+    <div class="haz-body">
+        <form method="get" class="haz-filter">
+            <label>מתאריך:</label>
+            <input type="date" name="date_from" value="{{ date_from or '' }}">
+            <label>עד:</label>
+            <input type="date" name="date_to" value="{{ date_to or '' }}">
+            <button type="submit">טען</button>
+            <span style="flex:1"></span>
+            <span>{{ bounces|length }} רשומות</span>
+        </form>
+
+        <div style="max-height: 480px; overflow: auto;">
+            <table class="haz-grid">
+                <thead>
+                    <tr>
+                        <th style="width: 90px;">תאריך</th>
+                        <th style="width: 70px;">הו״ק</th>
+                        <th style="width: 110px;">אסמכתא</th>
+                        <th style="width: 110px;">ש״ח</th>
+                        <th style="width: 60px;">סיבה</th>
+                        <th>פירוט סיבה</th>
+                        <th>חבר</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in bounces %}
+                    <tr onclick="location.href='{{ url_for('gemach.loan_detail', loan_id=b.loan_id) }}'">
+                        <td class="num">{{ b.transaction_date.strftime('%d/%m/%Y') if b.transaction_date else '' }}</td>
+                        <td class="num">{{ b.loan.gmach_num_hork if b.loan else '' }}</td>
+                        <td class="num">{{ b.asmachta or '' }}</td>
+                        <td class="num">{{ '{:,.2f}'.format(b.amount_ils or 0) }}</td>
+                        <td style="text-align:center;">{{ b.bounce_reason or '' }}</td>
+                        <td>{{ reasons.get(b.bounce_reason, '') }}</td>
+                        <td>{{ b.loan.member.full_name if b.loan and b.loan.member else '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty"><td colspan="7">אין החזרים לטווח התאריכים</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="haz-actions">
+            <a href="{{ url_for('gemach.hazarot_new') }}" class="haz-btn primary">הוסף החזר חדש</a>
+            <a href="{{ url_for('gemach.progs_menu') }}" class="haz-btn">חזרה לתפריט תכניות</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "gemach_base.html" %}
+{% block title %}היסטוריית פעולות הו״ק{% endblock %}
+{% block extra_css %}
+<style>
+.hh-win { max-width: 1100px; margin: 20px auto; background:#D4D0C8; border:1px solid #0A246A; box-shadow:3px 3px 6px rgba(0,0,0,0.3); }
+.hh-tb  { background:linear-gradient(to bottom,#B9B5AA,#7A7067); color:white; padding:3px 8px; font:bold 13px 'Segoe UI',sans-serif; display:flex; justify-content:space-between; }
+.hh-tb .x { background:#C62828; color:white; width:22px; height:18px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #8B0000; text-decoration:none; font-weight:bold; }
+.hh-filter { background: #1A3350; color: white; padding: 6px 10px; display: flex; gap: 12px; align-items: center; font-size: 12px; }
+.hh-filter label { color: white; font-weight: bold; }
+.hh-filter a, .hh-filter button { background: #ECE9D8; border: 1px outset #888; padding: 3px 10px; text-decoration: none; color: #000; font-size: 12px; }
+.hh-filter a.active { background: #FFEE00; font-weight: bold; }
+.hh-grid { width: 100%; border-collapse: collapse; font-size: 12px; background: white; }
+.hh-grid thead th { background: #000080; color: white; padding: 4px 8px; border: 1px solid #000; font-weight: normal; position: sticky; top: 0; }
+.hh-grid td { padding: 3px 8px; border: 1px dotted #D0D0D0; cursor: pointer; }
+.hh-grid tr:hover td { background: #FFEE00; }
+.hh-grid .num { font-family: 'Courier New', monospace; text-align: right; }
+.hh-grid .bounced td { background: #FFCDD2; }
+.hh-pager { background: #D4D0C8; padding: 5px 10px; text-align: center; font-size: 11px; display: flex; gap: 6px; justify-content: center; align-items: center; }
+.hh-pager a { background: #ECE9D8; border: 1px outset #888; padding: 1px 8px; text-decoration: none; color: #000; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="hh-win">
+    <div class="hh-tb">
+        <span>היסטוריית פעולות הו״ק</span>
+        <a href="{{ url_for('gemach.progs_menu') }}" class="x">✕</a>
+    </div>
+    <div class="hh-filter">
+        <label>סינון:</label>
+        <a href="{{ url_for('gemach.hork_history') }}" class="{% if not only_bounced %}active{% endif %}">הכל</a>
+        <a href="{{ url_for('gemach.hork_history', bounced=1) }}" class="{% if only_bounced %}active{% endif %}">רק החזרים</a>
+        <span style="flex:1"></span>
+        <span>{{ '{:,}'.format(transactions.total) }} רשומות</span>
+    </div>
+    <div style="max-height: 520px; overflow: auto;">
+        <table class="hh-grid">
+            <thead>
+                <tr>
+                    <th style="width:90px;">תאריך</th>
+                    <th style="width:70px;">הו״ק</th>
+                    <th style="width:110px;">אסמכתא</th>
+                    <th style="width:110px;">ש״ח</th>
+                    <th style="width:50px;">מט</th>
+                    <th style="width:60px;">סיבה</th>
+                    <th>חבר</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in transactions.items %}
+                <tr class="{% if t.bounced %}bounced{% endif %}" onclick="location.href='{{ url_for('gemach.loan_detail', loan_id=t.loan_id) }}'">
+                    <td class="num">{{ t.transaction_date.strftime('%d/%m/%Y') if t.transaction_date else '' }}</td>
+                    <td class="num">{{ t.loan.gmach_num_hork if t.loan else '' }}</td>
+                    <td class="num">{{ t.asmachta or '' }}</td>
+                    <td class="num">{{ '{:,.2f}'.format(t.amount_ils or 0) }}</td>
+                    <td style="text-align:center;">{{ t.loan_type or '' }}</td>
+                    <td style="text-align:center;">{{ t.bounce_reason or '' }}</td>
+                    <td>{{ t.loan.member.full_name if t.loan and t.loan.member else '' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" style="text-align:center; padding:30px; color:#888;">אין פעולות</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if transactions.pages > 1 %}
+    <div class="hh-pager">
+        {% if transactions.has_prev %}
+        <a href="{{ url_for('gemach.hork_history', page=1, bounced=1 if only_bounced else None) }}">⏮</a>
+        <a href="{{ url_for('gemach.hork_history', page=transactions.prev_num, bounced=1 if only_bounced else None) }}">◀</a>
+        {% endif %}
+        <span>עמוד {{ transactions.page }} / {{ transactions.pages }}</span>
+        {% if transactions.has_next %}
+        <a href="{{ url_for('gemach.hork_history', page=transactions.next_num, bounced=1 if only_bounced else None) }}">▶</a>
+        <a href="{{ url_for('gemach.hork_history', page=transactions.pages, bounced=1 if only_bounced else None) }}">⏭</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

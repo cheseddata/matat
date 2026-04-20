@@ -1,0 +1,66 @@
+{% extends "gemach_base.html" %}
+{% block title %}החזר חדש{% endblock %}
+{% block extra_css %}
+<style>
+.hn-win { max-width: 600px; margin: 30px auto; background:#D4D0C8; border:1px solid #0A246A; box-shadow:3px 3px 6px rgba(0,0,0,0.3); }
+.hn-tb  { background:linear-gradient(to bottom,#B9B5AA,#7A7067); color:white; padding:3px 8px; font:bold 13px 'Segoe UI',sans-serif; display:flex; justify-content:space-between; }
+.hn-tb .x { background:#C62828; color:white; width:22px; height:18px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #8B0000; text-decoration:none; font-weight:bold; }
+.hn-body { background: #206B65; padding: 18px 22px; }
+.hn-form { background: #ECE9D8; border: 1px inset #888; padding: 16px 20px; display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px; align-items: center; }
+.hn-form label { font-weight: bold; font-size: 13px; }
+.hn-form input[type=text], .hn-form input[type=number], .hn-form select {
+    background: white; border: 1px inset #888; padding: 3px 6px; font-size: 13px;
+}
+.hn-form .sandbox-note { grid-column: 1/-1; background: #FFECB3; color: #6D4C41; border: 1px solid #FB8C00; padding: 6px 10px; font-size: 12px; font-weight: bold; margin-bottom: 6px; }
+.hn-check { display: flex; align-items: center; gap: 8px; }
+.hn-actions { margin-top: 14px; display: flex; gap: 8px; justify-content: center; }
+.hn-btn { background: #ECE9D8; border: 1px outset #888; padding: 6px 20px; font-size: 13px; font-weight: bold; cursor: pointer; text-decoration: none; color: #000; }
+.hn-btn:hover { background: #F5F3E8; }
+.hn-btn.primary { background: #D6E4F0; border-color: #000080; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="hn-win">
+    <div class="hn-tb">
+        <span>החזרים — {{ now_date }}</span>
+        <a href="{{ url_for('gemach.hazarot_list') }}" class="x">✕</a>
+    </div>
+    <div class="hn-body">
+        <form method="post" class="hn-form">
+            {% if sandbox %}
+            <div class="sandbox-note">⚠ SANDBOX MODE — הרשומה תישמר מקומית אך לא תועבר לבנק</div>
+            {% endif %}
+
+            <label>מס׳ הו״ק:</label>
+            <input type="text" name="hork_no" required autofocus>
+
+            <label>אסמכתא:</label>
+            <input type="text" name="asmachta">
+
+            <label>סכום (ש״ח):</label>
+            <input type="text" name="amount" placeholder="0.00">
+
+            <label>סיבה:</label>
+            <select name="reason">
+                <option value="">— בחר —</option>
+                {% for r in reasons %}
+                <option value="{{ r.code }}">{{ r.code }} — {{ r.name }}</option>
+                {% endfor %}
+            </select>
+
+            <label></label>
+            <label class="hn-check"><input type="checkbox" name="cancel" value="1"> ביטול ההו״ק</label>
+        </form>
+        <div class="hn-actions">
+            <button type="submit" form="" onclick="document.querySelector('.hn-form').submit()" class="hn-btn primary">בצע</button>
+            <a href="{{ url_for('gemach.hazarot_list') }}" class="hn-btn">ביטול</a>
+        </div>
+    </div>
+</div>
+<script>
+// Submit the form when בצע is clicked (form attribute doesn't work without an id)
+document.querySelector('.hn-btn.primary').addEventListener('click', (e) => {
+    e.preventDefault(); document.querySelector('.hn-form').submit();
+});
+</script>
+{% endblock %}

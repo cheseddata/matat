@@ -6,9 +6,12 @@
        title='תכניות',
        banner='תכניות',
        items=[
-         ('הכנת מס״ב',        url_for('gemach.masav_prep')),
-         ('ייצוא חשבונאי',    url_for('gemach.hash_export')),
-         ('סנכרון מ-Access',  url_for('gemach.sync_access_page')),
+         ('הכנת מס״ב',         url_for('gemach.masav_prep')),
+         ('ייצוא חשבונאי',     url_for('gemach.hash_export')),
+         ('החזרים (פעולות)',    url_for('gemach.hazarot_list')),
+         ('סיומים',            url_for('gemach.siumim')),
+         ('היסטוריית הו״ק',    url_for('gemach.hork_history')),
+         ('סנכרון מ-Access',   url_for('gemach.sync_access_page')),
        ],
        back_url=url_for('gemach.switchboard')
   ) }}

@@ -1,0 +1,17 @@
+{% extends "gemach_base.html" %}
+{% from 'gemach/_w2k_menu.html' import w2k_menu %}
+{% block title %}כלים — חברים{% endblock %}
+{% block content %}
+  {{ w2k_menu(
+       title='כלים — חברים',
+       banner='כלים לחברים',
+       items=[
+         ('חיפוש חבר',        url_for('gemach.members')),
+         ('דו״ח חברים מפורט', url_for('gemach.report_haverim_detailed')),
+         ('לווים (הו״ק פעילים)', url_for('gemach.report_lovim')),
+         ('תוויות כתובת',      url_for('gemach.report_addresses')),
+         ('סנכרון מ-Access',    url_for('gemach.sync_access_page')),
+       ],
+       back_url=url_for('gemach.switchboard')
+  ) }}
+{% endblock %}

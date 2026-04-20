@@ -1,0 +1,51 @@
+{% extends "gemach_base.html" %}
+{% block title %}סיומים{% endblock %}
+{% block extra_css %}
+<style>
+.si-win { max-width: 520px; margin: 40px auto; background:#D4D0C8; border:1px solid #0A246A; box-shadow:3px 3px 6px rgba(0,0,0,0.3); }
+.si-tb  { background:linear-gradient(to bottom,#B9B5AA,#7A7067); color:white; padding:3px 8px; font:bold 13px 'Segoe UI',sans-serif; display:flex; justify-content:space-between; }
+.si-tb .x { background:#C62828; color:white; width:22px; height:18px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #8B0000; text-decoration:none; font-weight:bold; }
+.si-body { background: #206B65; padding: 28px 40px; color: white; }
+.si-card { background: #CCCCCC; border: 2px inset #999; padding: 26px 20px; text-align: center; margin-bottom: 22px; }
+.si-prompt { color: #000; font-size: 15px; font-weight: bold; margin-bottom: 12px; }
+.si-card input[type=date] { background: white; border: 1px inset #888; padding: 4px 8px; font-size: 14px; font-family: 'Segoe UI'; }
+.si-preview { font-size: 12px; color: #333; margin-top: 10px; }
+.si-btn { background: #ECE9D8; border: 1px outset #888; padding: 8px 36px; font-size: 14px; font-weight: bold; cursor: pointer; text-decoration: none; color: #000; display: inline-block; }
+.si-btn:hover { background: #F5F3E8; }
+.si-btn.primary { background: #D6E4F0; border-color: #000080; }
+.si-exit-row { display: flex; justify-content: flex-start; margin-top: 20px; }
+.si-exit { background: #ECE9D8; border: 1px outset #888; padding: 6px; text-decoration: none; color: #000; }
+.si-sandbox { background: #FFECB3; color: #6D4C41; border: 1px solid #FB8C00; padding: 6px 12px; font-size: 12px; font-weight: bold; margin-bottom: 14px; text-align: center; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="si-win">
+    <div class="si-tb">
+        <span>סיומים</span>
+        <a href="{{ url_for('gemach.progs_menu') }}" class="x">✕</a>
+    </div>
+    <div class="si-body">
+        {% if sandbox %}
+        <div class="si-sandbox">⚠ SANDBOX MODE — הפעולה תציג מה היה קורה אך לא תשמור</div>
+        {% endif %}
+
+        <form method="post">
+            <div class="si-card">
+                <div class="si-prompt">לבטל הו״ק שהסתיימו ביום:</div>
+                <input type="date" name="end_date" value="{{ default_date.isoformat() }}" required>
+                <div class="si-preview">
+                    נכון לעכשיו עם התאריך ברירת־המחדל:
+                    <strong>{{ preview_count }}</strong> הו״ק מועמדים לסיום
+                </div>
+            </div>
+            <div style="text-align: center;">
+                <button type="submit" class="si-btn primary">בצע</button>
+            </div>
+        </form>
+
+        <div class="si-exit-row">
+            <a href="{{ url_for('gemach.progs_menu') }}" class="si-exit" title="יציאה">🚪</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -63,6 +63,24 @@
                 <span style="flex: 1;">{{ t('gemach.reports.msv_totals') }}</span>
             </a>
 
+            <a href="{{ url_for('gemach.report_haverim_detailed') }}" class="switchboard-btn">
+                <span class="num">9</span>
+                <i class="fas fa-users" style="color: #2F5597;"></i>
+                <span style="flex: 1;">דו״ח חברים מפורט</span>
+            </a>
+
+            <a href="{{ url_for('gemach.report_lovim') }}" class="switchboard-btn">
+                <span class="num green">10</span>
+                <i class="fas fa-hand-holding-usd" style="color: #2E7D32;"></i>
+                <span style="flex: 1;">לווים (הו״ק פעילים)</span>
+            </a>
+
+            <a href="{{ url_for('gemach.report_horaot_keva') }}" class="switchboard-btn">
+                <span class="num purple">11</span>
+                <i class="fas fa-sync" style="color: #6A1B9A;"></i>
+                <span style="flex: 1;">הוראות קבע</span>
+            </a>
+
             <!-- Operations (Masav prep + Hash export) — get their own distinct look -->
             <a href="{{ url_for('gemach.masav_prep') }}" class="switchboard-btn" style="background: linear-gradient(to bottom,#FFE0B2,#FFB74D); border-color: #E65100;">
                 <span class="num orange">M</span>
