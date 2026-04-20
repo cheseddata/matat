@@ -1,0 +1,20 @@
+{% extends "gemach_base.html" %}
+{% from 'gemach/_w2k_menu.html' import w2k_menu %}
+{% block title %}תחזוקה — גמ״ח{% endblock %}
+{% block content %}
+  {{ w2k_menu(
+       title='תחזוקה',
+       banner='תחזוקה',
+       items=[
+         ('מוסדות',          url_for('gemach.switchboard') ~ '#todo-institutions'),
+         ('סיבות ביטול',     url_for('gemach.switchboard') ~ '#todo-bitul'),
+         ('סוגי תנועות',     url_for('gemach.switchboard') ~ '#todo-sugei-tnua'),
+         ('חשבונאי (Hash)',  url_for('gemach.switchboard') ~ '#todo-hash'),
+         ('משתמשים',         '/admin/users'),
+       ],
+       back_url=url_for('gemach.switchboard')
+  ) }}
+  <div style="max-width: 480px; margin: 8px auto; text-align:center; font-size: 11px; color:#666;">
+      (שלושת הקישורים הראשונים יופעלו בשלב הבא — בינתיים ניתן לראות את הטבלאות בלוח הבקרה)
+  </div>
+{% endblock %}

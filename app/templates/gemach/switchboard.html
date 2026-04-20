@@ -1,107 +1,183 @@
 {% extends "gemach_base.html" %}
 
-{% block title %}{{ t('gemach.switchboard.title') }}{% endblock %}
+{% block title %}תפריט ראשי — גמ״ח{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Classic Windows 2000 / Access 2003 main menu look.
+       Matches the original `menu: main` Access form pixel-close. */
+    .w2k-window {
+        max-width: 480px;
+        margin: 30px auto;
+        background: #D4D0C8;
+        border: 1px solid #0A246A;
+        box-shadow: 3px 3px 6px rgba(0,0,0,0.25);
+    }
+    .w2k-titlebar {
+        background: linear-gradient(to bottom, #B9B5AA, #7A7067);
+        color: #FFFFFF;
+        padding: 3px 8px;
+        font-size: 13px;
+        font-weight: bold;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Segoe UI','MS Sans Serif','Tahoma',sans-serif;
+    }
+    .w2k-titlebar .close-x {
+        background: #C62828;
+        color: white;
+        width: 22px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #8B0000;
+        font-family: 'Marlett','Segoe UI Symbol',sans-serif;
+        font-weight: bold;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .w2k-body {
+        padding: 18px 24px 28px 24px;
+    }
+    .w2k-banner {
+        background: #00FFFF;
+        color: #000;
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+        padding: 8px 10px;
+        margin-bottom: 26px;
+        border: 1px solid #000;
+        font-family: 'Segoe UI','Arial',sans-serif;
+    }
+    .w2k-button-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+    .w2k-btn {
+        width: 110px;
+        padding: 5px 10px;
+        background: #ECE9D8;
+        border: 1px solid #000;
+        border-top-color: #FFFFFF;
+        border-left-color: #FFFFFF;
+        border-right-color: #808080;
+        border-bottom-color: #808080;
+        box-shadow: 1px 1px 0 #404040;
+        color: #000;
+        font-size: 14px;
+        font-family: 'Segoe UI','David','Arial',sans-serif;
+        cursor: pointer;
+        text-decoration: none;
+        text-align: center;
+        font-weight: normal;
+    }
+    .w2k-btn:hover {
+        background: #F5F3E8;
+        color: #000;
+    }
+    .w2k-btn:active {
+        border-top-color: #808080;
+        border-left-color: #808080;
+        border-right-color: #FFFFFF;
+        border-bottom-color: #FFFFFF;
+    }
+    .w2k-exit {
+        margin-top: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding-left: 8px;
+    }
+    .w2k-exit a {
+        width: 52px;
+        height: 42px;
+        background: #ECE9D8;
+        border: 1px solid #000;
+        border-top-color: #FFFFFF;
+        border-left-color: #FFFFFF;
+        border-right-color: #808080;
+        border-bottom-color: #808080;
+        box-shadow: 1px 1px 0 #404040;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        font-size: 22px;
+        color: #2F5597;
+    }
+    .w2k-exit a:hover { background: #F5F3E8; color: #C62828; }
+
+    /* Stat strip just above the window (kept — useful at-a-glance) */
+    .w2k-stat-strip {
+        display: flex;
+        max-width: 820px;
+        margin: 0 auto 8px auto;
+        gap: 4px;
+        padding: 0 10px;
+        flex-wrap: wrap;
+    }
+    .w2k-stat-chip {
+        flex: 1;
+        min-width: 110px;
+        background: #ECE9D8;
+        border: 1px solid #808080;
+        padding: 4px 8px;
+        text-align: center;
+        font-family: 'Segoe UI','Arial',sans-serif;
+    }
+    .w2k-stat-chip .k { font-size: 10px; color: #333; }
+    .w2k-stat-chip .v { font-size: 16px; font-weight: bold; color: #000080; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="access-window">
-    <div class="access-title-bar">
-        <span><i class="fas fa-home"></i> {{ t('gemach.switchboard.title') }}</span>
-        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+<!-- Small stats strip above the window — muted so it doesn't compete -->
+<div class="w2k-stat-strip">
+    <div class="w2k-stat-chip">
+        <div class="k">חברים</div>
+        <div class="v">{{ '{:,}'.format(stats.members) }}</div>
     </div>
+    <div class="w2k-stat-chip">
+        <div class="k">הו״ק פעילים</div>
+        <div class="v">{{ '{:,}'.format(stats.active_loans) }}</div>
+    </div>
+    <div class="w2k-stat-chip">
+        <div class="k">הו״ק בוטלו</div>
+        <div class="v">{{ '{:,}'.format(stats.cancelled_loans) }}</div>
+    </div>
+    <div class="w2k-stat-chip">
+        <div class="k">פעולות הו״ק</div>
+        <div class="v">{{ '{:,}'.format(stats.loan_transactions) }}</div>
+    </div>
+    <div class="w2k-stat-chip">
+        <div class="k">תנועות</div>
+        <div class="v">{{ '{:,}'.format(stats.transactions) }}</div>
+    </div>
+</div>
 
-    <!-- Stat strip (mirrors Access summary header) -->
-    <div style="padding: 10px 14px 0 14px;">
-        <div class="stat-strip">
-            <div class="stat-chip">
-                <div class="k">{{ t('gemach.stats.members') }}</div>
-                <div class="v">{{ '{:,}'.format(stats.members) }}</div>
-            </div>
-            <div class="stat-chip" style="background:#C8E6C9; border-color:#2E7D32;">
-                <div class="k">{{ t('gemach.stats.active_loans') }}</div>
-                <div class="v" style="color:#1B5E20;">{{ '{:,}'.format(stats.active_loans) }}</div>
-            </div>
-            <div class="stat-chip" style="background:#FFCDD2; border-color:#B71C1C;">
-                <div class="k">{{ t('gemach.stats.cancelled_loans') }}</div>
-                <div class="v" style="color:#B71C1C;">{{ '{:,}'.format(stats.cancelled_loans) }}</div>
-            </div>
-            <div class="stat-chip" style="background:#BBDEFB; border-color:#1565C0;">
-                <div class="k">{{ t('gemach.stats.loan_transactions') }}</div>
-                <div class="v" style="color:#0D47A1;">{{ '{:,}'.format(stats.loan_transactions) }}</div>
-            </div>
-            <div class="stat-chip" style="background:#E1BEE7; border-color:#6A1B9A;">
-                <div class="k">{{ t('gemach.stats.transactions') }}</div>
-                <div class="v" style="color:#4A148C;">{{ '{:,}'.format(stats.transactions) }}</div>
-            </div>
+<div class="w2k-window">
+    <div class="w2k-titlebar">
+        <span>תפריט ראשי</span>
+        <a href="{{ url_for('auth.logout') }}" class="close-x" title="סגור">✕</a>
+    </div>
+    <div class="w2k-body">
+        <div class="w2k-banner">מערכת ניהול גמ״ח</div>
+
+        <div class="w2k-button-col">
+            <a href="{{ url_for('gemach.members') }}" class="w2k-btn">כרטסת</a>
+            <a href="{{ url_for('gemach.progs_menu') }}" class="w2k-btn">תכניות</a>
+            <a href="{{ url_for('gemach.reports') }}" class="w2k-btn">דוחות</a>
+            <a href="{{ url_for('gemach.maint_menu') }}" class="w2k-btn">תחזוקה</a>
+            <a href="{{ url_for('gemach.help_page') }}" class="w2k-btn">עזרה</a>
         </div>
-    </div>
 
-    <!-- Navy switchboard (mimics Access "menu: main" form) -->
-    <div class="switchboard-panel">
-        <div class="switchboard-heading">{{ t('gemach.switchboard.title') }}</div>
-        <div class="switchboard-sub">{{ t('gemach.switchboard.org_subtitle') }} &middot; מתת מרדכי</div>
-
-        <a href="{{ url_for('gemach.members') }}" class="switchboard-btn">
-            <span class="num">1</span>
-            <i class="fas fa-users" style="font-size:18px; color:#2F5597; width:22px; text-align:center;"></i>
-            <span>{{ t('gemach.nav.members') }}</span>
-            <span style="flex:1"></span>
-            <span style="font-size:12px; color:#666; font-weight:normal;">{{ '{:,}'.format(stats.members) }} רשומות</span>
-        </a>
-
-        <a href="{{ url_for('gemach.loans') }}" class="switchboard-btn">
-            <span class="num green">2</span>
-            <i class="fas fa-hand-holding-usd" style="font-size:18px; color:#2E7D32; width:22px; text-align:center;"></i>
-            <span>{{ t('gemach.nav.loans') }}</span>
-            <span style="flex:1"></span>
-            <span style="font-size:12px; color:#666; font-weight:normal;">{{ '{:,}'.format(stats.active_loans) }} {{ t('gemach.status.active') }}</span>
-        </a>
-
-        <a href="{{ url_for('gemach.transactions') }}" class="switchboard-btn">
-            <span class="num purple">3</span>
-            <i class="fas fa-exchange-alt" style="font-size:18px; color:#6A1B9A; width:22px; text-align:center;"></i>
-            <span>{{ t('gemach.nav.transactions') }}</span>
-            <span style="flex:1"></span>
-            <span style="font-size:12px; color:#666; font-weight:normal;">{{ '{:,}'.format(stats.transactions) }} רשומות</span>
-        </a>
-
-        <a href="{{ url_for('gemach.reports') }}" class="switchboard-btn">
-            <span class="num orange">4</span>
-            <i class="fas fa-chart-bar" style="font-size:18px; color:#E65100; width:22px; text-align:center;"></i>
-            <span>{{ t('gemach.nav.reports') }}</span>
-            <span style="flex:1"></span>
-            <span style="font-size:12px; color:#666; font-weight:normal;">8 דוחות</span>
-        </a>
-
-        <a href="{{ url_for('gemach.masav_prep') }}" class="switchboard-btn">
-            <span class="num red">5</span>
-            <i class="fas fa-piggy-bank" style="font-size:18px; color:#C62828; width:22px; text-align:center;"></i>
-            <span>Masav Collection &nbsp;&middot;&nbsp; מס״ב</span>
-            <span style="flex:1"></span>
-            {% if sandbox_mode %}<span style="font-size:10px; background:#FFECB3; color:#6D4C41; padding:2px 6px; border:1px solid #FB8C00;">SANDBOX</span>{% endif %}
-        </a>
-
-        <a href="{{ url_for('gemach.hash_export') }}" class="switchboard-btn">
-            <span class="num gray">6</span>
-            <i class="fas fa-file-export" style="font-size:18px; color:#424242; width:22px; text-align:center;"></i>
-            <span>Hash Export &nbsp;&middot;&nbsp; ייצוא חשבונאי</span>
-            <span style="flex:1"></span>
-            {% if sandbox_mode %}<span style="font-size:10px; background:#FFECB3; color:#6D4C41; padding:2px 6px; border:1px solid #FB8C00;">SANDBOX</span>{% endif %}
-        </a>
-
-        <a href="{{ url_for('gemach.sync_access_page') }}" class="switchboard-btn">
-            <span class="num" style="background:#0277BD;">7</span>
-            <i class="fas fa-sync-alt" style="font-size:18px; color:#0277BD; width:22px; text-align:center;"></i>
-            <span>סנכרון נתונים מ-Access</span>
-            <span style="flex:1"></span>
-            <span style="font-size:12px; color:#666; font-weight:normal;">חדשים בלבד</span>
-        </a>
-    </div>
-
-    <!-- About strip -->
-    <div style="padding: 4px 14px 16px 14px;">
-        <div style="background:#FFFDE7; border:1px solid #FBC02D; padding: 10px 14px; font-size: 12px; color: #5D4037; line-height: 1.5;">
-            <strong style="font-size:13px;">ℹ️ {{ t('gemach.switchboard.about_title') }}</strong><br>
-            {{ t('gemach.switchboard.about_text') }}
+        <div class="w2k-exit">
+            <a href="{{ url_for('auth.logout') }}" title="יציאה">🚪</a>
         </div>
     </div>
 </div>

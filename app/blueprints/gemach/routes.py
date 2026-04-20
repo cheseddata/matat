@@ -162,6 +162,31 @@ def reports():
 
 
 # ============================================================
+# Access-style submenus (תכניות / תחזוקה / עזרה)
+# Mirror the original Access nested menu structure.
+# ============================================================
+@gemach_bp.route('/progs')
+@gemach_required
+def progs_menu():
+    """תכניות — Programs submenu: Masav, Hash, Access-Sync."""
+    return render_template('gemach/menu_progs.html')
+
+
+@gemach_bp.route('/maint')
+@gemach_required
+def maint_menu():
+    """תחזוקה — Maintenance submenu: institutions, lookup tables, users."""
+    return render_template('gemach/menu_maint.html')
+
+
+@gemach_bp.route('/help')
+@gemach_required
+def help_page():
+    """עזרה — Help / about page."""
+    return render_template('gemach/help.html')
+
+
+# ============================================================
 # API / AJAX
 # ============================================================
 @gemach_bp.route('/api/members/search')

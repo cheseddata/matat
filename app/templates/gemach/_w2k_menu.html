@@ -1,0 +1,47 @@
+{#
+    Shared Access-2003/W2K menu layout macro.
+    Usage:
+      {% extends "gemach_base.html" %}
+      {% from 'gemach/_w2k_menu.html' import w2k_menu %}
+      {% block content %}
+        {{ w2k_menu(title='תכניות', banner='...', items=[
+            ('הכנת מס״ב', url_for('gemach.masav_prep')),
+            ('ייצוא חשבונאי', url_for('gemach.hash_export')),
+          ], back_url=url_for('gemach.switchboard')) }}
+      {% endblock %}
+#}
+
+{% macro w2k_menu(title, banner, items, back_url, width='480px') %}
+<style>
+.w2k-window   { max-width: {{ width }}; margin: 30px auto; background:#D4D0C8; border:1px solid #0A246A; box-shadow:3px 3px 6px rgba(0,0,0,0.25); }
+.w2k-titlebar { background:linear-gradient(to bottom,#B9B5AA,#7A7067); color:#FFF; padding:3px 8px; font:bold 13px 'Segoe UI','MS Sans Serif',sans-serif; display:flex; justify-content:space-between; align-items:center; }
+.w2k-titlebar .close-x { background:#C62828; color:white; width:22px; height:20px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #8B0000; font-weight:bold; text-decoration:none; }
+.w2k-body     { padding:18px 24px 28px 24px; }
+.w2k-banner   { background:#00FFFF; color:#000; text-align:center; font:bold 18px 'Segoe UI','Arial',sans-serif; padding:8px 10px; margin-bottom:26px; border:1px solid #000; }
+.w2k-button-col { display:flex; flex-direction:column; align-items:center; gap:12px; }
+.w2k-btn      { width:180px; padding:5px 10px; background:#ECE9D8; border:1px solid #000; border-top-color:#FFF; border-left-color:#FFF; border-right-color:#808080; border-bottom-color:#808080; box-shadow:1px 1px 0 #404040; color:#000; font:14px 'Segoe UI','David',sans-serif; cursor:pointer; text-decoration:none; text-align:center; }
+.w2k-btn:hover { background:#F5F3E8; color:#000; }
+.w2k-btn:active { border-top-color:#808080; border-left-color:#808080; border-right-color:#FFF; border-bottom-color:#FFF; }
+.w2k-btn.narrow { width:110px; }
+.w2k-exit { margin-top:18px; display:flex; align-items:center; justify-content:flex-start; padding-left:8px; }
+.w2k-exit a { width:52px; height:42px; background:#ECE9D8; border:1px solid #000; border-top-color:#FFF; border-left-color:#FFF; border-right-color:#808080; border-bottom-color:#808080; box-shadow:1px 1px 0 #404040; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; font-size:22px; color:#2F5597; }
+.w2k-exit a:hover { background:#F5F3E8; color:#C62828; }
+</style>
+<div class="w2k-window">
+    <div class="w2k-titlebar">
+        <span>{{ title }}</span>
+        <a href="{{ back_url }}" class="close-x" title="סגור">✕</a>
+    </div>
+    <div class="w2k-body">
+        <div class="w2k-banner">{{ banner }}</div>
+        <div class="w2k-button-col">
+            {% for label, href in items %}
+            <a href="{{ href }}" class="w2k-btn">{{ label }}</a>
+            {% endfor %}
+        </div>
+        <div class="w2k-exit">
+            <a href="{{ back_url }}" title="חזור לתפריט ראשי">🚪</a>
+        </div>
+    </div>
+</div>
+{% endmacro %}

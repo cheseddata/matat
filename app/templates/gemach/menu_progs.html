@@ -1,0 +1,15 @@
+{% extends "gemach_base.html" %}
+{% from 'gemach/_w2k_menu.html' import w2k_menu %}
+{% block title %}תכניות — גמ״ח{% endblock %}
+{% block content %}
+  {{ w2k_menu(
+       title='תכניות',
+       banner='תכניות',
+       items=[
+         ('הכנת מס״ב',        url_for('gemach.masav_prep')),
+         ('ייצוא חשבונאי',    url_for('gemach.hash_export')),
+         ('סנכרון מ-Access',  url_for('gemach.sync_access_page')),
+       ],
+       back_url=url_for('gemach.switchboard')
+  ) }}
+{% endblock %}
