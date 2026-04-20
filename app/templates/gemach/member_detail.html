@@ -269,6 +269,45 @@
 }
 .kt-record-nav a.disabled { opacity: .4; pointer-events: none; }
 
+/* Selected row highlight + clickable feel on grids */
+.kt-grid tbody tr.kt-selected td { background: #FFEE00 !important; font-weight: bold; }
+
+/* Sandbox action-dialog overlay */
+.kt-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center; z-index: 2000;
+}
+.kt-overlay.open { display: flex; }
+.kt-dialog {
+    background: #D4D0C8; border: 1px solid #0A246A;
+    width: 480px; max-width: 90vw; box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+    font-family: 'Segoe UI','David',sans-serif;
+}
+.kt-dialog .hdr {
+    background: linear-gradient(to bottom,#B9B5AA,#7A7067); color: white;
+    padding: 3px 8px; font: bold 13px 'Segoe UI',sans-serif;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.kt-dialog .hdr .x {
+    background:#C62828; color:white; width:22px; height:18px;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #8B0000; cursor: pointer; font-weight: bold;
+}
+.kt-dialog .body { padding: 18px 22px; color: #000; font-size: 13px; line-height: 1.6; }
+.kt-dialog .body .sandbox-tag {
+    display: inline-block; background:#FFECB3; color:#6D4C41;
+    border:1px solid #FB8C00; padding:2px 8px; font-weight:bold; font-size: 11px;
+    margin-bottom: 10px;
+}
+.kt-dialog .foot {
+    background:#D4D0C8; border-top: 1px solid #808080;
+    padding: 8px; display: flex; justify-content: center; gap: 10px;
+}
+.kt-dialog .foot button {
+    background: #ECE9D8; border: 1px outset #888; padding: 4px 18px;
+    font-size: 13px; cursor: pointer;
+}
+
 /* Tab 5 two-column layout */
 .kt-two-col {
     display: grid; grid-template-columns: 1fr 1fr;
@@ -519,9 +558,17 @@
                             <th style="width: 60px;">זכאי</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="hork-grid-body">
                         {% for l in loans %}
-                        <tr onclick="location.href='{{ url_for('gemach.loan_detail', loan_id=l.id) }}'">
+                        <tr class="kt-hork-row {% if loop.first %}kt-selected{% endif %}"
+                            data-loan-id="{{ l.id }}"
+                            data-hork-no="{{ l.gmach_num_hork or '' }}"
+                            data-bank="{{ l.bank_code or '' }}"
+                            data-branch="{{ l.branch_code or '' }}"
+                            data-account="{{ l.account_number or '' }}"
+                            data-asmachta="{{ l.asmachta or '' }}"
+                            data-notes="{{ l.notes or '' }}"
+                            data-drill="{{ url_for('gemach.loan_detail', loan_id=l.id) }}">
                             <td class="num">{{ l.gmach_num_hork or '' }}</td>
                             <td>{{ l.institution.name if l.institution else '' }}</td>
                             <td class="center">{{ l.loan_type or '' }}</td>
@@ -541,38 +588,39 @@
                 </table>
             </div>
 
-            <!-- Detail sub-form for selected row -->
+            <!-- Detail sub-form for selected row (JS updates fields based on clicked row) -->
             {% set first_loan = loans[0] if loans else None %}
-            <div class="kt-subform">
+            <div class="kt-subform" id="hork-subform">
                 <div style="display: grid; grid-template-columns: auto 1fr 1fr; gap: 10px; align-items: center;">
-                    <a href="#" class="kt-tb-icon" style="background:#1A3350; border-color:#000; color:white;">
+                    <a href="#" class="kt-tb-icon" style="background:#1A3350; border-color:#000; color:white;"
+                       onclick="event.preventDefault(); ktDrillSelected();" title="פתח הו״ק נבחר">
                         <i class="fas fa-tools" style="color: #FFEE00;"></i>
                     </a>
                     <div>
                         <label>חשבון:</label>
-                        <span class="kt-field narrow">{{ first_loan.bank_code if first_loan else '' }}</span>
-                        <span class="kt-field narrow">{{ first_loan.branch_code if first_loan else '' }}</span>
-                        <span class="kt-field" style="margin-left: 10px;">{{ first_loan.account_number if first_loan else '' }}</span>
+                        <span class="kt-field narrow" id="hs-bank">{{ first_loan.bank_code if first_loan else '' }}</span>
+                        <span class="kt-field narrow" id="hs-branch">{{ first_loan.branch_code if first_loan else '' }}</span>
+                        <span class="kt-field" id="hs-account" style="margin-left: 10px;">{{ first_loan.account_number if first_loan else '' }}</span>
                     </div>
                     <div>
                         <label>אסמכתא:</label>
-                        <span class="kt-field">{{ first_loan.asmachta if first_loan else '' }}</span>
+                        <span class="kt-field" id="hs-asmachta">{{ first_loan.asmachta if first_loan else '' }}</span>
                     </div>
                 </div>
                 <div>
                     <label>הערה:</label>
-                    <span class="kt-field wide" style="min-width: 400px;">{{ first_loan.notes if first_loan and first_loan.notes else '' }}</span>
+                    <span class="kt-field wide" id="hs-notes" style="min-width: 400px;">{{ first_loan.notes if first_loan and first_loan.notes else '' }}</span>
                 </div>
             </div>
 
             <!-- Action buttons -->
             <div class="kt-actions">
-                <a href="#" class="kt-act-btn primary">קליטה</a>
-                <a href="#" class="kt-act-btn">חידוש</a>
-                <a href="#" class="kt-act-btn">ביטול</a>
-                <a href="#" class="kt-act-btn">עדכון</a>
-                <a href="#" class="kt-act-btn primary">מעקב</a>
-                <a href="#" class="kt-act-btn primary">קבלה</a>
+                <a href="#" class="kt-act-btn primary" onclick="event.preventDefault(); ktAction('קליטה')">קליטה</a>
+                <a href="#" class="kt-act-btn"         onclick="event.preventDefault(); ktAction('חידוש')">חידוש</a>
+                <a href="#" class="kt-act-btn"         onclick="event.preventDefault(); ktAction('ביטול')">ביטול</a>
+                <a href="#" class="kt-act-btn"         onclick="event.preventDefault(); ktAction('עדכון')">עדכון</a>
+                <a href="#" class="kt-act-btn primary" onclick="event.preventDefault(); ktAction('מעקב')">מעקב</a>
+                <a href="#" class="kt-act-btn primary" onclick="event.preventDefault(); ktAction('קבלה')">קבלה</a>
             </div>
 
         {% elif tab in ('4', 'transactions') %}
@@ -595,9 +643,18 @@
                             <th style="width: 40px;">קבלה</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="tnua-grid-body">
                         {% for tr in transactions %}
-                        <tr>
+                        <tr class="kt-tnua-row {% if loop.last %}kt-selected{% endif %}"
+                            data-bank="{{ tr.bank_code or 0 }}"
+                            data-branch="{{ tr.branch_code or '' }}"
+                            data-account="{{ tr.account_number or '' }}"
+                            data-currency="{{ tr.primary_currency or '' }}"
+                            data-description="{{ tr.description or '' }}"
+                            data-check="{{ tr.check_number or '' }}"
+                            data-value-date="{{ tr.value_date.strftime('%d/%m/%y') if tr.value_date else '' }}"
+                            data-amount="{{ '{:,.2f}'.format(tr.amount_ils or 0) }}"
+                            data-receipt-notes="{{ tr.receipt_notes or '' }}">
                             <td class="num">{{ tr.transaction_date.strftime('%d/%m/%y') if tr.transaction_date else '' }}</td>
                             <td class="num">{{ '{:,.2f}'.format(tr.amount_ils or 0) if tr.amount_ils else '' }}</td>
                             <td class="num">{% if tr.amount_usd %}${{ '{:,.2f}'.format(tr.amount_usd) }}{% endif %}</td>
@@ -618,33 +675,33 @@
                 </table>
             </div>
 
-            <!-- Detail sub-form -->
+            <!-- Detail sub-form (JS updates from clicked row) -->
             {% set first_tx = transactions[-1] if transactions else None %}
-            <div class="kt-subform">
+            <div class="kt-subform" id="tnua-subform">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                     <div>
                         <div><label>בנק:</label>
-                            <span class="kt-field narrow">{{ first_tx.bank_code if first_tx else 0 }}</span></div>
+                            <span class="kt-field narrow" id="ts-bank">{{ first_tx.bank_code if first_tx else 0 }}</span></div>
                         <div><label>סניף:</label>
-                            <span class="kt-dropdown" style="min-width:80px;">{{ first_tx.branch_code if first_tx else '' }}</span></div>
+                            <span class="kt-dropdown" id="ts-branch" style="min-width:80px;">{{ first_tx.branch_code if first_tx else '' }}</span></div>
                         <div><label>חשבון:</label>
-                            <span class="kt-field">{{ first_tx.account_number if first_tx else '' }}</span></div>
+                            <span class="kt-field" id="ts-account">{{ first_tx.account_number if first_tx else '' }}</span></div>
                         <div><label>מטבע:</label>
-                            <span class="kt-dropdown">{{ first_tx.primary_currency if first_tx else '' }}</span></div>
+                            <span class="kt-dropdown" id="ts-currency">{{ first_tx.primary_currency if first_tx else '' }}</span></div>
                         <div><label>הערה:</label>
-                            <span class="kt-field wide">{{ first_tx.description if first_tx else '' }}</span></div>
+                            <span class="kt-field wide" id="ts-description">{{ first_tx.description if first_tx else '' }}</span></div>
                     </div>
                     <div>
                         <div><label>מס׳ שיק/אסמכתא:</label>
-                            <span class="kt-field" style="font-family:'Courier New',monospace;">
+                            <span class="kt-field" id="ts-check" style="font-family:'Courier New',monospace;">
                                 {{ first_tx.check_number if first_tx else '' }}
                             </span></div>
                         <div><label>תאריך ערך:</label>
-                            <span class="kt-field narrow">{{ first_tx.value_date.strftime('%d/%m/%y') if first_tx and first_tx.value_date else '' }}</span></div>
+                            <span class="kt-field narrow" id="ts-valuedate">{{ first_tx.value_date.strftime('%d/%m/%y') if first_tx and first_tx.value_date else '' }}</span></div>
                         <div><label>סכום:</label>
-                            <span class="kt-field">{{ '{:,.2f}'.format(first_tx.amount_ils or 0) if first_tx else '' }}</span></div>
+                            <span class="kt-field" id="ts-amount">{{ '{:,.2f}'.format(first_tx.amount_ils or 0) if first_tx else '' }}</span></div>
                         <div><label>לקבלה:</label>
-                            <span class="kt-field">{{ first_tx.receipt_notes if first_tx else '' }}</span></div>
+                            <span class="kt-field" id="ts-receiptnotes">{{ first_tx.receipt_notes if first_tx else '' }}</span></div>
                     </div>
                 </div>
             </div>
@@ -740,6 +797,100 @@
     </div>
 
 </div>
+
+<!-- Sandbox action dialog (shown when user clicks קליטה/חידוש/ביטול/עדכון/מעקב/קבלה) -->
+<div class="kt-overlay" id="kt-action-overlay" onclick="if (event.target === this) ktCloseDialog()">
+    <div class="kt-dialog">
+        <div class="hdr">
+            <span id="kt-action-title">פעולה</span>
+            <span class="x" onclick="ktCloseDialog()">✕</span>
+        </div>
+        <div class="body">
+            <div class="sandbox-tag">⚠ SANDBOX MODE — לבדיקה בלבד</div>
+            <div id="kt-action-body"></div>
+        </div>
+        <div class="foot">
+            <button onclick="ktCloseDialog()">אישור</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // ===== Tab 3 (הו״ק): click a row -> update sub-form fields =====
+    function selectHorkRow(row) {
+        document.querySelectorAll('.kt-hork-row').forEach(r => r.classList.remove('kt-selected'));
+        row.classList.add('kt-selected');
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ''; };
+        set('hs-bank',     row.dataset.bank);
+        set('hs-branch',   row.dataset.branch);
+        set('hs-account',  row.dataset.account);
+        set('hs-asmachta', row.dataset.asmachta);
+        set('hs-notes',    row.dataset.notes);
+        window._ktSelectedLoanDrill = row.dataset.drill;
+    }
+    document.querySelectorAll('.kt-hork-row').forEach(r => {
+        r.addEventListener('click', () => selectHorkRow(r));
+    });
+    // Init: if there's a selected row, set the drill target from it.
+    const initHork = document.querySelector('.kt-hork-row.kt-selected');
+    if (initHork) window._ktSelectedLoanDrill = initHork.dataset.drill;
+
+    // Wrench icon / double-click row = open loan detail page.
+    window.ktDrillSelected = function () {
+        if (window._ktSelectedLoanDrill) location.href = window._ktSelectedLoanDrill;
+    };
+    document.querySelectorAll('.kt-hork-row').forEach(r => {
+        r.addEventListener('dblclick', () => { if (r.dataset.drill) location.href = r.dataset.drill; });
+    });
+
+    // ===== Tab 4 (תנועות): click a row -> update sub-form fields =====
+    function selectTnuaRow(row) {
+        document.querySelectorAll('.kt-tnua-row').forEach(r => r.classList.remove('kt-selected'));
+        row.classList.add('kt-selected');
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ''; };
+        set('ts-bank',         row.dataset.bank);
+        set('ts-branch',       row.dataset.branch);
+        set('ts-account',      row.dataset.account);
+        set('ts-currency',     row.dataset.currency);
+        set('ts-description',  row.dataset.description);
+        set('ts-check',        row.dataset.check);
+        set('ts-valuedate',    row.dataset.valueDate);
+        set('ts-amount',       row.dataset.amount);
+        set('ts-receiptnotes', row.dataset.receiptNotes);
+    }
+    document.querySelectorAll('.kt-tnua-row').forEach(r => {
+        r.addEventListener('click', () => selectTnuaRow(r));
+    });
+
+    // ===== Action-button dialog (sandbox placeholder) =====
+    const ACTION_DESCRIPTIONS = {
+        'קליטה': 'פתיחת טופס חדש להוספת הוראת קבע חדשה לחבר זה.',
+        'חידוש': 'חידוש הוראת קבע קיימת — יצירת תקופה חדשה על הבסיס של ההו״ק הנבחרת.',
+        'ביטול': 'ביטול הוראת הקבע הנבחרת והעברתה לארכיון (btlhork).',
+        'עדכון': 'עריכת פרטי הוראת הקבע הנבחרת (חשבון, סכום, אסמכתא, הערה).',
+        'מעקב':  'פתיחת מסך מעקב פעולות על הוראת הקבע הנבחרת.',
+        'קבלה':  'הפקת קבלה עבור הוראת הקבע הנבחרת.',
+    };
+    window.ktAction = function (name) {
+        const desc = ACTION_DESCRIPTIONS[name] || '';
+        document.getElementById('kt-action-title').textContent = name;
+        document.getElementById('kt-action-body').innerHTML =
+            '<p><strong>' + name + '</strong></p>' +
+            '<p>' + desc + '</p>' +
+            '<p style="color:#5D4037; font-size:12px;">כפתור זה מוכן אך עדיין אינו מחובר לטופס יצירה/עריכה במצב הדגמה. ' +
+            'לאחר אישור המפעילה על המסכים הקיימים, נחבר את הטפסים האלו כדי שיתנהגו זהה לאקסס (כולל במצב הדגמה — ללא שליחה אמיתית לבנק).</p>';
+        document.getElementById('kt-action-overlay').classList.add('open');
+    };
+    window.ktCloseDialog = function () {
+        document.getElementById('kt-action-overlay').classList.remove('open');
+    };
+    // Escape key closes the dialog.
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') ktCloseDialog();
+    });
+})();
+</script>
 {% endblock %}
 
 {% block status %}

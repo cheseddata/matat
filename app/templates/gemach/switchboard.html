@@ -136,30 +136,6 @@
 {% endblock %}
 
 {% block content %}
-<!-- Small stats strip above the window — muted so it doesn't compete -->
-<div class="w2k-stat-strip">
-    <div class="w2k-stat-chip">
-        <div class="k">חברים</div>
-        <div class="v">{{ '{:,}'.format(stats.members) }}</div>
-    </div>
-    <div class="w2k-stat-chip">
-        <div class="k">הו״ק פעילים</div>
-        <div class="v">{{ '{:,}'.format(stats.active_loans) }}</div>
-    </div>
-    <div class="w2k-stat-chip">
-        <div class="k">הו״ק בוטלו</div>
-        <div class="v">{{ '{:,}'.format(stats.cancelled_loans) }}</div>
-    </div>
-    <div class="w2k-stat-chip">
-        <div class="k">פעולות הו״ק</div>
-        <div class="v">{{ '{:,}'.format(stats.loan_transactions) }}</div>
-    </div>
-    <div class="w2k-stat-chip">
-        <div class="k">תנועות</div>
-        <div class="v">{{ '{:,}'.format(stats.transactions) }}</div>
-    </div>
-</div>
-
 <div class="w2k-window">
     <div class="w2k-titlebar">
         <span>תפריט ראשי</span>

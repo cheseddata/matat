@@ -80,6 +80,7 @@
     border-bottom: 1px dotted #B0B0B0;
     white-space: nowrap;
     cursor: pointer;
+    background: white;   /* no alternating — Access shows plain white */
 }
 .hs-grid tr:hover td { background: #FFEE00; }
 .hs-grid td.card {
@@ -129,6 +130,7 @@
 }
 .hs-action-btn i { font-size: 18px; margin-bottom: 2px; color: #000080; }
 .hs-action-btn:hover { background: #F5F3E8; }
+.hs-action-btn.disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
 .hs-action-btn .num {
     width: 24px; height: 24px; border-radius: 50%;
     color: white; display: flex; align-items: center; justify-content: center;
@@ -194,23 +196,31 @@
             </table>
         </div>
 
-        <!-- Action bar: binoculars (new search clears fields), red 9 (next page), green 10 (last page) -->
+        <!-- Action bar: always 3 buttons (binoculars / red-next / green-last), disabled when inapplicable. -->
         <div class="hs-action-bar">
             <a href="{{ url_for('gemach.members') }}" class="hs-action-btn" title="חיפוש חדש">
                 <i class="fas fa-binoculars"></i>
                 <span>חדש</span>
             </a>
             {% if members.has_next %}
-            <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}"
-               class="hs-action-btn" title="עמוד הבא">
-                <span class="num red">{{ members.next_num }}</span>
-            </a>
+              <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}"
+                 class="hs-action-btn" title="עמוד הבא">
+                  <span class="num red">{{ members.next_num }}</span>
+              </a>
+            {% else %}
+              <span class="hs-action-btn disabled" title="אין עמוד הבא">
+                  <span class="num red">—</span>
+              </span>
             {% endif %}
-            {% if members.has_prev %}
-            <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}"
-               class="hs-action-btn" title="עמוד אחרון">
-                <span class="num green">{{ members.pages }}</span>
-            </a>
+            {% if members.pages > 1 and members.page != members.pages %}
+              <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}"
+                 class="hs-action-btn" title="עמוד אחרון">
+                  <span class="num green">{{ members.pages }}</span>
+              </a>
+            {% else %}
+              <span class="hs-action-btn disabled" title="זה העמוד האחרון">
+                  <span class="num green">{{ members.pages or 1 }}</span>
+              </span>
             {% endif %}
         </div>
 
