@@ -1,141 +1,479 @@
 {% extends "gemach_base.html" %}
-{% block title %}{{ t('gemach.loan.type') }} #{{ loan.gmach_num_hork }} — {{ t('gemach.switchboard.title') }}{% endblock %}
+{% block title %}הו״ק — {{ loan.gmach_num_hork }} — {{ t('gemach.switchboard.title') }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* =======================================================
+   Hork Edit — faithful Access 09_hork_edit.png reproduction
+   ======================================================= */
+.he-window {
+    background: #206B65;
+    margin: 4px;
+    border: 1px solid #0A246A;
+    min-height: calc(100vh - 130px);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    font-family: 'Segoe UI','David','Arial',sans-serif;
+}
+.he-titlebar {
+    background: linear-gradient(to bottom,#B9B5AA,#7A7067);
+    color: white;
+    padding: 3px 8px;
+    font: bold 13px 'Segoe UI',sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.he-titlebar .win-btns { display: flex; gap: 2px; }
+.he-titlebar .win-btns a, .he-titlebar .win-btns span {
+    background:#ECE9D8; color:#000; width:22px; height:18px;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #000; border-top-color:#FFF; border-left-color:#FFF;
+    font-size:10px; text-decoration:none; font-weight:bold;
+}
+.he-titlebar .win-btns a.x { background:#C62828; color:white; border-color:#8B0000; }
+
+/* Main form area: navy bg with left action column + right field grid */
+.he-form {
+    background: #000080;
+    color: white;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 0;
+    padding: 14px;
+    margin: 6px;
+    border: 1px outset #3A5A8C;
+}
+
+/* Left column: big colored action buttons (קליטה top, סגור middle, בטל bottom) */
+.he-actions {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    gap: 22px;
+}
+.he-action-cyan, .he-action-door, .he-action-bitul {
+    width: 80px;
+    background: #ECE9D8;
+    border: 2px outset #B0B0B0;
+    color: #000;
+    text-align: center;
+    cursor: pointer;
+    padding: 10px 4px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+.he-action-cyan {
+    background: #00FFFF;
+    border: 2px outset #80FFFF;
+    color: #000080;
+    font-size: 15px;
+}
+.he-action-cyan:hover { background: #A8FFFF; color: #000080; }
+.he-action-door { background: #D8E6E8; padding: 6px 4px; }
+.he-action-door i { font-size: 26px; color: #2F5597; }
+.he-action-door:hover { background: #C0D4D8; color: #000; }
+.he-action-bitul {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.he-action-bitul .circle {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: #C62828; color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 20px;
+    border: 2px outset #8B0000;
+}
+.he-action-bitul .label {
+    background: white; color: #000; border: 1px outset #999;
+    padding: 1px 10px; font-size: 12px;
+    margin-top: 2px;
+}
+.he-action-bitul:hover .circle { background: #D32F2F; }
+
+/* Right column: 5 stacked sections with thin white dividers */
+.he-fields {
+    padding: 4px 16px 4px 0;  /* some breathing room from the action column */
+    display: grid; grid-gap: 0;
+}
+.he-section {
+    padding: 8px 4px;
+    border-bottom: 1px solid #6080A0;
+}
+.he-section:last-child { border-bottom: none; }
+.he-row {
+    display: flex; align-items: center; gap: 4px;
+    margin-bottom: 4px; flex-wrap: wrap;
+}
+.he-label {
+    color: white; font-size: 13px; font-weight: bold;
+    text-align: left; padding-left: 6px;
+    white-space: nowrap;
+}
+.he-field, .he-ro {
+    background: white; color: #000;
+    border: 1px inset #888;
+    padding: 2px 6px; font-size: 13px;
+    font-family: 'Segoe UI','David',sans-serif;
+    min-width: 60px; display: inline-block;
+    text-align: right;
+}
+.he-ro { background: white; }
+.he-ro.mono { font-family: 'Courier New',monospace; }
+.he-ro.cyan { background: #00FFFF; font-weight: bold; }
+.he-ro.wide { min-width: 180px; }
+.he-ro.narrow { min-width: 40px; }
+.he-dropdown {
+    background: white; color: #000; border: 1px inset #888;
+    padding: 2px 6px; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 4px;
+    min-width: 100px;
+}
+.he-dropdown::after { content: '▼'; font-size: 9px; color: #666; margin-inline-start: 4px; }
+
+/* Section header bar (like אסמכתא: in the screenshot) */
+.he-sec-hdr {
+    color: white; font-size: 13px; font-weight: bold;
+    margin: 2px 0 6px 0;
+    border-bottom: 1px dotted #6080A0;
+    padding-bottom: 2px;
+}
+
+/* Transactions grid below the main form */
+.he-txns {
+    margin: 0 6px 6px 6px;
+    background: #000080;
+    padding: 0;
+    border: 1px outset #3A5A8C;
+}
+.he-txns-hdr {
+    background: #1A3350;
+    color: #00FFFF;
+    padding: 5px 10px;
+    font: bold 13px 'Segoe UI',sans-serif;
+}
+.he-txns table {
+    width: 100%; border-collapse: collapse; font-size: 12px;
+    background: white;
+}
+.he-txns thead th {
+    background: #000060; color: white; padding: 4px 8px;
+    border: 1px solid #000; font-weight: normal; text-align: center;
+    position: sticky; top: 0;
+}
+.he-txns tbody td {
+    padding: 3px 8px; border: 1px dotted #D0D0D0;
+}
+.he-txns tbody tr:nth-child(even) td { background: #F2F2F2; }
+.he-txns tbody tr:hover td { background: #FFEE00; cursor: pointer; }
+.he-txns .num { font-family: 'Courier New',monospace; text-align: right; }
+.he-txns .center { text-align: center; }
+.he-txns .bounced td { background: #FFCDD2 !important; }
+
+/* Status-pill bar at bottom */
+.he-statusbar {
+    background: #D4D0C8; border-top: 1px solid #808080;
+    padding: 3px 10px; font-size: 11px;
+    display: flex; gap: 10px; align-items: center;
+}
+.he-statusbar a {
+    background: #ECE9D8; border: 1px outset #888;
+    padding: 2px 8px; text-decoration: none; color: #000;
+}
+
+/* Sandbox dialog (reused from member_detail) */
+.he-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+    display: none; align-items: center; justify-content: center; z-index: 2000;
+}
+.he-overlay.open { display: flex; }
+.he-dialog {
+    background: #D4D0C8; border: 1px solid #0A246A;
+    width: 480px; max-width: 90vw; box-shadow: 3px 3px 10px rgba(0,0,0,0.5);
+}
+.he-dialog .hdr {
+    background: linear-gradient(to bottom,#B9B5AA,#7A7067); color: white;
+    padding: 3px 8px; font: bold 13px 'Segoe UI',sans-serif;
+    display: flex; justify-content: space-between;
+}
+.he-dialog .hdr .x {
+    background:#C62828; color:white; width:22px; height:18px;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #8B0000; cursor: pointer; font-weight: bold;
+}
+.he-dialog .body {
+    padding: 16px 20px; color: #000; font-size: 13px; line-height: 1.6;
+}
+.he-dialog .sbx-tag {
+    display: inline-block; background:#FFECB3; color:#6D4C41;
+    border:1px solid #FB8C00; padding:2px 8px; font-weight:bold; font-size: 11px;
+    margin-bottom: 10px;
+}
+.he-dialog .foot {
+    background:#D4D0C8; border-top: 1px solid #808080;
+    padding: 8px; display: flex; justify-content: center;
+}
+.he-dialog .foot button {
+    background: #ECE9D8; border: 1px outset #888; padding: 4px 18px;
+    font-size: 13px; cursor: pointer;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="access-window">
-    <div class="access-title-bar">
-        <span><i class="fas fa-hand-holding-usd"></i> {{ t('gemach.loan_detail.title') }}</span>
-        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
+<div class="he-window">
+
+    <!-- Titlebar -->
+    <div class="he-titlebar">
+        <span>טופס : hork edit</span>
+        <span class="win-btns">
+            <span>_</span>
+            <span>□</span>
+            <a href="{{ url_for('gemach.loans') }}" class="x" title="סגור">✕</a>
+        </span>
     </div>
 
-    <!-- Header band: loan# + member + quick links (Access hork edit navy theme) -->
-    <div style="background: var(--gmach-navy); color: white; padding: 10px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-        <a href="{{ url_for('gemach.loans') }}" class="tb-btn" style="background: var(--gmach-cyan); border-color: white; color: #000; padding: 3px 10px;">
-            {{ t('gemach.common.back_to_loans') }}
-        </a>
-        <span style="font-size: 14px;">
-            <strong>{{ t('gemach.loan.type') }} {{ t('gemach.members.card_no') }}:</strong>
-            <span style="background: var(--gmach-cyan); color: #000; padding: 2px 10px; margin-{{ 'right' if is_rtl else 'left' }}: 6px; font-family: 'Courier New', monospace; font-weight: bold;">{{ loan.gmach_num_hork }}</span>
-        </span>
-        {% if loan.member %}
-        <span style="font-size: 14px;">
-            <strong>{{ t('gemach.loan.member') }}:</strong>
-            <a href="{{ url_for('gemach.member_detail', member_id=loan.member.id) }}" style="color: var(--gmach-cyan); text-decoration: underline;">
-                {{ loan.member.full_name }}
+    <!-- Main navy form -->
+    <div class="he-form">
+        <!-- Left: action column (קליטה / סגור door / בטל red-circle) -->
+        <div class="he-actions">
+            <a href="#" class="he-action-cyan" onclick="event.preventDefault(); heAction('קליטה')">קליטה</a>
+            <a href="{{ url_for('gemach.loans') }}" class="he-action-door" title="סגור">
+                <i class="fas fa-door-open"></i>
+                <span style="font-size: 11px;">סגור</span>
             </a>
-        </span>
-        {% endif %}
-        <span style="flex: 1"></span>
-        {% if loan.status == 'p' %}<span class="badge-status badge-active">{{ t('gemach.status.active') }}</span>
-        {% elif loan.status == 's' %}<span class="badge-status badge-satisfied">{{ t('gemach.status.satisfied') }}</span>
-        {% elif loan.status == 'b' %}<span class="badge-status badge-cancelled">{{ t('gemach.status.cancelled') }}</span>
-        {% endif %}
-    </div>
-
-    <!-- Navy edit panel (mimics Access "hork edit" form) -->
-    <div class="gmach-navy-panel" style="margin: 4px;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-            <!-- Overview -->
-            <div>
-                <h6 style="color: var(--gmach-cyan); border-bottom: 1px dashed var(--gmach-cyan); padding-bottom: 4px; margin-bottom: 10px;">
-                    <i class="fas fa-info-circle"></i> {{ t('gemach.loan_detail.overview') }}
-                </h6>
-                <table style="width: 100%; font-size: 13px;">
-                    <tr><td style="width: 130px; padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.amount') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 120px; font-family: 'Courier New', monospace; font-size: 14px;">{{ "{:,.2f}".format(loan.amount or 0) }} {{ loan.currency }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.type') }}:</strong></td>
-                        <td><span class="field-ro">{{ loan.loan_type or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.start') }}:</strong></td>
-                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ loan.start_date or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.last_charge') }}:</strong></td>
-                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ loan.last_charge_date or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.charge_day') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 40px;">{{ loan.charge_day or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.period') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 40px;">{{ loan.period_months }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.institution') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 180px;">{{ loan.institution.name if loan.institution else '—' }}</span></td></tr>
-                </table>
-            </div>
-
-            <!-- Progress & bank -->
-            <div>
-                <h6 style="color: var(--gmach-cyan); border-bottom: 1px dashed var(--gmach-cyan); padding-bottom: 4px; margin-bottom: 10px;">
-                    <i class="fas fa-chart-line"></i> {{ t('gemach.loan_detail.progress') }}
-                </h6>
-                <table style="width: 100%; font-size: 13px; margin-bottom: 14px;">
-                    <tr><td style="width: 160px; padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.payments_made') }}:</strong></td>
-                        <td><span class="field-ro">{{ loan.payments_made or 0 }} / {{ loan.committed_payments if loan.committed_payments and loan.committed_payments != 999 else t('gemach.loan.unlimited') }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.amount_paid') }}:</strong></td>
-                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ "{:,.2f}".format(loan.amount_paid or 0) }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.total_expected') }}:</strong></td>
-                        <td><span class="field-ro" style="font-family: 'Courier New', monospace;">{{ loan.total_expected or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.bounces') }}:</strong></td>
-                        <td>{% if (loan.bounces or 0) > 0 %}<span class="field-ro" style="background: #FFCDD2; color: #B71C1C; font-weight: bold;">{{ loan.bounces }}</span>{% else %}<span class="field-ro">0</span>{% endif %}</td></tr>
-                </table>
-
-                <h6 style="color: var(--gmach-cyan); border-bottom: 1px dashed var(--gmach-cyan); padding-bottom: 4px; margin-bottom: 10px;">
-                    <i class="fas fa-university"></i> {{ t('gemach.loan_detail.bank') }}
-                </h6>
-                <table style="width: 100%; font-size: 13px;">
-                    <tr><td style="width: 130px; padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.bank') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 60px;">{{ loan.bank_code or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.branch') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 60px;">{{ loan.branch_code or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.account') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 120px; font-family: 'Courier New', monospace;">{{ loan.account_number or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; color: white;"><strong>{{ t('gemach.loan.asmachta') }}:</strong></td>
-                        <td><span class="field-ro" style="min-width: 80px; font-family: 'Courier New', monospace;">{{ loan.asmachta or '—' }}</span></td></tr>
-                </table>
-            </div>
+            <a href="#" class="he-action-bitul" onclick="event.preventDefault(); heAction('ביטול')" title="ביטול">
+                <span class="circle">9</span>
+                <span class="label">בטל</span>
+            </a>
         </div>
 
-        {% if loan.notes %}
-        <div style="margin-top: 14px; background: #FFFDE7; border: 2px solid #FBC02D; padding: 10px 14px;">
-            <strong style="color: #5D4037;">📝 {{ t('gemach.loan.notes') }}:</strong>
-            <div style="margin-top: 4px; color: #3E2723; white-space: pre-wrap;">{{ loan.notes }}</div>
+        <!-- Right: 5 field sections -->
+        <div class="he-fields">
+
+            <!-- Section 1: hork# + type -->
+            <div class="he-section">
+                <div class="he-row">
+                    <span class="he-label">מס׳ הו״ק:</span>
+                    <span class="he-ro mono cyan" style="min-width: 80px; text-align: center;">{{ loan.gmach_num_hork }}</span>
+                    <span style="flex: 1"></span>
+                    <span class="he-label">סוג:</span>
+                    <span class="he-dropdown">{{ loan.loan_type or '—' }}</span>
+                </div>
+            </div>
+
+            <!-- Section 2: commitment amounts -->
+            <div class="he-section">
+                <div class="he-row">
+                    <span class="he-label">סך לחיוב:</span>
+                    <span class="he-ro mono cyan" style="min-width: 90px; text-align: right;">{{ '{:,.2f}'.format(loan.amount or 0) }}</span>
+                    <span class="he-ro narrow" style="background:#00FFFF; text-align:center;">{{ loan.currency or 'ש' }}</span>
+                    <span style="flex: 1"></span>
+                    <span class="he-label">התחייב:</span>
+                    <span class="he-ro narrow">{{ loan.committed_payments if loan.committed_payments != 999 else '∞' }}</span>
+                </div>
+                <div class="he-row">
+                    <span class="he-label">בוצע:</span>
+                    <span class="he-ro narrow">{{ loan.payments_made or 0 }}</span>
+                    <span style="flex: 1"></span>
+                    <span class="he-label">שולם:</span>
+                    <span class="he-ro mono" style="min-width: 80px;">{{ '{:,.2f}'.format(loan.amount_paid or 0) }}</span>
+                </div>
+                <div class="he-row">
+                    <span class="he-label">החזר:</span>
+                    <span class="he-ro narrow" style="background:{% if (loan.bounces or 0) > 0 %}#FFCDD2{% else %}white{% endif %};">
+                        {{ loan.bounces or 0 }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Section 3: schedule (start date + period + day) -->
+            <div class="he-section">
+                <div class="he-row">
+                    <span class="he-label">תא׳ התחלה:</span>
+                    <span class="he-ro mono" style="min-width: 110px;">{{ loan.start_date.strftime('%d/%m/%Y') if loan.start_date else '—' }}</span>
+                    <span style="flex: 1"></span>
+                    <span class="he-label">תקופה:</span>
+                    <span class="he-ro narrow" style="background: #00FFFF;">{{ loan.period_months or 1 }}</span>
+                    <span class="he-label">יום:</span>
+                    <span class="he-ro narrow">{{ loan.charge_day or '—' }}</span>
+                </div>
+            </div>
+
+            <!-- Section 4: bank + asmachta -->
+            <div class="he-section">
+                <div class="he-sec-hdr">אסמכתא:</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <!-- bank details (left) -->
+                    <div>
+                        <div class="he-row">
+                            <span class="he-label">בנק:</span>
+                            <span class="he-ro narrow cyan" style="text-align:center;">{{ loan.bank_code or '—' }}</span>
+                            <span class="he-dropdown" style="min-width:110px;">
+                                {% set BANK_NAMES = {12:'הפועלים', 10:'לאומי', 11:'דיסקונט', 20:'מזרחי', 17:'בינלאומי'} %}
+                                {{ BANK_NAMES.get(loan.bank_code, '') }}
+                            </span>
+                        </div>
+                        <div class="he-row">
+                            <span class="he-label">סניף:</span>
+                            <span class="he-ro narrow cyan" style="text-align:center;">{{ loan.branch_code or '—' }}</span>
+                            <span class="he-dropdown" style="min-width:110px;"></span>
+                        </div>
+                        <div class="he-row">
+                            <span class="he-label">חשבון:</span>
+                            <span class="he-ro mono" style="min-width: 120px; text-align: right;">{{ loan.account_number or '—' }}</span>
+                        </div>
+                    </div>
+                    <!-- asmachta (right) -->
+                    <div style="background: rgba(255,255,255,0.06); padding: 8px; border: 1px dotted #6080A0;">
+                        <div class="he-row" style="justify-content: flex-end;">
+                            <span class="he-label" style="color:#00FFFF;">מס׳ הו״ק זה:</span>
+                            <span class="he-ro mono" style="min-width: 70px;">{{ loan.gmach_num_hork or '' }}</span>
+                        </div>
+                        <div class="he-row" style="justify-content: flex-end;">
+                            <span class="he-label" style="color:#00FFFF;">אחר:</span>
+                            <span class="he-ro mono cyan" style="min-width: 70px; text-align: right;">{{ loan.asmachta or '—' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: beneficiary + institution -->
+            <div class="he-section">
+                <div class="he-row">
+                    <span class="he-label">זכאי:</span>
+                    <span class="he-ro narrow" style="text-align: center;">{{ loan.beneficiary_member.gmach_card_no if loan.beneficiary_member else (loan.member.gmach_card_no if loan.member else '—') }}</span>
+                    <span class="he-dropdown" style="min-width: 200px;">
+                        {{ loan.beneficiary_member.full_name if loan.beneficiary_member else (loan.member.full_name if loan.member else '') }}
+                    </span>
+                    <span style="flex: 1"></span>
+                    <span class="he-label">מס׳ מוסד:</span>
+                    <span class="he-ro narrow" style="text-align: center;">{{ loan.institution.gmach_num_mosad if loan.institution else '—' }}</span>
+                    <span class="he-dropdown" style="min-width: 120px;">
+                        {{ loan.institution.name if loan.institution else '' }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Section 6: notes -->
+            <div class="he-section">
+                <div class="he-row" style="align-items: flex-start;">
+                    <span class="he-label">הערה:</span>
+                    <span class="he-ro wide" style="flex: 1; min-height: 28px; text-align: right;">{{ loan.notes or '' }}</span>
+                </div>
+            </div>
+
         </div>
-        {% endif %}
     </div>
 
-    <!-- Transactions (cyan Access sub-form style) -->
-    <div style="margin: 10px 4px;">
-        <div class="gmach-cyan-panel" style="padding: 8px;">
-            <h6 style="background: var(--gmach-navy); color: var(--gmach-cyan); padding: 6px 10px; margin: -8px -8px 8px -8px; font-size: 13px;">
-                <i class="fas fa-list"></i> {{ t('gemach.loan_detail.transactions') }} ({{ transactions|length }})
-            </h6>
-            <table class="access-grid">
+    <!-- Transactions (Peulot) grid at the bottom -->
+    <div class="he-txns">
+        <div class="he-txns-hdr">
+            <i class="fas fa-list"></i> פעולות — {{ '{:,}'.format(transactions|length) }} רשומות
+        </div>
+        <div style="max-height: 280px; overflow: auto;">
+            <table>
                 <thead>
                     <tr>
-                        <th style="width: 110px;">{{ t('gemach.transaction.date') }}</th>
-                        <th style="width: 120px;">{{ t('gemach.transaction.asmachta') }}</th>
-                        <th style="width: 120px; text-align: {{ 'left' if is_rtl else 'right' }};">{{ t('gemach.transaction.amount_ils') }}</th>
-                        <th style="width: 100px; text-align: {{ 'left' if is_rtl else 'right' }};">{{ t('gemach.transaction.amount_usd') }}</th>
-                        <th style="width: 100px;">{{ t('gemach.transaction.status') }}</th>
-                        <th>{{ t('gemach.transaction.reason') }}</th>
+                        <th style="width: 110px;">תאריך</th>
+                        <th style="width: 120px;">אסמכתא</th>
+                        <th style="width: 120px;">ש״ח</th>
+                        <th style="width: 100px;">$</th>
+                        <th style="width: 90px;">סטטוס</th>
+                        <th>סיבה</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for tx in transactions %}
-                    <tr>
-                        <td style="font-family: 'Courier New', monospace;">{{ tx.transaction_date }}</td>
-                        <td style="font-family: 'Courier New', monospace;">{{ tx.asmachta or '' }}</td>
-                        <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{{ "{:,.2f}".format(tx.amount_ils or 0) }}</td>
-                        <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{% if tx.amount_usd %}{{ "{:,.2f}".format(tx.amount_usd) }}{% endif %}</td>
-                        <td>{% if tx.bounced %}<span class="badge-status badge-cancelled">{{ t('gemach.transaction.bounced') }}</span>{% else %}<span class="badge-status badge-active">OK</span>{% endif %}</td>
+                    <tr class="{% if tx.bounced %}bounced{% endif %}">
+                        <td class="num">{{ tx.transaction_date.strftime('%d/%m/%Y') if tx.transaction_date else '' }}</td>
+                        <td class="num">{{ tx.asmachta or '' }}</td>
+                        <td class="num">{{ '{:,.2f}'.format(tx.amount_ils or 0) }}</td>
+                        <td class="num">{% if tx.amount_usd %}{{ '{:,.2f}'.format(tx.amount_usd) }}{% endif %}</td>
+                        <td class="center">
+                            {% if tx.bounced %}
+                                <span style="background:#C62828; color:white; padding:1px 8px; font-size:11px; font-weight:bold;">החזר</span>
+                            {% else %}
+                                <span style="background:#2E7D32; color:white; padding:1px 8px; font-size:11px; font-weight:bold;">OK</span>
+                            {% endif %}
+                        </td>
                         <td>{{ tx.bounce_reason or '' }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" style="text-align: center; color: #666; padding: 24px;">{{ t('gemach.loan_detail.no_transactions') }}</td></tr>
+                    <tr><td colspan="6" style="text-align: center; color: #666; padding: 30px;">אין פעולות על הו״ק זה</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!-- Status bar at bottom -->
+    <div class="he-statusbar">
+        <span>
+            <strong>הו״ק:</strong> #{{ loan.gmach_num_hork }}
+            {% if loan.member %}
+            &middot; <strong>חבר:</strong>
+            <a href="{{ url_for('gemach.member_detail', member_id=loan.member.id) }}" style="color:#000080; text-decoration:underline;">
+                {{ loan.member.full_name }} (#{{ loan.member.gmach_card_no }})
+            </a>
+            {% endif %}
+            &middot; <strong>סטטוס:</strong>
+            {% if loan.status == 'p' %}פעיל
+            {% elif loan.status == 's' %}הושלם
+            {% elif loan.status == 'b' %}בוטל
+            {% else %}{{ loan.status }}{% endif %}
+        </span>
+        <span style="flex:1"></span>
+        <a href="{{ url_for('gemach.loans') }}">← חזרה להו״ק</a>
+    </div>
 </div>
+
+<!-- Sandbox action dialog (for קליטה/ביטול) -->
+<div class="he-overlay" id="he-overlay" onclick="if (event.target === this) heClose()">
+    <div class="he-dialog">
+        <div class="hdr">
+            <span id="he-dlg-title">פעולה</span>
+            <span class="x" onclick="heClose()">✕</span>
+        </div>
+        <div class="body">
+            <div class="sbx-tag">⚠ SANDBOX MODE — לבדיקה בלבד</div>
+            <div id="he-dlg-body"></div>
+        </div>
+        <div class="foot"><button onclick="heClose()">אישור</button></div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const DESCRIPTIONS = {
+        'קליטה': 'פתיחת טופס לקליטת פעולה (תשלום) חדשה על הו״ק זה.',
+        'ביטול': 'ביטול ההו״ק והעברתו לארכיון (btlhork). פעולה זו ניתנת לביטול על ידי מנהל.',
+    };
+    window.heAction = function (name) {
+        document.getElementById('he-dlg-title').textContent = name;
+        document.getElementById('he-dlg-body').innerHTML =
+            '<p><strong>' + name + '</strong></p>' +
+            '<p>' + (DESCRIPTIONS[name] || '') + '</p>' +
+            '<p style="color:#5D4037; font-size:12px;">כפתור זה יחובר לטופס המלא לאחר שהמפעילה תאשר את המסכים הקיימים.</p>';
+        document.getElementById('he-overlay').classList.add('open');
+    };
+    window.heClose = function () {
+        document.getElementById('he-overlay').classList.remove('open');
+    };
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') heClose(); });
+})();
+</script>
 {% endblock %}
 
 {% block status %}
-{{ t('gemach.loan.type') }} #{{ loan.gmach_num_hork }}
+הו״ק #{{ loan.gmach_num_hork }}
 {% if loan.member %} &middot; {{ loan.member.full_name }}{% endif %}
 {% endblock %}
