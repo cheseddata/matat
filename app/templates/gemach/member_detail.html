@@ -1,282 +1,742 @@
 {% extends "gemach_base.html" %}
 
-{% block title %}{{ member.full_name }} (#{{ member.gmach_card_no }}) — {{ t('gemach.switchboard.title') }}{% endblock %}
+{% block title %}כרטיס תורם — {{ member.full_name }} ({{ member.gmach_card_no }}){% endblock %}
+
+{% block extra_css %}
+<style>
+/* =======================================================
+   Kartis Torem — faithful Access 2003 reproduction
+   Reference: operator's screenshots (tabs 1-5).
+   ======================================================= */
+.kt-window {
+    background: #206B65;
+    border: 1px solid #0A246A;
+    color: #000;
+    margin: 4px;
+    min-height: calc(100vh - 130px);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
+    display: grid;
+    grid-template-rows: auto auto auto 1fr auto;
+    font-family: 'Segoe UI','David','Arial',sans-serif;
+}
+
+/* Titlebar */
+.kt-titlebar {
+    background: linear-gradient(to bottom, #B9B5AA, #7A7067);
+    color: white;
+    padding: 3px 8px;
+    font: bold 13px 'Segoe UI', sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.kt-titlebar .win-btns { display: flex; gap: 2px; }
+.kt-titlebar .win-btns a {
+    background: #ECE9D8; color: #000; width: 22px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #000; border-top-color:#FFF; border-left-color:#FFF;
+    font-size: 10px; text-decoration: none; font-weight: bold;
+}
+.kt-titlebar .win-btns a.x { background:#C62828; color:white; border-color:#8B0000; }
+
+/* Top toolbar row (left icons + right search header) */
+.kt-toolbar {
+    background: #206B65;
+    padding: 6px 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.kt-tb-icons {
+    display: flex;
+    gap: 4px;
+}
+.kt-tb-icon {
+    width: 48px; height: 42px;
+    background: #ECE9D8;
+    border: 1px outset #888;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-decoration: none; color: #000;
+    font-size: 10px; font-weight: bold;
+    cursor: pointer;
+}
+.kt-tb-icon:hover { background:#F5F3E8; }
+.kt-tb-icon i { font-size: 18px; color: #2F5597; }
+.kt-tb-icon.close-i i { color: #2F5597; }
+.kt-tb-icon.search-i i { color: #000080; }
+
+.kt-sort {
+    display: flex; align-items: center; gap: 4px;
+    color: white; font-size: 11px;
+}
+.kt-sort label { color: white; font-weight: bold; margin: 0; }
+.kt-sort select {
+    background: white; color: #000; border: 1px solid #000;
+    padding: 1px 4px; font-size: 11px; width: 60px;
+}
+
+.kt-search {
+    flex: 1;
+    color: white;
+    font-size: 11px;
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 4px 6px;
+    align-items: center;
+}
+.kt-search label { color: white; font-weight: bold; margin: 0; }
+.kt-search input[type=text], .kt-search input[type=search] {
+    background: white; color: #000; border: 1px solid #000;
+    padding: 1px 5px; font-size: 12px;
+}
+.kt-search .card-no-box {
+    background: #FFEE00; color: #000; padding: 2px 8px;
+    border: 1px solid #000; font-weight: bold; font-size: 13px;
+    font-family: 'Courier New', monospace; min-width: 60px; text-align: center;
+}
+
+/* Tab strip — right-to-left, tab 1 on the right */
+.kt-tabs {
+    background: #206B65;
+    padding: 0 10px;
+    display: flex;
+    flex-direction: row-reverse;   /* so tab 1 is on visual right */
+    justify-content: flex-end;
+    border-bottom: 1px solid #000;
+    gap: 0;
+}
+.kt-tabs a {
+    padding: 4px 18px;
+    font-size: 13px;
+    font-family: 'Segoe UI','David',sans-serif;
+    background: #B9B5AA;
+    color: #000;
+    text-decoration: none;
+    border: 1px solid #000;
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    margin: 0 1px -1px 0;
+    position: relative;
+    top: 1px;
+}
+.kt-tabs a.active {
+    background: #D4D0C8;
+    font-weight: bold;
+    top: 0;
+    border-bottom: 1px solid #D4D0C8;
+    padding: 5px 18px;
+    z-index: 2;
+}
+.kt-tabs a:hover:not(.active) { background:#CFCAB8; }
+
+/* Body: teal background, left-side vertical nav, content in middle */
+.kt-body {
+    background: #206B65;
+    display: grid;
+    grid-template-columns: 68px 1fr;
+    min-height: 420px;
+}
+.kt-leftnav {
+    padding: 10px 6px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 10px;
+    color: white;
+}
+.kt-leftnav a {
+    background: #ECE9D8; border: 1px outset #888;
+    color: #000; width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; text-decoration: none;
+}
+.kt-leftnav a.disabled { opacity: .4; pointer-events: none; }
+.kt-leftnav a:hover { background:#F5F3E8; }
+.kt-leftnav .lbl { font-size: 10px; font-weight: bold; color: white; }
+
+.kt-content {
+    padding: 14px 18px;
+    color: #000;
+    overflow: auto;
+}
+
+/* Cyan panels (used on tabs 1, 2, 3-subform, 4-subform) */
+.kt-cyan {
+    background: #00FFFF;
+    border: 3px solid #00C000;
+    padding: 14px 18px;
+}
+.kt-cyan table { width: 100%; font-size: 13px; }
+.kt-cyan td { padding: 3px 4px; vertical-align: middle; }
+.kt-cyan td.lbl { font-weight: bold; text-align: left; width: 110px; }
+.kt-field {
+    background: white; border: 1px solid #808080;
+    padding: 2px 6px; display: inline-block; min-width: 140px;
+    font-family: 'Courier New', monospace;
+}
+.kt-field.readonly { background: #FFFFDD; }
+.kt-field.narrow { min-width: 60px; }
+.kt-field.wide { min-width: 200px; }
+.kt-field.huge { display:block; min-height: 90px; min-width: auto; }
+.kt-dropdown {
+    background: white; border: 1px solid #808080;
+    padding: 2px 6px; display: inline-flex; align-items: center; gap: 4px;
+    min-width: 100px;
+}
+.kt-dropdown::after { content: '▼'; font-size: 9px; color: #666; margin-left: 4px; }
+.kt-check {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+}
+.kt-check .box {
+    width: 12px; height: 12px; background: white; border: 1px solid #000;
+    display: inline-block; position: relative;
+}
+.kt-check .box.on::after {
+    content: '✓'; position: absolute; inset: -3px 0 0 0;
+    font-size: 14px; text-align: center; color: #000; font-weight: bold;
+}
+
+/* Access-style data grids (tabs 3, 4, 5) */
+.kt-grid-wrap { background: #C0C0C0; border: 1px solid #808080; padding: 0; }
+.kt-grid {
+    width: 100%; border-collapse: collapse; font-size: 11px;
+    font-family: 'Segoe UI','David',sans-serif; background: #C0C0C0;
+}
+.kt-grid thead th {
+    background: #000080; color: white; font-weight: normal;
+    padding: 3px 6px; border: 1px solid #000; text-align: center;
+    white-space: nowrap;
+}
+.kt-grid tbody tr { background: white; }
+.kt-grid tbody tr:nth-child(even) { background: #F0F0F0; }
+.kt-grid tbody tr:hover { background: #FFFDE7; cursor: pointer; }
+.kt-grid tbody tr.selected { background: #FFEE00; }
+.kt-grid td { padding: 3px 6px; border: 1px solid #D0D0D0; white-space: nowrap; }
+.kt-grid .num { font-family: 'Courier New', monospace; text-align: right; }
+.kt-grid .center { text-align: center; }
+.kt-grid .empty td { padding: 40px 0; text-align: center; color: #888; }
+
+/* Dark subform panel (tab 3/4 detail area) */
+.kt-subform {
+    background: #1A3350; color: white;
+    padding: 12px 14px; margin-top: 10px;
+    border: 1px solid #000;
+    display: grid; gap: 10px;
+}
+.kt-subform label { color: white; font-size: 12px; font-weight: bold; }
+.kt-subform input, .kt-subform .kt-field {
+    background: white; color: #000;
+    border: 1px solid #000; padding: 2px 6px; font-size: 12px;
+}
+
+/* Action buttons row (tab 3) */
+.kt-actions {
+    display: flex; flex-direction: row-reverse; gap: 8px;
+    margin-top: 10px; padding: 8px 0;
+}
+.kt-act-btn {
+    background: #ECE9D8; border: 1px outset #888; color: #000;
+    padding: 5px 16px; font-size: 13px; font-weight: bold;
+    text-decoration: none; cursor: pointer;
+    min-width: 80px; text-align: center;
+    font-family: 'Segoe UI','David',sans-serif;
+}
+.kt-act-btn.primary { background: #D6E4F0; border-color: #000080; }
+.kt-act-btn:hover { background:#F5F3E8; }
+
+/* Bottom record navigator */
+.kt-record-nav {
+    background: #D4D0C8; border-top: 1px solid #808080;
+    padding: 3px 8px; font-size: 11px;
+    display: flex; align-items: center; gap: 6px;
+    justify-content: flex-end;   /* right-align the whole nav */
+    color: #000; font-family: 'Segoe UI','David',sans-serif;
+}
+.kt-record-nav input {
+    background: white; border: 1px inset #888; padding: 1px 4px;
+    width: 40px; font-size: 11px; text-align: center;
+}
+.kt-record-nav a {
+    background: #ECE9D8; border: 1px outset #888;
+    width: 22px; height: 18px;
+    display: inline-flex; align-items: center; justify-content: center;
+    text-decoration: none; color: #000; font-size: 10px;
+}
+.kt-record-nav a.disabled { opacity: .4; pointer-events: none; }
+
+/* Tab 5 two-column layout */
+.kt-two-col {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+.kt-totals {
+    display: flex; flex-direction: row-reverse; gap: 12px;
+    margin-top: 12px; padding: 10px; background: #1A3350;
+    border: 1px solid #000; justify-content: center;
+}
+.kt-totals .pill {
+    background: #ECE9D8; border: 1px outset #888;
+    padding: 4px 12px; color: #000; font-weight: bold; font-size: 13px;
+    display: inline-flex; align-items: center; gap: 8px;
+    min-width: 140px; justify-content: space-between;
+}
+.kt-totals .pill .amt {
+    background: white; border: 1px inset #888; padding: 1px 8px;
+    font-family: 'Courier New', monospace; min-width: 60px; text-align: left;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="access-window">
-    <div class="access-title-bar">
-        <span><i class="fas fa-id-card"></i> {{ t('gemach.members.title') }}</span>
-        <span class="win-btns"><span>_</span><span>□</span><span>✕</span></span>
-    </div>
+<div class="kt-window">
 
-    <!-- Header band: search hint + card# badge (mimics the Access haverim title bar) -->
-    <div style="background: var(--gmach-navy); color: white; padding: 8px 14px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-        <a href="{{ url_for('gemach.members') }}" class="tb-btn" style="background: var(--gmach-cyan); border-color: white; color: #000; padding: 3px 10px;">
-            {{ t('gemach.common.back_to_members') }}
-        </a>
-        <span style="font-weight: bold; font-size: 14px;">
-            {{ t('gemach.members.card_no') }}:
-            <span style="background: var(--gmach-cyan); color: #000; padding: 2px 10px; margin-{{ 'right' if is_rtl else 'left' }}: 6px;">{{ member.gmach_card_no }}</span>
+    <!-- Titlebar -->
+    <div class="kt-titlebar">
+        <span>כרטיס תורם</span>
+        <span class="win-btns">
+            <a href="#" title="minimize">_</a>
+            <a href="#" title="maximize">□</a>
+            <a href="{{ url_for('gemach.members') }}" class="x" title="סגור">✕</a>
         </span>
-        <span style="font-size: 15px; font-weight: bold; letter-spacing: 0.3px;">
-            {{ member.title or '' }} {{ member.full_name }}
-        </span>
-        <span style="flex: 1"></span>
-        {% if member.ztorm_donor_id %}<span title="ZTorm #{{ member.ztorm_donor_id }}" style="color: #FFD700;">🏛 ZTorm #{{ member.ztorm_donor_id }}</span>{% endif %}
-        {% if member.donor_id %}<span title="Matat donor #{{ member.donor_id }}" style="color: #FFD180; font-weight: bold;">Ⓜ Matat #{{ member.donor_id }}</span>{% endif %}
     </div>
 
-    <!-- Access-style tab strip (1: פרטים | 2: פרטים | 3: הו״ק | 4: תנועות | 5: מעקב) -->
-    <div class="access-tabs">
-        <a href="?tab=overview" class="access-tab {% if tab == 'overview' %}active{% endif %}">
-            1: {{ t('gemach.tabs.overview') }}
-        </a>
-        <a href="?tab=loans" class="access-tab {% if tab == 'loans' %}active{% endif %}">
-            2: {{ t('gemach.tabs.loans') }} ({{ loans|length }})
-        </a>
-        <a href="?tab=transactions" class="access-tab {% if tab == 'transactions' %}active{% endif %}">
-            3: {{ t('gemach.tabs.transactions') }} ({{ transactions|length }})
-        </a>
-        <a href="?tab=memorials" class="access-tab {% if tab == 'memorials' %}active{% endif %}">
-            4: {{ t('gemach.tabs.memorials') }} ({{ memorials|length }})
-        </a>
-        <a href="?tab=linked" class="access-tab {% if tab == 'linked' %}active{% endif %}">
-            5: {{ t('gemach.tabs.linked') }}
-        </a>
+    <!-- Toolbar: left icons + sort + search header -->
+    <div class="kt-toolbar">
+        <div class="kt-tb-icons">
+            <a href="{{ url_for('gemach.members') }}" class="kt-tb-icon close-i" title="סגור">
+                <i class="fas fa-door-open"></i>
+                <span>סגור</span>
+            </a>
+            <a href="javascript:window.print()" class="kt-tb-icon" title="הדפסה">
+                <i class="fas fa-print"></i>
+            </a>
+            <a href="#" class="kt-tb-icon" title="כלים">
+                <i class="fas fa-tools"></i>
+            </a>
+            <a href="{{ url_for('gemach.members') }}" class="kt-tb-icon search-i" title="חיפוש">
+                <i class="fas fa-binoculars"></i>
+                <span>חפש</span>
+            </a>
+        </div>
+
+        <div class="kt-sort">
+            <label>מיון:</label>
+            <select><option>שם</option></select>
+            <select><option>מס</option></select>
+        </div>
+
+        <div class="kt-search">
+            <label>מס׳ כרטיס:</label>
+            <span class="card-no-box">{{ member.gmach_card_no }}</span>
+            <label>שם:</label>
+            <input type="text" readonly value="{{ member.full_name }}">
+            <label>חיפוש:</label>
+            <input type="search" placeholder="הקלד לחיפוש..."
+                   onchange="if(this.value)location.href='{{ url_for('gemach.members') }}?q='+encodeURIComponent(this.value)">
+        </div>
     </div>
 
-    <div style="background: white; padding: 14px; min-height: 360px;">
+    <!-- Tab strip (RTL: tab 1 on the right) -->
+    <div class="kt-tabs">
+        <a href="?tab=1" class="{% if tab in ('1','overview') %}active{% endif %}">1: פרטים</a>
+        <a href="?tab=2" class="{% if tab == '2' %}active{% endif %}">2: פרטים</a>
+        <a href="?tab=3" class="{% if tab in ('3','loans') %}active{% endif %}">3: הו״ק</a>
+        <a href="?tab=4" class="{% if tab in ('4','transactions') %}active{% endif %}">4: תנועות</a>
+        <a href="?tab=5" class="{% if tab == '5' %}active{% endif %}">5: מעקב</a>
+    </div>
 
-    {% if tab == 'overview' %}
-        <!-- Authentic two-panel cyan kartis torem layout -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+    <!-- Body (left nav + content) -->
+    <div class="kt-body">
+        <div class="kt-leftnav">
+            <a href="{% if prev_member_id %}{{ url_for('gemach.member_detail', member_id=prev_member_id, tab=tab) }}{% else %}#{% endif %}"
+               class="{% if not prev_member_id %}disabled{% endif %}" title="לקודם">▲</a>
+            <div class="lbl">לקודם</div>
+            <div class="lbl">לבא</div>
+            <a href="{% if next_member_id %}{{ url_for('gemach.member_detail', member_id=next_member_id, tab=tab) }}{% else %}#{% endif %}"
+               class="{% if not next_member_id %}disabled{% endif %}" title="לבא">▼</a>
+        </div>
 
-            <!-- RIGHT panel in RTL (primary): identity -->
-            <div class="gmach-cyan-panel" style="border: 3px solid var(--gmach-green);">
-                <h6 style="background: var(--gmach-navy); color: var(--gmach-cyan); padding: 4px 10px; margin: -10px -10px 10px -10px; font-size: 12px;">
-                    {{ t('gemach.member_detail.personal') }}
-                </h6>
-                <table style="width: 100%; font-size: 13px;">
-                    <tr><td style="width: 110px; padding: 3px 4px;"><strong>{{ t('gemach.members.card_no') }}:</strong></td>
-                        <td><span class="field-ro">{{ member.gmach_card_no }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.last_name') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 180px;">{{ member.last_name or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.first_name') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 180px;">{{ member.first_name or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.title') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 80px;">{{ member.title or '—' }}</span>
-                            {% if member.suffix %}<span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; margin-inline-start: 6px;">{{ member.suffix }}</span>{% endif %}</td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.address') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 200px;">{{ member.address or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.city') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 140px;">{{ member.city or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.zip') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 100px; font-family: 'Courier New', monospace;">{{ member.zip_code or '—' }}</span></td></tr>
-                </table>
-            </div>
+        <div class="kt-content">
 
-            <!-- LEFT panel (secondary): phones / TZ / classifications -->
-            <div class="gmach-cyan-panel" style="border: 3px solid var(--gmach-green);">
-                <h6 style="background: var(--gmach-navy); color: var(--gmach-cyan); padding: 4px 10px; margin: -10px -10px 10px -10px; font-size: 12px;">
-                    {{ t('gemach.member_detail.primary_contact') }}
-                </h6>
-                <table style="width: 100%; font-size: 13px;">
-                    <tr><td style="width: 120px; padding: 3px 4px;"><strong>{{ t('gemach.member.phone') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 140px; font-family: 'Courier New', monospace;">{{ member.primary_phone or '—' }}</span></td></tr>
-                    {% if member.phone2_secondary %}
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.phone') }} 2:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 140px; font-family: 'Courier New', monospace;">{{ member.phone2_secondary }}</span></td></tr>
-                    {% endif %}
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.fax') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 140px; font-family: 'Courier New', monospace;">{{ member.fax or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.members.tz') }}:</strong></td>
-                        <td><span style="background: white; padding: 2px 6px; border: 1px solid #808080; display: inline-block; min-width: 120px; font-family: 'Courier New', monospace;">{{ member.teudat_zehut or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.type') }}:</strong></td>
-                        <td><span class="field-ro">{{ member.member_type or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px; vertical-align: top;"><strong>{{ t('gemach.member.classifications') }}:</strong></td>
-                        <td>
-                            {% set tags = [member.tag1, member.tag2, member.tag3, member.tag4, member.tag5]|select|list %}
-                            {% if tags %}
-                                {% for tag in tags %}<span style="display: inline-block; background: var(--gmach-navy); color: white; padding: 1px 8px; margin: 2px; border-radius: 10px; font-size: 11px;">{{ tag }}</span>{% endfor %}
-                            {% else %}
-                                <span style="color: #666;">{{ t('gemach.member.no_tags') }}</span>
-                            {% endif %}
+        {% if tab in ('1', 'overview') %}
+            <!-- ============ TAB 1: פרטים ============ -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                <!-- LEFT CYAN PANEL: phones + TZ + tags -->
+                <div class="kt-cyan">
+                    <table>
+                        <tr><td class="lbl">טלפון:</td><td>
+                            <span class="kt-field narrow">{{ member.phone_area or '' }}</span>
+                            <span class="kt-field">{{ member.phone or '' }}</span>
                         </td></tr>
-                </table>
-            </div>
-        </div>
+                        <tr><td class="lbl">טלפון נוסף:</td><td>
+                            <span class="kt-field narrow">{{ member.phone2_area or '' }}</span>
+                            <span class="kt-field">{{ member.phone2 or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">פקס:</td><td>
+                            <span class="kt-field narrow">{{ member.fax_area or '' }}</span>
+                            <span class="kt-field">{{ member.fax or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">ת.ז.:</td><td>
+                            <span class="kt-field">{{ member.teudat_zehut or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">סימון:</td><td>
+                            <span class="kt-check"><span class="box {% if member.bookmark %}on{% endif %}"></span></span>
+                            <span style="margin-right: 30px;">כתובת לדואר:</span>
+                            <span class="kt-field narrow">{{ member.mail_address or 1 }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">סיווג:</td><td>
+                            <span style="margin-left:4px;">א:</span><span class="kt-field narrow">{{ member.tag1 or '' }}</span>
+                            <span style="margin:0 4px 0 4px;">ב:</span><span class="kt-field narrow">{{ member.tag2 or '' }}</span>
+                        </td></tr>
+                        <tr><td></td><td>
+                            <span style="margin-left:4px;">ג:</span><span class="kt-field narrow">{{ member.tag3 or '' }}</span>
+                            <span style="margin:0 4px 0 4px;">ד:</span><span class="kt-field narrow">{{ member.tag4 or '' }}</span>
+                        </td></tr>
+                    </table>
+                </div>
 
-        {% if member.address2 or member.phone2_secondary or member.notes %}
-        <!-- Secondary contact / notes -->
-        <div style="margin-top: 14px;">
-            {% if member.address2 %}
-            <div class="gmach-cyan-panel" style="border: 3px solid var(--gmach-green); margin-bottom: 10px;">
-                <h6 style="background: var(--gmach-navy); color: var(--gmach-cyan); padding: 4px 10px; margin: -10px -10px 10px -10px; font-size: 12px;">
-                    {{ t('gemach.member_detail.secondary_contact') }}
-                </h6>
-                <table style="width: 100%; font-size: 13px;">
-                    <tr><td style="width: 110px; padding: 3px 4px;"><strong>{{ t('gemach.member.type') }}:</strong></td>
-                        <td><span class="field-ro">{{ member.address2_type or '—' }}</span></td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.name') }}:</strong></td>
-                        <td>{{ member.address2_name or '—' }}</td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.address') }}:</strong></td>
-                        <td>{{ member.address2 or '—' }}</td></tr>
-                    <tr><td style="padding: 3px 4px;"><strong>{{ t('gemach.member.city') }}:</strong></td>
-                        <td>{{ member.city2 or '—' }}</td></tr>
+                <!-- RIGHT CYAN PANEL: identity + address -->
+                <div class="kt-cyan">
+                    <table>
+                        <tr><td class="lbl">מס׳ כרטיס:</td><td>
+                            <span class="kt-field readonly">{{ member.gmach_card_no }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">שם משפחה:</td><td>
+                            <span class="kt-field wide">{{ member.last_name or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">שם פרטי:</td><td>
+                            <span class="kt-field wide">{{ member.first_name or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">תואר:</td><td>
+                            <span class="kt-field narrow">{{ member.title or '' }}</span>
+                            <span class="kt-dropdown" style="margin-right: 4px;">{{ member.suffix or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">כתובת:</td><td>
+                            <span class="kt-field wide">{{ member.address or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">עיר:</td><td>
+                            <span class="kt-dropdown">{{ member.city or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">מיקוד:</td><td>
+                            <span class="kt-field narrow">{{ member.zip_code or '' }}</span>
+                        </td></tr>
+                    </table>
+                </div>
+            </div>
+
+        {% elif tab == '2' %}
+            <!-- ============ TAB 2: פרטים 2 (additional contact) ============ -->
+            <div class="kt-cyan" style="margin-bottom: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px;">
+                    <!-- LEFT: ID + english receipt -->
+                    <table>
+                        <tr><td class="lbl">ת.ז.:</td><td>
+                            <span class="kt-field">{{ member.teudat_zehut or '' }}</span>
+                        </td></tr>
+                        <tr><td colspan="2">
+                            <span class="kt-check">
+                                <span class="box {% if member.english_receipt %}on{% endif %}"></span>
+                                <span>קבלה אנגלית</span>
+                            </span>
+                        </td></tr>
+                    </table>
+
+                    <!-- MIDDLE: phones -->
+                    <table>
+                        <tr><td class="lbl">טלפון:</td><td>
+                            <span class="kt-field narrow">{{ member.phone_area or '' }}</span>
+                            <span class="kt-field">{{ member.phone or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">טלפון 2:</td><td>
+                            <span class="kt-field narrow">{{ member.phone2_secondary_area or '' }}</span>
+                            <span class="kt-field">{{ member.phone2_secondary or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">פקס:</td><td>
+                            <span class="kt-field narrow">{{ member.fax2_area or '' }}</span>
+                            <span class="kt-field">{{ member.fax2 or '' }}</span>
+                        </td></tr>
+                    </table>
+
+                    <!-- RIGHT: additional address -->
+                    <table>
+                        <tr><td class="lbl">כתובת נוספת:</td><td>
+                            <span class="kt-field huge">{{ member.address2 or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">עיר:</td><td>
+                            <span class="kt-dropdown">{{ member.city2 or '' }}</span>
+                        </td></tr>
+                        <tr><td class="lbl">מיקוד:</td><td>
+                            <span class="kt-field narrow">{{ member.zip_code2 or '' }}</span>
+                        </td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="kt-cyan">
+                <div style="display: grid; grid-template-columns: 160px 1fr; gap: 14px;">
+                    <!-- LEFT: intake + update dates -->
+                    <table>
+                        <tr><td class="lbl" style="display:block;">תא׳ קליטה:</td><td>
+                            <span class="kt-field readonly" style="font-family:'Courier New',monospace;">
+                                {{ member.registration_date.strftime('%d/%m/%y') if member.registration_date else '' }}
+                            </span>
+                        </td></tr>
+                        <tr><td class="lbl" style="display:block;">עדכון אחרון:</td><td>
+                            <span class="kt-field readonly" style="font-family:'Courier New',monospace;">
+                                {{ member.updated_at.strftime('%d/%m/%y') if member.updated_at else '' }}
+                            </span>
+                        </td></tr>
+                    </table>
+                    <!-- RIGHT: notes -->
+                    <table>
+                        <tr><td class="lbl" style="vertical-align:top; display:block;">הערות:</td>
+                            <td><span class="kt-field huge">{{ member.notes or '' }}</span></td></tr>
+                    </table>
+                </div>
+            </div>
+
+        {% elif tab in ('3', 'loans') %}
+            <!-- ============ TAB 3: הו״ק ============ -->
+            <div class="kt-grid-wrap">
+                <table class="kt-grid">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px;">מס׳</th>
+                            <th>מוסד</th>
+                            <th style="width: 60px;">סוג</th>
+                            <th style="width: 90px;">סך לחיוב</th>
+                            <th style="width: 60px;">בוצע</th>
+                            <th style="width: 90px;">יתרה</th>
+                            <th style="width: 90px;">שולם</th>
+                            <th style="width: 80px;">התחלה</th>
+                            <th style="width: 80px;">סיום</th>
+                            <th style="width: 70px;">סיבה</th>
+                            <th style="width: 60px;">זכאי</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for l in loans %}
+                        <tr onclick="location.href='{{ url_for('gemach.loan_detail', loan_id=l.id) }}'">
+                            <td class="num">{{ l.gmach_num_hork or '' }}</td>
+                            <td>{{ l.institution.name if l.institution else '' }}</td>
+                            <td class="center">{{ l.loan_type or '' }}</td>
+                            <td class="num">{{ '{:,.2f}'.format(l.amount or 0) }}</td>
+                            <td class="center">{{ l.payments_made or 0 }}</td>
+                            <td class="num">{{ '{:,.2f}'.format((l.amount or 0) - (l.amount_paid or 0)) }}</td>
+                            <td class="num">{{ '{:,.2f}'.format(l.amount_paid or 0) }}</td>
+                            <td class="num">{{ l.start_date.strftime('%d/%m/%y') if l.start_date else '' }}</td>
+                            <td class="num">{{ l.last_charge_date.strftime('%d/%m/%y') if l.last_charge_date else '' }}</td>
+                            <td>{{ {'p':'פעיל','s':'הושלם','b':'בוטל'}.get(l.status,l.status or '') }}</td>
+                            <td class="num">{{ l.beneficiary_member.gmach_card_no if l.beneficiary_member else '' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty"><td colspan="11">אין הו״ק לחבר זה</td></tr>
+                        {% endfor %}
+                    </tbody>
                 </table>
             </div>
-            {% endif %}
-            {% if member.notes %}
-            <div style="background: #FFFDE7; border: 2px solid #FBC02D; padding: 10px 14px;">
-                <strong style="color: #5D4037;">📝 {{ t('gemach.member.notes') }}:</strong>
-                <div style="margin-top: 6px; white-space: pre-wrap; color: #3E2723;">{{ member.notes }}</div>
+
+            <!-- Detail sub-form for selected row -->
+            {% set first_loan = loans[0] if loans else None %}
+            <div class="kt-subform">
+                <div style="display: grid; grid-template-columns: auto 1fr 1fr; gap: 10px; align-items: center;">
+                    <a href="#" class="kt-tb-icon" style="background:#1A3350; border-color:#000; color:white;">
+                        <i class="fas fa-tools" style="color: #FFEE00;"></i>
+                    </a>
+                    <div>
+                        <label>חשבון:</label>
+                        <span class="kt-field narrow">{{ first_loan.bank_code if first_loan else '' }}</span>
+                        <span class="kt-field narrow">{{ first_loan.branch_code if first_loan else '' }}</span>
+                        <span class="kt-field" style="margin-left: 10px;">{{ first_loan.account_number if first_loan else '' }}</span>
+                    </div>
+                    <div>
+                        <label>אסמכתא:</label>
+                        <span class="kt-field">{{ first_loan.asmachta if first_loan else '' }}</span>
+                    </div>
+                </div>
+                <div>
+                    <label>הערה:</label>
+                    <span class="kt-field wide" style="min-width: 400px;">{{ first_loan.notes if first_loan and first_loan.notes else '' }}</span>
+                </div>
             </div>
-            {% endif %}
-        </div>
+
+            <!-- Action buttons -->
+            <div class="kt-actions">
+                <a href="#" class="kt-act-btn primary">קליטה</a>
+                <a href="#" class="kt-act-btn">חידוש</a>
+                <a href="#" class="kt-act-btn">ביטול</a>
+                <a href="#" class="kt-act-btn">עדכון</a>
+                <a href="#" class="kt-act-btn primary">מעקב</a>
+                <a href="#" class="kt-act-btn primary">קבלה</a>
+            </div>
+
+        {% elif tab in ('4', 'transactions') %}
+            <!-- ============ TAB 4: תנועות ============ -->
+            <div class="kt-grid-wrap">
+                <table class="kt-grid">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">תאריך</th>
+                            <th style="width: 90px;">ש״ח</th>
+                            <th style="width: 80px;">$</th>
+                            <th style="width: 40px;">מט</th>
+                            <th style="width: 50px;">סוג</th>
+                            <th style="width: 50px;">זכאי</th>
+                            <th>שם</th>
+                            <th>פרטים</th>
+                            <th style="width: 60px;">אופן</th>
+                            <th style="width: 40px;">עמות</th>
+                            <th style="width: 40px;">פרטי</th>
+                            <th style="width: 40px;">קבלה</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tr in transactions %}
+                        <tr>
+                            <td class="num">{{ tr.transaction_date.strftime('%d/%m/%y') if tr.transaction_date else '' }}</td>
+                            <td class="num">{{ '{:,.2f}'.format(tr.amount_ils or 0) if tr.amount_ils else '' }}</td>
+                            <td class="num">{% if tr.amount_usd %}${{ '{:,.2f}'.format(tr.amount_usd) }}{% endif %}</td>
+                            <td class="center">{{ tr.primary_currency or '' }}</td>
+                            <td class="center">{{ tr.category or '' }}</td>
+                            <td class="num">{{ tr.beneficiary.gmach_card_no if tr.beneficiary else '' }}</td>
+                            <td>{{ tr.beneficiary.full_name if tr.beneficiary else '' }}</td>
+                            <td>{{ tr.description or '' }}</td>
+                            <td>{{ tr.payment_method or '' }}</td>
+                            <td class="center">{% if tr.organization_flag %}<span class="kt-check"><span class="box on"></span></span>{% endif %}</td>
+                            <td class="center">{% if tr.private_flag %}<span class="kt-check"><span class="box on"></span></span>{% endif %}</td>
+                            <td class="center">{% if tr.receipt_issued %}<span class="kt-check"><span class="box on"></span></span>{% endif %}</td>
+                        </tr>
+                        {% else %}
+                        <tr class="empty"><td colspan="12">אין תנועות לחבר זה</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Detail sub-form -->
+            {% set first_tx = transactions[-1] if transactions else None %}
+            <div class="kt-subform">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                    <div>
+                        <div><label>בנק:</label>
+                            <span class="kt-field narrow">{{ first_tx.bank_code if first_tx else 0 }}</span></div>
+                        <div><label>סניף:</label>
+                            <span class="kt-dropdown" style="min-width:80px;">{{ first_tx.branch_code if first_tx else '' }}</span></div>
+                        <div><label>חשבון:</label>
+                            <span class="kt-field">{{ first_tx.account_number if first_tx else '' }}</span></div>
+                        <div><label>מטבע:</label>
+                            <span class="kt-dropdown">{{ first_tx.primary_currency if first_tx else '' }}</span></div>
+                        <div><label>הערה:</label>
+                            <span class="kt-field wide">{{ first_tx.description if first_tx else '' }}</span></div>
+                    </div>
+                    <div>
+                        <div><label>מס׳ שיק/אסמכתא:</label>
+                            <span class="kt-field" style="font-family:'Courier New',monospace;">
+                                {{ first_tx.check_number if first_tx else '' }}
+                            </span></div>
+                        <div><label>תאריך ערך:</label>
+                            <span class="kt-field narrow">{{ first_tx.value_date.strftime('%d/%m/%y') if first_tx and first_tx.value_date else '' }}</span></div>
+                        <div><label>סכום:</label>
+                            <span class="kt-field">{{ '{:,.2f}'.format(first_tx.amount_ils or 0) if first_tx else '' }}</span></div>
+                        <div><label>לקבלה:</label>
+                            <span class="kt-field">{{ first_tx.receipt_notes if first_tx else '' }}</span></div>
+                    </div>
+                </div>
+            </div>
+
+        {% elif tab == '5' %}
+            <!-- ============ TAB 5: מעקב ============ -->
+            <div class="kt-two-col">
+                <!-- LEFT grid: loan payments (Peulot) -->
+                <div>
+                    <div class="kt-grid-wrap">
+                        <table class="kt-grid">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">תאריך</th>
+                                    <th style="width: 60px;">הו״ק</th>
+                                    <th style="width: 90px;">סכום</th>
+                                    <th>משלם</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in loan_payments %}
+                                <tr>
+                                    <td class="num">{{ p.transaction_date.strftime('%d/%m/%y') if p.transaction_date else '' }}</td>
+                                    <td class="num">{{ p.loan.gmach_num_hork if p.loan else '' }}</td>
+                                    <td class="num">{{ '{:,.2f}'.format(p.amount_ils or 0) }}</td>
+                                    <td>{{ p.loan.member.full_name if p.loan and p.loan.member else '' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr class="empty"><td colspan="4">אין פעולות הו״ק</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RIGHT grid: general transactions -->
+                <div>
+                    <div class="kt-grid-wrap">
+                        <table class="kt-grid">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">תאריך</th>
+                                    <th style="width: 90px;">סכום</th>
+                                    <th>משלם</th>
+                                    <th>פרטים</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in transactions %}
+                                <tr>
+                                    <td class="num">{{ t.transaction_date.strftime('%d/%m/%y') if t.transaction_date else '' }}</td>
+                                    <td class="num">{{ '{:,.2f}'.format(t.amount_ils or 0) }}</td>
+                                    <td>{{ member.full_name }}</td>
+                                    <td>{{ t.description or '' }}</td>
+                                </tr>
+                                {% else %}
+                                <tr class="empty"><td colspan="4">אין תנועות</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category totals -->
+            <div class="kt-totals">
+                <div class="pill">תמיכה <span class="amt">{{ '{:,.0f}'.format(cat_totals.get('תמי', 0)) }}</span></div>
+                <div class="pill">תרומה <span class="amt">{{ '{:,.0f}'.format(cat_totals.get('תרו', 0)) }}</span></div>
+                <div class="pill">פקדון <span class="amt">{{ '{:,.0f}'.format(cat_totals.get('פקד', 0)) }}</span></div>
+                <div class="pill">הלוואה <span class="amt">{{ '{:,.0f}'.format(cat_totals.get('הלו', 0)) }}</span></div>
+            </div>
+
         {% endif %}
 
-    {% elif tab == 'loans' %}
-        <div class="gmach-cyan-panel" style="padding: 8px;">
-            <table class="access-grid">
-                <thead><tr>
-                    <th>{{ t('gemach.loan.type') }} #</th>
-                    <th>{{ t('gemach.loan.status') }}</th>
-                    <th>{{ t('gemach.loan.amount') }}</th>
-                    <th>{{ t('gemach.loan.currency') }}</th>
-                    <th>{{ t('gemach.loan.start') }}</th>
-                    <th>{{ t('gemach.loan.payments') }}</th>
-                    <th>{{ t('gemach.loan.bounces') }}</th>
-                </tr></thead>
-                <tbody>
-                    {% for l in loans %}
-                    <tr onclick="location.href='{{ url_for('gemach.loan_detail', loan_id=l.id) }}'">
-                        <td style="font-weight: bold; color: var(--gmach-navy);">{{ l.gmach_num_hork }}</td>
-                        <td>
-                            {% if l.status == 'p' %}<span class="badge-status badge-active">{{ t('gemach.status.active') }}</span>
-                            {% elif l.status == 's' %}<span class="badge-status badge-satisfied">{{ t('gemach.status.satisfied') }}</span>
-                            {% elif l.status == 'b' %}<span class="badge-status badge-cancelled">{{ t('gemach.status.cancelled') }}</span>
-                            {% else %}{{ l.status }}{% endif %}
-                        </td>
-                        <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{{ "{:,.2f}".format(l.amount or 0) }}</td>
-                        <td>{{ l.currency }}</td>
-                        <td style="font-family: 'Courier New', monospace;">{{ l.start_date or '—' }}</td>
-                        <td>{{ l.payments_made or 0 }} / {{ l.committed_payments or t('gemach.loan.unlimited')|lower }}</td>
-                        <td>{% if (l.bounces or 0) > 0 %}<span style="color: #C62828; font-weight: bold;">{{ l.bounces }}</span>{% else %}0{% endif %}</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="7" style="text-align: center; color: #888; padding: 30px;">
-                        {{ t('gemach.loans.none') }}
-                    </td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
         </div>
-
-    {% elif tab == 'transactions' %}
-        <div class="gmach-cyan-panel" style="padding: 8px;">
-            <table class="access-grid">
-                <thead><tr>
-                    <th style="width: 100px;">{{ t('gemach.transaction.date') }}</th>
-                    <th style="width: 110px;">{{ t('gemach.transaction.category') }}</th>
-                    <th style="width: 110px; text-align: {{ 'left' if is_rtl else 'right' }};">{{ t('gemach.transaction.amount_ils') }}</th>
-                    <th style="width: 90px; text-align: {{ 'left' if is_rtl else 'right' }};">{{ t('gemach.transaction.amount_usd') }}</th>
-                    <th>{{ t('gemach.transaction.description') }}</th>
-                    <th style="width: 60px; text-align: center;">{{ t('gemach.transaction.receipt') }}</th>
-                </tr></thead>
-                <tbody>
-                    {% for tr in transactions %}
-                    <tr>
-                        <td style="font-family: 'Courier New', monospace;">{{ tr.transaction_date.strftime('%d/%m/%Y') if tr.transaction_date else '' }}</td>
-                        <td>{{ tr.category or '' }}</td>
-                        <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{{ "{:,.2f}".format(tr.amount_ils or 0) }}</td>
-                        <td style="text-align: {{ 'left' if is_rtl else 'right' }}; font-family: 'Courier New', monospace;">{% if tr.amount_usd %}{{ "{:,.2f}".format(tr.amount_usd) }}{% endif %}</td>
-                        <td>{{ tr.description or '' }}</td>
-                        <td style="text-align: center; color: #2E7D32;">{% if tr.receipt_issued %}✓{% endif %}</td>
-                    </tr>
-                    {% else %}
-                    <tr><td colspan="6" style="text-align: center; color: #888; padding: 30px;">
-                        {{ t('gemach.transactions.none') }}
-                    </td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% if transactions|length == 100 %}
-            <p style="text-align: center; color: #666; font-size: 11px; margin: 8px 0 0 0;">
-                ℹ️ {{ t('gemach.common.showing_first_100') }}
-            </p>
-            {% endif %}
-        </div>
-
-    {% elif tab == 'memorials' %}
-        <div class="gmach-cyan-panel" style="padding: 8px;">
-            {% if memorials %}
-            <table class="access-grid">
-                <thead><tr>
-                    <th>{{ t('gemach.memorial.name') }}</th>
-                    <th>{{ t('gemach.memorial.date') }}</th>
-                    <th style="width: 60px; text-align: center;">{{ t('gemach.memorial.active') }}</th>
-                </tr></thead>
-                <tbody>
-                {% for m in memorials %}
-                <tr>
-                    <td>{{ m.deceased_name }}</td>
-                    <td>{{ m.hebrew_day }} {{ m.hebrew_month }} {{ m.hebrew_year }}</td>
-                    <td style="text-align: center; color: #2E7D32;">{% if m.active %}✓{% endif %}</td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p style="color: #666; text-align: center; padding: 30px;">{{ t('gemach.memorials.none') }}</p>
-            {% endif %}
-        </div>
-
-    {% elif tab == 'linked' %}
-        <div style="max-width: 720px; margin: 0 auto;">
-            <div class="gmach-navy-panel" style="margin-bottom: 12px;">
-                <h5 style="color: var(--gmach-cyan); margin: 0 0 12px 0;"><i class="fas fa-link"></i> {{ t('gemach.linked.title') }}</h5>
-
-                <div style="margin: 12px 0; padding: 10px; background: rgba(255,255,255,0.08); border-{{ 'right' if is_rtl else 'left' }}: 3px solid var(--gmach-cyan);">
-                    <strong>🏛 ZTorm:</strong>
-                    {% if member.ztorm_donor_id %}
-                        <span style="font-family: 'Courier New', monospace; color: var(--gmach-cyan);">#{{ member.ztorm_donor_id }}</span>
-                        <a href="/ztorm/donors/{{ member.ztorm_donor_id }}" style="margin-inline-start: 10px; background: #FFD700; color: #000; padding: 2px 10px; text-decoration: none; font-size: 12px; font-weight: bold;">
-                            {{ t('gemach.linked.view_in_ztorm') }}
-                        </a>
-                    {% else %}
-                        <em style="color: #BBB;">{{ t('gemach.linked.none') }}</em>
-                    {% endif %}
-                </div>
-
-                <div style="margin: 12px 0; padding: 10px; background: rgba(255,255,255,0.08); border-{{ 'right' if is_rtl else 'left' }}: 3px solid #FFD180;">
-                    <strong>Ⓜ Matat:</strong>
-                    {% if linked_donor %}
-                        <span style="color: #FFD180;">{{ linked_donor.full_name }} (#{{ linked_donor.id }})</span>
-                        <a href="{{ url_for('admin.donor_detail', id=linked_donor.id) }}" style="margin-inline-start: 10px; background: #FFD180; color: #000; padding: 2px 10px; text-decoration: none; font-size: 12px; font-weight: bold;">
-                            {{ t('gemach.linked.view_in_matat') }}
-                        </a>
-                        <div style="margin-top: 8px; font-size: 12px; color: #BBB;">
-                            {{ t('gemach.member.phone') }}: {{ linked_donor.phone or '—' }}<br>
-                            {{ t('gemach.members.tz') }}: {{ linked_donor.teudat_zehut or '—' }}<br>
-                            Email: {{ linked_donor.email or '—' }}
-                        </div>
-                    {% else %}
-                        <em style="color: #BBB;">{{ t('gemach.linked.no_donor') }}</em>
-                    {% endif %}
-                </div>
-            </div>
-
-            <div style="background: #FFFDE7; border: 2px solid #FBC02D; padding: 12px 14px; font-size: 12px; color: #5D4037; line-height: 1.6;">
-                <strong>ℹ️ {{ t('gemach.linked.how_linking_works') }}</strong><br>
-                {{ t('gemach.linked.explanation') }}
-            </div>
-        </div>
-
-    {% endif %}
     </div>
+
+    <!-- Bottom member record navigator -->
+    <div class="kt-record-nav">
+        <span>רשומה:</span>
+        <a class="{% if not prev_member_id %}disabled{% endif %}"
+           href="{{ url_for('gemach.members') }}?sort=card_no" title="ראשון">⏮</a>
+        <a class="{% if not prev_member_id %}disabled{% endif %}"
+           href="{% if prev_member_id %}{{ url_for('gemach.member_detail', member_id=prev_member_id, tab=tab) }}{% else %}#{% endif %}"
+           title="הקודם">◀</a>
+        <input type="text" readonly value="{{ record_number }}">
+        <a class="{% if not next_member_id %}disabled{% endif %}"
+           href="{% if next_member_id %}{{ url_for('gemach.member_detail', member_id=next_member_id, tab=tab) }}{% else %}#{% endif %}"
+           title="הבא">▶</a>
+        <a class="{% if not next_member_id %}disabled{% endif %}"
+           href="{{ url_for('gemach.members') }}?sort=card_no&page=last" title="אחרון">⏭</a>
+        <span>מתוך {{ '{:,}'.format(total_members) }}</span>
+    </div>
+
 </div>
 {% endblock %}
 
 {% block status %}
 {{ t('gemach.members.card_no') }} #{{ member.gmach_card_no }} &middot; {{ member.full_name }}
+&middot; רשומה {{ record_number }} מתוך {{ '{:,}'.format(total_members) }}
 {% endblock %}

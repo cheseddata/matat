@@ -68,21 +68,66 @@ def members():
 @gemach_required
 def member_detail(member_id):
     member = GemachMember.query.get_or_404(member_id)
-    tab = request.args.get('tab', 'overview')
+    tab = request.args.get('tab', '1')  # Access-style: 1/2/3/4/5
 
-    loans = member.loans.order_by(GemachLoan.created_at.desc()).all()
+    # Tab 3 (הו״ק): loans grid
+    loans = member.loans.order_by(GemachLoan.start_date.desc().nullslast()).all()
+
+    # Tab 4 (תנועות): general transactions, oldest first within the last 200
     transactions = list(reversed(
-        member.transactions.order_by(GemachTransaction.transaction_date.desc()).limit(100).all()
+        member.transactions.order_by(GemachTransaction.transaction_date.desc()).limit(200).all()
     ))
-    memorials = member.memorials.all()
 
-    # Linked Donor (if any)
+    # Tab 5 (מעקב):
+    #   RIGHT grid = general transactions for this member (deposits,
+    #     donations, supports). Same source as tab 4 but summarized.
+    #   LEFT grid  = loan payments (Peulot) for any of this member's loans.
+    loan_payments = (
+        GemachLoanTransaction.query
+        .join(GemachLoan, GemachLoanTransaction.loan_id == GemachLoan.id)
+        .filter(GemachLoan.member_id == member.id)
+        .order_by(GemachLoanTransaction.transaction_date.desc())
+        .limit(200).all()
+    )
+
+    # Totals by category for the bottom bar on tab 5.
+    cat_totals = {'תמי': 0.0, 'תרו': 0.0, 'פקד': 0.0, 'הלו': 0.0}
+    rows = db.session.query(
+        GemachTransaction.category,
+        func.sum(GemachTransaction.amount_ils),
+    ).filter(
+        GemachTransaction.member_id == member.id,
+        GemachTransaction.category.in_(list(cat_totals.keys())),
+    ).group_by(GemachTransaction.category).all()
+    for cat, s in rows:
+        cat_totals[cat] = float(s or 0)
+
+    # Record navigator (previous / next by card_no, plus record #).
+    total_members = GemachMember.query.count()
+    # Compute 1-based ordinal by counting members with smaller card_no.
+    record_number = GemachMember.query.filter(
+        GemachMember.gmach_card_no < (member.gmach_card_no or 0)
+    ).count() + 1
+    prev_m = GemachMember.query.filter(
+        GemachMember.gmach_card_no < (member.gmach_card_no or 0)
+    ).order_by(GemachMember.gmach_card_no.desc()).first()
+    next_m = GemachMember.query.filter(
+        GemachMember.gmach_card_no > (member.gmach_card_no or 0)
+    ).order_by(GemachMember.gmach_card_no.asc()).first()
+
+    memorials = member.memorials.all()
     linked_donor = member.donor
 
-    return render_template('gemach/member_detail.html',
-                           member=member, tab=tab,
-                           loans=loans, transactions=transactions,
-                           memorials=memorials, linked_donor=linked_donor)
+    return render_template(
+        'gemach/member_detail.html',
+        member=member, tab=tab,
+        loans=loans, transactions=transactions,
+        loan_payments=loan_payments, cat_totals=cat_totals,
+        memorials=memorials, linked_donor=linked_donor,
+        record_number=record_number, total_members=total_members,
+        prev_member_id=prev_m.id if prev_m else None,
+        next_member_id=next_m.id if next_m else None,
+    )
 
 
 # ============================================================
