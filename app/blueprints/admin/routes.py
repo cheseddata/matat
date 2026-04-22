@@ -834,6 +834,7 @@ def new_check_donation():
         reference = (request.form.get('reference') or '').strip()
         payment_date_str = (request.form.get('payment_date') or '').strip()
         memo = (request.form.get('memo') or '').strip()
+        receipt_override = (request.form.get('receipt_number') or '').strip()
         send_email = request.form.get('send_email') == 'on'
 
         if not first_name or not last_name:
@@ -943,7 +944,12 @@ def new_check_donation():
         db.session.add(donation)
         db.session.flush()
 
-        receipt = create_receipt_atomic(donation, donor)
+        try:
+            receipt = create_receipt_atomic(donation, donor, override_number=receipt_override or None)
+        except ValueError as e:
+            db.session.rollback()
+            flash(str(e), 'error')
+            return redirect(url_for('admin.new_check_donation'))
         db.session.commit()
 
         label = 'Check' if payment_method == 'check' else 'Zelle'

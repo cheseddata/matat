@@ -163,6 +163,12 @@
                         </div>
                     </div>
 
+                    <div class="form-group" style="margin-top: 4px;">
+                        <label>Receipt number (optional)</label>
+                        <input type="text" name="receipt_number" placeholder="Leave blank to auto-generate (e.g. MM-2026-00387)">
+                        <div class="hint">Use only to backfill against an existing paper receipt or a legacy system number. Blank = next sequential number. Must be unique.</div>
+                    </div>
+
                     <div class="upload-group">
                         <label class="file-label" for="check_image">Upload image (optional)</label>
                         <input type="file" name="check_image" id="check_image" accept="image/*,.pdf">

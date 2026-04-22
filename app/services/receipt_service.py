@@ -167,19 +167,31 @@ def get_receipt_language(donor):
     return 'en'
 
 
-def create_receipt_atomic(donation, donor):
+def create_receipt_atomic(donation, donor, override_number=None):
     """
     Create a receipt record and generate PDF atomically.
 
     This function should be called within an existing transaction.
     Uses SELECT FOR UPDATE to ensure sequential receipt numbers.
 
+    If ``override_number`` is supplied, that exact receipt number is used and
+    the sequential counter is *not* incremented. Useful when an operator is
+    backfilling a donation against an existing paper receipt or migrating
+    from a legacy system. Caller is responsible for format validation; this
+    function only enforces uniqueness.
+
     Returns:
         Receipt: The created receipt record, or None on failure
     """
     try:
-        # Generate receipt number atomically (within current transaction)
-        receipt_number = generate_receipt_number_atomic()
+        if override_number:
+            override_number = override_number.strip()
+            if Receipt.query.filter_by(receipt_number=override_number).first():
+                raise ValueError(f'Receipt number {override_number} is already in use.')
+            receipt_number = override_number
+        else:
+            # Generate receipt number atomically (within current transaction)
+            receipt_number = generate_receipt_number_atomic()
         donation.receipt_number = receipt_number
 
         config = ConfigSettings.query.first()

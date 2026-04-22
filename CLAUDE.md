@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (manual donation: optional custom receipt number)
+- **`create_receipt_atomic(donation, donor, override_number=None)`**: new optional arg; when supplied, uses that exact receipt number and does **not** increment the sequential counter. Raises `ValueError` if the number is already in use. Use case: backfilling paper receipts or matching a legacy system while running both systems in parallel.
+- **Manual donation form** (`/admin/donations/new-check`): new "Receipt number (optional)" input. Blank = next auto-generated number (default), else the typed value is used verbatim.
+- Duplicate number returns the operator to the form with a flash error; the donation is rolled back.
+
 ### 2026-04-22 (receipt payment-method: "Credit Card ending in 1234" for card donations)
 - Changed all four receipt templates to render card donations as **"Credit Card ending in 1234"** instead of the brand name ("Visa ending in 1234"). ACH bank donations read **"ACH ending in 1234"**.
 - Regenerated 83 stored PDFs for existing card donations so their files match the new wording.
