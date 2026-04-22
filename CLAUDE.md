@@ -265,6 +265,17 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (test server + Tailscale + auto-sync)
+- **New test server** at `/var/www/matat/test` on `178.128.83.220`, reachable **only via SSH tunnel** (no public Caddy entry):
+  - `ssh -L 8080:127.0.0.1:5051 root@matat-server` → `http://localhost:8080`
+  - Service: `matat-test.service` (Gunicorn on `127.0.0.1:5051`, 2 workers, SANDBOX_MODE=1)
+  - DB: SQLite at `/var/www/matat/test/instance/matat.db` (isolated from prod MySQL)
+  - Branch: `staging` (push here to deploy; test server auto-pulls every 60 s)
+  - Full setup doc: `tools/staging/README.md` on the `staging` branch.
+- **Tailscale mesh** between the operator PC (`matat-operator-pc`) and server (`matat-server`) under `tcmatat@`. Either machine addresses the other by name over a private mesh — no port forwarding, no reverse tunnel. `ssh root@matat-server` just works from here.
+- **Git-based deploy loop (staging branch):** `matat-test-deploy.timer` on the server runs `tools/deploy_staging.sh` every 60 s. On a new commit on `origin/staging` it fast-forwards, conditionally `pip install`s / `flask db upgrade`s, and restarts `matat-test`. Replaces the cherry-pick-on-operator-PC dance for testing changes.
+- **`sync_live_data.bat` auto-push:** after every Access → SQLite sync, `scp`s `instance/matat.db` to `root@matat-server:/var/www/matat/test/instance/` over Tailscale and restarts `matat-test` so SQLAlchemy reopens the file. No more CSV export/import round-trips to refresh sandbox data; a Windows Scheduled Task running the `.bat` would make fresh data land on the test server automatically. Fails gracefully if Tailscale/SSH isn't available — local SQLite is still updated.
+
 ### 2026-04-22 (ticket 4 — interactive members search)
 - **Ticket 4 fix on `/gemach/members`** (operator feedback: "I put in 3321 but it did not show up anything I want the search to be interactive"): all three חיפוש-dialog fields (מס׳ כרטיס / שם פרטי / שם משפחה) now filter the grid live as the operator types — no Enter, no reload. Debounced 180 ms, last-request-wins, URL reflects current filters via `history.replaceState` so refresh / bookmark still works.
 - **How it's wired:**

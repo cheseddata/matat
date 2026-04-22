@@ -18,6 +18,14 @@ if not exist venv\Scripts\python.exe (
 )
 
 REM ------------------------------------------------------------
+REM Force sync scripts to write to the LOCAL SQLite file (fast).
+REM Even in "remote" DB mode, the sync always populates the local
+REM SQLite first; push_to_matattest.py then copies gemach_* tables
+REM up to matattest through the SSH tunnel (only runs if mode=remote).
+REM ------------------------------------------------------------
+set DATABASE_URL=sqlite:///C:/Matat/instance/matat.db
+
+REM ------------------------------------------------------------
 REM 1. GEMACH sync
 REM ------------------------------------------------------------
 echo.
@@ -65,7 +73,7 @@ REM Step 1c: import members + loans
 echo.
 echo [Gemach 3/4] Importing Gemach members + loans...
 set GMACH_EXTRACT_DIR=%EXTRACT_DIR%
-venv\Scripts\python.exe sync\import_gmach_data.py
+venv\Scripts\python.exe -u sync\import_gmach_data.py
 if errorlevel 1 (
     echo   [X] Gemach base import failed.
     goto :gemach_done
@@ -74,7 +82,7 @@ if errorlevel 1 (
 REM Step 1d: import big transaction tables
 echo.
 echo [Gemach 4/4] Importing Peulot + Tnuot transactions ^(may take ~1 min^)...
-venv\Scripts\python.exe sync\import_gmach_transactions.py
+venv\Scripts\python.exe -u sync\import_gmach_transactions.py
 if errorlevel 1 (
     echo   [X] Gemach transactions import failed.
 )
@@ -108,7 +116,7 @@ if errorlevel 1 (
 
 echo.
 echo   Running ZTorm import...
-venv\Scripts\python.exe sync\import_ztorm_live.py
+venv\Scripts\python.exe -u sync\import_ztorm_live.py
 if errorlevel 1 (
     echo   [!] ZTorm import had errors. Sandbox will use shipped ZTorm data.
 )
@@ -122,7 +130,53 @@ echo.
 echo ============================================================
 echo   Re-linking Gemach members to Matat donors...
 echo ============================================================
-venv\Scripts\python.exe sync\run_smart_match.py
+venv\Scripts\python.exe -u sync\run_smart_match.py
+
+REM ------------------------------------------------------------
+REM 4. Push freshly-synced gemach data up to matattest (via tunnel)
+REM     Only runs if instance\db_mode.txt says "remote".
+REM ------------------------------------------------------------
+set DB_MODE_FILE=%~dp0instance\db_mode.txt
+set DB_MODE=local
+if exist "%DB_MODE_FILE%" (
+    for /f "tokens=*" %%i in (%DB_MODE_FILE%) do set DB_MODE=%%i
+)
+if /i "%DB_MODE%"=="remote" (
+    echo.
+    echo ============================================================
+    echo   Pushing gemach_* tables to matattest MySQL ^(via SSH tunnel^)...
+    echo ============================================================
+    venv\Scripts\python.exe -u sync\push_to_matattest.py
+    if errorlevel 1 (
+        echo   [!] Push to matattest failed. Local SQLite is still up to date.
+    )
+)
+
+REM ------------------------------------------------------------
+REM 5. Push freshly-synced SQLite file to the test server
+REM    (/var/www/matat/test on matat-server, reached via Tailscale)
+REM    and restart matat-test so SQLAlchemy reopens the new file.
+REM    Requires: Tailscale up, SSH key authorized for root@matat-server.
+REM    Non-fatal on failure — local SQLite is still up to date.
+REM ------------------------------------------------------------
+where ssh >nul 2>&1
+if %errorlevel%==0 (
+    echo.
+    echo ============================================================
+    echo   Pushing matat.db to test.matat server ^(via Tailscale^)...
+    echo ============================================================
+    scp -o ConnectTimeout=5 -o BatchMode=yes "%~dp0instance\matat.db" root@matat-server:/var/www/matat/test/instance/matat.db
+    if errorlevel 1 (
+        echo   [!] scp failed ^(Tailscale down? key not loaded?^). Skipping restart.
+    ) else (
+        ssh -o ConnectTimeout=5 -o BatchMode=yes root@matat-server "systemctl restart matat-test"
+        if errorlevel 1 (
+            echo   [!] Restart command failed. File copied but matat-test may need manual restart.
+        ) else (
+            echo   [OK] Test server refreshed.
+        )
+    )
+)
 
 echo.
 echo ============================================================
