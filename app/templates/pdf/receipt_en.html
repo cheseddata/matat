@@ -51,32 +51,30 @@
         }
         .fld.wrap { white-space: normal; }
 
-        /* Receipt No — sits right under the big "Receipt No." header,
-           same left margin, larger font so it reads as a section value. */
-        #f_receipt_no   { top: 82mm;  left: 28mm;   width: 90mm;
+        /* Receipt No — tucked right under the big blue "Receipt No."
+           header. The header art occupies y≈55-75mm. */
+        #f_receipt_no   { top: 75mm;  left: 28mm;   width: 90mm;
                           font-size: 14pt; font-weight: 700; color: #000; }
 
-        /* Form of payment — value on the dashed underline after the label.
-           Label ends ~x=55mm on the art; the rule below it runs to ~x=130mm. */
-        #f_payment      { top: 95mm;  left: 60mm;   width: 70mm;
+        /* Form of payment — value on the dashed underline after the label. */
+        #f_payment      { top: 94mm;  left: 60mm;   width: 70mm;
                           font-size: 11pt; }
 
-        /* Donor rows — start just after each label, black ink. */
-        #f_name         { top: 118mm; left: 50mm;   width: 80mm; }
-        #f_street       { top: 125mm; left: 50mm;   width: 80mm; }
-        #f_city         { top: 132mm; left: 50mm;   width: 80mm; }
+        /* Donor rows — values sit ON each printed underline.
+           Underlines in the JPEG are at y≈117 / 124 / 131 / 138 mm. */
+        #f_name         { top: 116mm; left: 50mm;   width: 80mm; }
+        #f_street       { top: 123mm; left: 50mm;   width: 80mm; }
+        #f_city         { top: 130mm; left: 50mm;   width: 80mm; }
 
-        /* Amount — the headline number. Larger and bold so it stands out. */
-        #f_amount       { top: 139mm; left: 50mm;   width: 80mm;
+        /* Amount — the headline number. */
+        #f_amount       { top: 137mm; left: 50mm;   width: 80mm;
                           font-size: 13pt; font-weight: 700; }
 
-        /* In Words — same visual row as its label; value starts just
-           after the "In Words" text on the left. */
-        #f_words        { top: 146mm; left: 50mm;   width: 85mm;
+        /* In Words — same row as its label (label at y≈144mm). */
+        #f_words        { top: 143mm; left: 50mm;   width: 85mm;
                           font-size: 10pt; font-style: italic; }
 
-        /* Date — plain black on the date line. Signature stays empty
-           (the org hand-signs or stamps the printed copy). */
+        /* Date line. Signature stays empty (org hand-signs the print). */
         #f_date         { top: 232mm; left: 24mm;   font-size: 10pt; }
     </style>
 </head>
