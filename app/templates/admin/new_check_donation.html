@@ -174,11 +174,13 @@
                         <div class="hint">Use only to backfill against an existing paper receipt or a legacy system number. Blank = next sequential number. Must be unique.</div>
                     </div>
 
-                    <div class="upload-group">
+                    <div class="upload-group" id="check_image_zone" tabindex="0">
                         <label class="file-label" for="check_image">Upload image (optional)</label>
+                        <button type="button" class="file-label" id="paste_btn" style="background:#27ae60; margin-left: 6px;">Paste from clipboard</button>
                         <input type="file" name="check_image" id="check_image" accept="image/*,.pdf">
                         <span id="file_name"></span>
-                        <div class="hint" id="upload_hint">JPG, PNG, PDF — photo of the check or a Zelle screenshot.</div>
+                        <div class="hint" id="upload_hint">JPG, PNG, PDF — photo of the check or a Zelle screenshot. Tip: click in this box and press <kbd>Ctrl</kbd>+<kbd>V</kbd> to paste an image directly.</div>
+                        <img id="check_image_preview" alt="" style="display:none; max-height: 120px; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;">
                     </div>
                 </div>
 
@@ -243,11 +245,89 @@
     method.addEventListener('change', syncMethod);
     syncMethod();
 
-    // --- file name display ---
+    // --- check image: file name, preview, clipboard paste ---
     const fileInput = document.getElementById('check_image');
     const fileName = document.getElementById('file_name');
+    const preview = document.getElementById('check_image_preview');
+    const pasteZone = document.getElementById('check_image_zone');
+    const pasteBtn = document.getElementById('paste_btn');
+
+    function updatePreview(file) {
+        fileName.textContent = file ? file.name : '';
+        if (file && file.type && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => { preview.src = e.target.result; preview.style.display = 'block'; };
+            reader.readAsDataURL(file);
+        } else {
+            preview.removeAttribute('src');
+            preview.style.display = 'none';
+        }
+    }
+
     fileInput.addEventListener('change', () => {
-        fileName.textContent = fileInput.files.length ? fileInput.files[0].name : '';
+        updatePreview(fileInput.files[0] || null);
+    });
+
+    // Convert a pasted Blob into a real File in the input.
+    function loadBlobIntoInput(blob, filename) {
+        const ext = (blob.type && blob.type.split('/')[1]) || 'png';
+        const file = new File([blob], filename || `pasted-check-${Date.now()}.${ext}`, { type: blob.type });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        updatePreview(file);
+    }
+
+    // Listen for paste events while the zone has focus — also accept paste
+    // anywhere on the form when no other input is focused and the clipboard
+    // contains an image.
+    function handlePaste(e) {
+        const items = (e.clipboardData || e.originalEvent?.clipboardData)?.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.kind === 'file' && item.type.startsWith('image/')) {
+                const blob = item.getAsFile();
+                if (blob) {
+                    e.preventDefault();
+                    loadBlobIntoInput(blob);
+                    return;
+                }
+            }
+        }
+    }
+    pasteZone.addEventListener('paste', handlePaste);
+    // Fallback: also listen globally, but ignore if user is typing in a text
+    // field (let their paste go where they're typing).
+    document.addEventListener('paste', (e) => {
+        const active = document.activeElement;
+        if (active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName)
+            && active !== pasteZone && active.type !== 'file') {
+            return;
+        }
+        handlePaste(e);
+    });
+
+    // Explicit "Paste from clipboard" button using the async Clipboard API
+    // (needs HTTPS and user-gesture — works in Chrome/Edge/Safari).
+    pasteBtn.addEventListener('click', async () => {
+        if (!navigator.clipboard || !navigator.clipboard.read) {
+            alert('Your browser does not support reading images from the clipboard. Use Ctrl+V inside the upload box instead.');
+            return;
+        }
+        try {
+            const items = await navigator.clipboard.read();
+            for (const item of items) {
+                const imgType = item.types.find(t => t.startsWith('image/'));
+                if (imgType) {
+                    const blob = await item.getType(imgType);
+                    loadBlobIntoInput(blob);
+                    return;
+                }
+            }
+            alert('No image found on the clipboard.');
+        } catch (err) {
+            alert('Clipboard read failed: ' + err.message);
+        }
     });
 
     // --- email attachments display + dim when email is off ---

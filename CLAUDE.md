@@ -265,6 +265,12 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (check image: paste from clipboard + live preview)
+- **Manual-donation form — check-image upload** accepts clipboard images now: click in the upload box and press Ctrl/Cmd+V, or click the green **"Paste from clipboard"** button (uses the async Clipboard API; HTTPS-only).
+- Pasted blobs are wrapped in a `File` and assigned to the `check_image` input via a `DataTransfer`, so the server POST path is unchanged.
+- A thumbnail preview now appears under the input as soon as a file is selected or pasted, so the operator can verify the right image before submit.
+- Global paste listener is scoped: if the user is typing in another input, their paste is not hijacked.
+
 ### 2026-04-22 (USD receipt emails always in English)
 - **Bug**: `send_receipt_email` defaulted the email body language to `donor.language_pref`, so a USD receipt addressed to a donor with `language_pref='he'` shipped the email in Hebrew even though the PDF itself (which keys off `donor.country`) was in English.
 - **Fix**: the currency gate at the top of the function already guarantees only USD donations reach the body-rendering step; after it, language defaults to `'en'` unconditionally. An explicit `language=` arg from a test caller can still force Hebrew.
