@@ -1,0 +1,62 @@
+{# Results block for /gemach/members.
+   Rendered inline on full page load and returned bare when ?partial=1
+   so the JS on members.html can swap in new filter results without reload. #}
+<div class="hs-grid-wrap">
+    <table class="hs-grid">
+        <tbody>
+            {% for m in members.items %}
+            <tr onclick="location.href='{{ url_for('gemach.member_detail', member_id=m.id) }}'">
+                <td class="card">{{ m.gmach_card_no }}</td>
+                <td class="first">{{ m.first_name or '' }}</td>
+                <td class="last">{{ m.last_name or '' }}</td>
+            </tr>
+            {% else %}
+            <tr class="empty"><td colspan="3">אין רשומות תואמות</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="hs-action-bar">
+    <a href="{{ url_for('gemach.members') }}" class="hs-action-btn" title="חיפוש חדש">
+        <i class="fas fa-binoculars"></i>
+        <span>חדש</span>
+    </a>
+    {% if members.has_next %}
+      <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}"
+         class="hs-action-btn" title="עמוד הבא">
+          <span class="num red">{{ members.next_num }}</span>
+      </a>
+    {% else %}
+      <span class="hs-action-btn disabled" title="אין עמוד הבא">
+          <span class="num red">—</span>
+      </span>
+    {% endif %}
+    {% if members.pages > 1 and members.page != members.pages %}
+      <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}"
+         class="hs-action-btn" title="עמוד אחרון">
+          <span class="num green">{{ members.pages }}</span>
+      </a>
+    {% else %}
+      <span class="hs-action-btn disabled" title="זה העמוד האחרון">
+          <span class="num green">{{ members.pages or 1 }}</span>
+      </span>
+    {% endif %}
+</div>
+
+{% if members.pages > 1 %}
+<div class="hs-pager">
+    <span>עמוד</span>
+    {% if members.has_prev %}
+    <a href="{{ url_for('gemach.members', page=1, card=s_card, first=s_first, last=s_last) }}">⏮</a>
+    <a href="{{ url_for('gemach.members', page=members.prev_num, card=s_card, first=s_first, last=s_last) }}">◀</a>
+    {% endif %}
+    <span>{{ members.page }} / {{ members.pages }}</span>
+    {% if members.has_next %}
+    <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}">▶</a>
+    <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}">⏭</a>
+    {% endif %}
+    <span>&middot;</span>
+    <span>{{ '{:,}'.format(members.total) }} רשומות</span>
+</div>
+{% endif %}
