@@ -187,6 +187,12 @@
                     <span>Email the receipt to the donor now</span>
                 </label>
 
+                <div class="form-group" id="email_bcc_group" style="margin-top: 10px;">
+                    <label>BCC (optional)</label>
+                    <input type="text" name="bcc" id="bcc" placeholder="person1@example.com, person2@example.com">
+                    <div class="hint">Comma-separated list. These recipients receive the receipt email silently, on top of the standard support@matatmordechai.org audit copy. Ignored if "Email the receipt" is unchecked.</div>
+                </div>
+
                 <div class="upload-group" id="email_attach_group" style="margin-top: 10px;">
                     <label class="file-label" for="email_attachments">Attach file(s) to the email</label>
                     <input type="file" name="email_attachments" id="email_attachments" multiple>
@@ -251,8 +257,11 @@
     attachInput.addEventListener('change', () => {
         attachNames.textContent = Array.from(attachInput.files).map(f => f.name).join(', ');
     });
+    const bccGroup = document.getElementById('email_bcc_group');
     function syncAttachDim() {
-        attachGroup.style.opacity = sendBox.checked ? '1' : '0.55';
+        const on = sendBox.checked;
+        attachGroup.style.opacity = on ? '1' : '0.55';
+        bccGroup.style.opacity = on ? '1' : '0.55';
     }
     sendBox.addEventListener('change', syncAttachDim);
     syncAttachDim();

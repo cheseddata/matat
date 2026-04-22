@@ -839,6 +839,13 @@ def new_check_donation():
         receipt_override = (request.form.get('receipt_number') or '').strip()
         send_email = request.form.get('send_email') == 'on'
 
+        bcc_raw = (request.form.get('bcc') or '').strip()
+        bcc_list = []
+        for item in bcc_raw.replace(';', ',').split(','):
+            addr = item.strip()
+            if addr and '@' in addr and '.' in addr.split('@')[-1] and addr not in bcc_list:
+                bcc_list.append(addr)
+
         if not (first_name and last_name) and not company_name:
             flash('Enter a donor name (first + last) or a company name.', 'error')
             return redirect(url_for('admin.new_check_donation'))
@@ -980,12 +987,18 @@ def new_check_donation():
                 ok = send_receipt_email(
                     donor, donation, receipt,
                     extra_attachments=email_attachment_paths or None,
+                    extra_bcc=bcc_list or None,
                 )
                 if ok:
                     donation.receipt_sent = True
                     donation.receipt_sent_at = datetime.utcnow()
                     db.session.commit()
-                    extra_note = f' with {len(email_attachment_paths)} attachment(s)' if email_attachment_paths else ''
+                    notes = []
+                    if email_attachment_paths:
+                        notes.append(f'{len(email_attachment_paths)} attachment(s)')
+                    if bcc_list:
+                        notes.append(f'BCC: {", ".join(bcc_list)}')
+                    extra_note = f' ({"; ".join(notes)})' if notes else ''
                     flash(f'{label} donation saved and receipt {receipt.receipt_number} emailed to {donor.email}{extra_note}.', 'success')
                 else:
                     flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but email sending failed.', 'warning')

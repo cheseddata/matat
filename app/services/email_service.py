@@ -98,8 +98,13 @@ def get_email_config():
 
 
 def send_email(to, subject, html_body, text_body=None, attachments=None,
-               message_type='general', related_donation_id=None, related_link_id=None):
-    """Send email and log to message queue."""
+               message_type='general', related_donation_id=None, related_link_id=None,
+               extra_bcc=None):
+    """Send email and log to message queue.
+
+    ``extra_bcc`` is an optional list of email addresses added to the BCC
+    line in addition to the fixed support@matatmordechai.org audit copy.
+    """
     logger.info(f'send_email: to={to}, subject={subject[:50]}..., type={message_type}')
 
     # SANDBOX_MODE short-circuit: log the email to the queue but never hit a
@@ -149,19 +154,19 @@ def send_email(to, subject, html_body, text_body=None, attachments=None,
     # Try to send
     try:
         if provider == 'activetrail':
-            result = _send_activetrail(to, subject, html_body, text_body, attachments, email_config, message_id)
+            result = _send_activetrail(to, subject, html_body, text_body, attachments, email_config, message_id, extra_bcc=extra_bcc)
             success = result.get('success', False) if isinstance(result, dict) else result
             if success and isinstance(result, dict) and result.get('message_id'):
                 message.provider_message_id = result['message_id']
         elif provider == 'mailtrap':
-            result = _send_mailtrap(to, subject, html_body, text_body, attachments, email_config, message_id)
+            result = _send_mailtrap(to, subject, html_body, text_body, attachments, email_config, message_id, extra_bcc=extra_bcc)
             success = result.get('success', False) if isinstance(result, dict) else result
             if success and isinstance(result, dict) and result.get('message_ids'):
                 message.provider_message_id = ','.join(result['message_ids'])
         elif provider == 'smtp':
-            success = _send_smtp(to, subject, html_body, text_body, attachments, email_config)
+            success = _send_smtp(to, subject, html_body, text_body, attachments, email_config, extra_bcc=extra_bcc)
         elif provider == 'sendgrid':
-            success = _send_sendgrid(to, subject, html_body, text_body, attachments)
+            success = _send_sendgrid(to, subject, html_body, text_body, attachments, extra_bcc=extra_bcc)
         else:
             success = False
 
@@ -181,20 +186,21 @@ def send_email(to, subject, html_body, text_body=None, attachments=None,
         return False
 
 
-def _send_smtp(to, subject, html_body, text_body=None, attachments=None, config=None):
+def _send_smtp(to, subject, html_body, text_body=None, attachments=None, config=None, extra_bcc=None):
     """Send email via SMTP."""
     if not config or not config.get('host'):
         return False
 
     try:
+        bcc_list = [BCC_EMAIL] + [e for e in (extra_bcc or []) if e and e != BCC_EMAIL]
         msg = MIMEMultipart('mixed')
         msg['From'] = f"{config.get('from_name', 'Matat Mordechai')} <{config.get('from_address')}>"
         msg['To'] = to
-        msg['Bcc'] = BCC_EMAIL
+        msg['Bcc'] = ', '.join(bcc_list)
         msg['Subject'] = subject
 
         # Recipients include BCC
-        recipients = [to, BCC_EMAIL]
+        recipients = [to] + bcc_list
 
         # Create alternative part for text/html
         alt_part = MIMEMultipart('alternative')
@@ -233,7 +239,7 @@ def _send_smtp(to, subject, html_body, text_body=None, attachments=None, config=
         return False
 
 
-def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, config=None, internal_message_id=None):
+def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, config=None, internal_message_id=None, extra_bcc=None):
     """Send email via Mailtrap Email Sending API with tracking enabled."""
     import requests
     import base64
@@ -257,7 +263,7 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
                 "name": config.get('from_name', 'Matat Mordechai')
             },
             "to": [{"email": to}],
-            "bcc": [{"email": BCC_EMAIL}],
+            "bcc": [{"email": e} for e in ([BCC_EMAIL] + [x for x in (extra_bcc or []) if x and x != BCC_EMAIL])],
             "subject": subject,
             "html": html_body,
             # Enable tracking
@@ -306,7 +312,7 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
         return {'success': False}
 
 
-def _send_sendgrid(to, subject, html_body, text_body=None, attachments=None):
+def _send_sendgrid(to, subject, html_body, text_body=None, attachments=None, extra_bcc=None):
     """Send via SendGrid."""
     api_key = os.environ.get('SENDGRID_API_KEY')
     from_email = os.environ.get('MAIL_DEFAULT_SENDER', 'support@matatmordechai.org')
@@ -327,8 +333,11 @@ def _send_sendgrid(to, subject, html_body, text_body=None, attachments=None):
             plain_text_content=text_body
         )
 
-        # Add BCC
+        # Add BCC (audit + caller-supplied extras, deduped)
         message.add_bcc(Bcc(BCC_EMAIL))
+        for addr in (extra_bcc or []):
+            if addr and addr != BCC_EMAIL:
+                message.add_bcc(Bcc(addr))
 
         # Add attachments
         if attachments:
@@ -375,7 +384,7 @@ def _add_to_activetrail_group(email, group_id, config):
         logger.warning(f'ActiveTrail: Error adding to group: {e}')
 
 
-def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, config=None, internal_message_id=None):
+def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, config=None, internal_message_id=None, extra_bcc=None):
     """Send email via ActiveTrail Operational Message API."""
     import requests
 
@@ -414,7 +423,7 @@ def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, 
                 "body_part_format": 1  # HTML format
             },
             "bcc": {
-                "bcc_emails": [BCC_EMAIL]
+                "bcc_emails": [BCC_EMAIL] + [e for e in (extra_bcc or []) if e and e != BCC_EMAIL]
             }
         }
 
@@ -451,7 +460,7 @@ def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, 
         return {'success': False, 'error': str(e)}
 
 
-def send_receipt_email(donor, donation, receipt, language=None, extra_attachments=None):
+def send_receipt_email(donor, donation, receipt, language=None, extra_attachments=None, extra_bcc=None):
     """Send receipt email to donor with PDF attachment.
 
     Only USD donations get an email from matatmordechai.org — Israeli
@@ -511,7 +520,8 @@ def send_receipt_email(donor, donation, receipt, language=None, extra_attachment
         html_body=html_body,
         attachments=attachments,
         message_type='receipt',
-        related_donation_id=donation.id
+        related_donation_id=donation.id,
+        extra_bcc=extra_bcc,
     )
 
     if success:

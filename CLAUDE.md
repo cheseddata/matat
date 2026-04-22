@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (manual donation: optional BCC)
+- **`send_email(..., extra_bcc=None)`** and **`send_receipt_email(..., extra_bcc=None)`**: optional list of BCC addresses added alongside the fixed `support@matatmordechai.org` audit copy.
+- Plumbed through all four providers: `_send_smtp`, `_send_mailtrap`, `_send_sendgrid`, `_send_activetrail`. Each dedupes against the audit address so the BCC list never has duplicates.
+- **Manual-donation form**: new "BCC (optional)" text input. Accepts comma- (or semicolon-) separated addresses. Invalid entries are silently skipped; the rest are attached to the outgoing receipt email. The input group dims when "Email the receipt" is off. Success flash now summarises attachment count and BCC list.
+
 ### 2026-04-22 (manual donation: extra attachments for the receipt email)
 - **`send_receipt_email(..., extra_attachments=None)`**: new optional list of filesystem paths. Each existing path is appended to the receipt PDF when building the outgoing email. Downstream (`send_email`, `_send_smtp`, `_send_mailtrap`, `_send_activetrail`) already accepted multi-attachment lists, so no changes required there.
 - **Manual-donation form**: new multi-file input "Attach file(s) to the email" right below the "Email the receipt" checkbox. Files are saved to `/var/www/matat/uploads/email_attachments/<donor_id>_<rand>_<name>`, collected into the donation's `processor_metadata.email_attachments` for audit, and forwarded to `send_receipt_email` as `extra_attachments`.
