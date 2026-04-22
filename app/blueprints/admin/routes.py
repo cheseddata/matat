@@ -771,6 +771,126 @@ def send_donation_receipt(id):
 # DONATIONS MANAGEMENT
 # =============================================================================
 
+@admin_bp.route('/donations/new-check', methods=['GET', 'POST'])
+@admin_required
+def new_check_donation():
+    """Record a check donation and optionally email the receipt."""
+    from ...services.receipt_service import create_receipt_atomic
+    from ...services.email_service import send_receipt_email
+    from datetime import datetime as _dt
+
+    if request.method == 'POST':
+        first_name = (request.form.get('first_name') or '').strip()
+        last_name = (request.form.get('last_name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        phone = (request.form.get('phone') or '').strip()
+        teudat_zehut = (request.form.get('teudat_zehut') or '').strip()
+        amount_str = (request.form.get('amount') or '').strip()
+        currency = (request.form.get('currency') or 'USD').upper()
+        check_number = (request.form.get('check_number') or '').strip()
+        check_date_str = (request.form.get('check_date') or '').strip()
+        memo = (request.form.get('memo') or '').strip()
+        send_email = request.form.get('send_email') == 'on'
+
+        # Minimal validation
+        if not first_name or not last_name:
+            flash('Donor first and last name are required.', 'error')
+            return redirect(url_for('admin.new_check_donation'))
+        try:
+            amount_dollars = float(amount_str)
+        except ValueError:
+            amount_dollars = 0
+        if amount_dollars <= 0:
+            flash('Amount must be greater than zero.', 'error')
+            return redirect(url_for('admin.new_check_donation'))
+
+        # Find existing donor: prefer email match, else same first+last name
+        donor = None
+        if email:
+            donor = Donor.query.filter(
+                Donor.email == email,
+                Donor.deleted_at.is_(None),
+            ).first()
+        if not donor:
+            donor = Donor.query.filter(
+                Donor.first_name == first_name,
+                Donor.last_name == last_name,
+                Donor.deleted_at.is_(None),
+            ).first()
+
+        if donor:
+            # Update missing fields; don't overwrite existing data
+            if email and not donor.email:
+                donor.email = email
+            if phone and not donor.phone:
+                donor.phone = phone
+            if teudat_zehut and not donor.teudat_zehut:
+                donor.teudat_zehut = teudat_zehut
+        else:
+            donor = Donor(
+                first_name=first_name,
+                last_name=last_name,
+                email=email or f'no-email-{first_name.lower()}.{last_name.lower()}@matatmordechai.org',
+                phone=phone or None,
+                teudat_zehut=teudat_zehut or None,
+            )
+            db.session.add(donor)
+            db.session.flush()
+
+        # Parse check date (optional)
+        check_date_iso = None
+        if check_date_str:
+            try:
+                check_date_iso = _dt.strptime(check_date_str, '%Y-%m-%d').date().isoformat()
+            except ValueError:
+                check_date_iso = check_date_str  # store as-is if format unexpected
+
+        amount_cents = int(round(amount_dollars * 100))
+        donation = Donation(
+            donor_id=donor.id,
+            salesperson_id=None,
+            payment_processor='check',
+            processor_confirmation=check_number or None,
+            processor_metadata={
+                'check_number': check_number or None,
+                'check_date': check_date_iso,
+                'memo': memo or None,
+                'entered_by_user_id': current_user.id,
+            },
+            amount=amount_cents,
+            currency=currency.lower(),
+            status='succeeded',
+            donation_type='one_time',
+            source='check',
+        )
+        db.session.add(donation)
+        db.session.flush()
+
+        # Issue receipt in the same transaction
+        receipt = create_receipt_atomic(donation, donor)
+        db.session.commit()
+
+        # Optionally email the receipt
+        if send_email:
+            if not donor.email or 'no-email-' in donor.email:
+                flash(f'Check donation saved (Receipt {receipt.receipt_number}), but donor has no email — skipped sending.', 'warning')
+            else:
+                ok = send_receipt_email(donor, donation, receipt)
+                if ok:
+                    donation.receipt_sent = True
+                    donation.receipt_sent_at = datetime.utcnow()
+                    db.session.commit()
+                    flash(f'Check donation saved and receipt {receipt.receipt_number} emailed to {donor.email}.', 'success')
+                else:
+                    flash(f'Check donation saved (Receipt {receipt.receipt_number}), but email sending failed.', 'warning')
+        else:
+            flash(f'Check donation saved. Receipt {receipt.receipt_number} generated.', 'success')
+
+        return redirect(url_for('admin.donations', processor='check'))
+
+    return render_template('admin/new_check_donation.html')
+
+
 @admin_bp.route('/donations')
 @admin_required
 def donations():

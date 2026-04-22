@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Record Check Donation - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card { max-width: 720px; margin: 0 auto; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .form-section { margin-top: 22px; padding-top: 22px; border-top: 1px solid #eee; }
+    .form-section h3 { margin-bottom: 12px; color: #2c3e50; font-size: 15px; }
+    .check-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+    .hint { color: #999; font-size: 12px; margin-top: 3px; }
+    .email-toggle {
+        background: #e8f4f8; padding: 12px 14px; border-radius: 6px;
+        display: flex; align-items: center; gap: 10px; margin-top: 18px;
+    }
+    .email-toggle input[type=checkbox] { width: auto; margin: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="form-card">
+        <div class="card">
+            <h1 style="margin-bottom: 4px;">Record Check Donation</h1>
+            <p style="color:#666; font-size: 13px; margin: 0 0 18px;">Issues an official receipt and (optionally) emails it to the donor.</p>
+
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-section" style="border-top: none; margin-top: 0; padding-top: 0;">
+                    <h3>Donor</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First name *</label>
+                            <input type="text" name="first_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last name *</label>
+                            <input type="text" name="last_name" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" name="email" id="donor_email">
+                            <div class="hint">Required if you want to email the receipt.</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" name="phone">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Teudat Zehut (Israeli ID)</label>
+                        <input type="text" name="teudat_zehut" maxlength="9">
+                    </div>
+                    <div class="hint">If an existing donor matches by email (or name), their record is reused.</div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Check</h3>
+                    <div class="check-row">
+                        <div class="form-group">
+                            <label>Amount *</label>
+                            <input type="number" step="0.01" min="0.01" name="amount" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Currency</label>
+                            <select name="currency">
+                                <option value="USD">USD ($)</option>
+                                <option value="ILS">ILS (₪)</option>
+                                <option value="EUR">EUR (€)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Check #</label>
+                            <input type="text" name="check_number">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Check date</label>
+                            <input type="date" name="check_date">
+                        </div>
+                        <div class="form-group">
+                            <label>Memo / note</label>
+                            <input type="text" name="memo" placeholder="Optional">
+                        </div>
+                    </div>
+                </div>
+
+                <label class="email-toggle">
+                    <input type="checkbox" name="send_email" id="send_email">
+                    <span>Email the receipt to the donor now</span>
+                </label>
+
+                <div style="display: flex; gap: 10px; margin-top: 24px;">
+                    <button type="submit" class="btn">Save &amp; Issue Receipt</button>
+                    <a href="{{ url_for('admin.donations', processor='check') }}" class="btn" style="background:#95a5a6;">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-disable the email checkbox when no email is entered.
+(function () {
+    const emailField = document.getElementById('donor_email');
+    const sendBox = document.getElementById('send_email');
+    function sync() {
+        const has = emailField.value.trim().length > 0;
+        sendBox.disabled = !has;
+        if (!has) sendBox.checked = false;
+    }
+    emailField.addEventListener('input', sync);
+    sync();
+})();
+</script>
+{% endblock %}

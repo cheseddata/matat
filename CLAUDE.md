@@ -265,6 +265,15 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (check-donation tab)
+- **Check donation tab + entry form:**
+  - Seeded `check` as an enabled PaymentProcessor (priority 15), so a **Check** tab auto-renders in the donations-page processor row
+  - New route `/admin/donations/new-check` (GET/POST) with form for donor (name/email/phone/TZ), amount/currency, check # and date, memo
+  - Reuses existing donor by email → name; falls back to a new donor (generates a placeholder email if none supplied)
+  - Stores the check number in `processor_confirmation` and check_date / memo in `processor_metadata` JSON
+  - Issues a receipt via `create_receipt_atomic` in the same transaction; "Email receipt now" checkbox optionally fires `send_receipt_email`
+  - "+ Check Donation" button added to `/admin/donations`
+
 ### 2026-04-22 (ticket 4 — interactive members search)
 - **Ticket 4 fix on `/gemach/members`** (operator feedback: "I put in 3321 but it did not show up anything I want the search to be interactive"): all three חיפוש-dialog fields (מס׳ כרטיס / שם פרטי / שם משפחה) now filter the grid live as the operator types — no Enter, no reload. Debounced 180 ms, last-request-wins, URL reflects current filters via `history.replaceState` so refresh / bookmark still works.
 - **How it's wired:**
