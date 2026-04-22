@@ -57,27 +57,22 @@
                           font-size: 12pt; font-weight: 700; color: #000;
                           text-align: left; }
 
-        /* Form of payment — value on the dashed underline after the label. */
-        #f_payment      { top: 91mm;  left: 60mm;   width: 70mm;
+        /* Form of payment — value on SAME baseline as the label. */
+        #f_payment      { top: 92mm;  left: 60mm;   width: 70mm;
                           font-size: 11pt; }
 
-        /* Donor rows — values sit ON each printed underline.
-           Underlines in the JPEG are at y≈114 / 121 / 128 / 135 mm. */
-        #f_name         { top: 114mm; left: 50mm;   width: 80mm; }
-        #f_street       { top: 121mm; left: 50mm;   width: 80mm; }
-        #f_city         { top: 128mm; left: 50mm;   width: 80mm; }
-
-        /* Amount — the headline number. */
-        #f_amount       { top: 135mm; left: 50mm;   width: 80mm;
+        /* Donor rows — left-justified right after the labels,
+           ~5 chars closer to the left edge. Gives long addresses room. */
+        #f_name         { top: 114mm; left: 40mm;   width: 90mm; }
+        #f_street       { top: 121mm; left: 40mm;   width: 90mm; }
+        #f_city         { top: 128mm; left: 40mm;   width: 90mm; }
+        #f_amount       { top: 135mm; left: 40mm;   width: 90mm;
                           font-size: 13pt; font-weight: 700; }
-
-        /* In Words — the underline is now baked into the JPEG template. */
-        #f_words        { top: 143mm; left: 50mm;   width: 85mm;
+        #f_words        { top: 143mm; left: 40mm;   width: 95mm;
                           font-size: 10pt; font-style: italic; }
 
-        /* Date — on the underline below the "date" label. Signature
-           stamp is baked into the template JPEG, nothing to overlay. */
-        #f_date         { top: 237mm; left: 24mm;   font-size: 10pt; }
+        /* Date — on SAME baseline as the "date" label, ~6 chars right. */
+        #f_date         { top: 239mm; left: 36mm;   font-size: 10pt; }
     </style>
 </head>
 <body>
