@@ -79,12 +79,14 @@
     <div class="page">
         <div class="fld" id="f_receipt_no">{{ receipt_number }}</div>
 
-        {% if donation.payment_method_type == 'card' %}
+        {% if donation.payment_processor == 'check' %}
+            <div class="fld" id="f_payment">Check{% if donation.processor_confirmation %} #{{ donation.processor_confirmation }}{% endif %}</div>
+        {% elif donation.payment_processor == 'zelle' %}
+            <div class="fld" id="f_payment">Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
+        {% elif donation.payment_method_type == 'card' %}
             <div class="fld" id="f_payment">{{ donation.payment_method_brand|capitalize }} &middot;&middot;&middot;&middot; {{ donation.payment_method_last4 }}</div>
         {% elif donation.payment_method_type == 'us_bank_account' %}
             <div class="fld" id="f_payment">ACH &middot;&middot;&middot;&middot; {{ donation.payment_method_last4 }}</div>
-        {% elif donation.payment_method %}
-            <div class="fld" id="f_payment">{{ donation.payment_method }}</div>
         {% else %}
             <div class="fld" id="f_payment">Credit Card</div>
         {% endif %}

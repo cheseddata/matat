@@ -265,6 +265,13 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (receipt payment-method: show Check / Zelle instead of "Credit Card")
+- **Fix**: receipts rendered as "Credit Card" for manual donations because four templates hardcoded that label for the `payment_method_type is null` branch:
+  - `app/templates/pdf/receipt_en.html`, `pdf/receipt_he.html` (PDF)
+  - `app/templates/admin/receipt_print.html`, `salesperson/receipt_print.html` (print views)
+- Added explicit branches in all four: `payment_processor == 'check'` → "Check #<ref>", `'zelle'` → "Zelle (ref …)", falling back to the existing card/ACH/default logic for legacy donations.
+- Regenerated PDFs for all existing `check` / `zelle` donations so their stored receipt files match the new label.
+
 ### 2026-04-22 (manual-donation form: donor lookup + address fields)
 - **Donor lookup added at the top of `/admin/donations/new-check`** — live search as you type (2+ chars) against name / email / phone; picking a match pre-fills every donor field (name, email, phone, full mailing address). A "clear" link and a green "selected" badge show the pick state.
 - **Full mailing address** fields added to match the receipt layout: `address_line1`, `address_line2`, `city`, `state`, `zip`, `country` (default US). Saved directly onto the `Donor` record — so the receipt renders the right address.

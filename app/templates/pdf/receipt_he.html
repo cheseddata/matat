@@ -237,7 +237,13 @@
     <div class="section">
         <div class="section-title">פרטי תשלום</div>
         <div class="info-grid">
-            {% if donation.payment_method_type == 'card' %}
+            {% if donation.payment_processor == 'check' %}
+            <div class="info-value ltr">Check{% if donation.processor_confirmation %} #{{ donation.processor_confirmation }}{% endif %}</div>
+            <div class="info-label">:אמצעי תשלום</div>
+            {% elif donation.payment_processor == 'zelle' %}
+            <div class="info-value ltr">Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
+            <div class="info-label">:אמצעי תשלום</div>
+            {% elif donation.payment_method_type == 'card' %}
             <div class="info-value ltr">{{ donation.payment_method_brand | capitalize }} {{ donation.payment_method_last4 }}</div>
             <div class="info-label">:אמצעי תשלום</div>
             {% elif donation.payment_method_type == 'us_bank_account' %}
