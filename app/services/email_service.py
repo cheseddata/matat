@@ -452,8 +452,24 @@ def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, 
 
 
 def send_receipt_email(donor, donation, receipt, language=None):
-    """Send receipt email to donor with PDF attachment."""
+    """Send receipt email to donor with PDF attachment.
+
+    Only USD donations get an email from matatmordechai.org — Israeli
+    (ILS) donors receive their receipts through the separate Israeli
+    program, so we must not double-send. This is a single choke point
+    for every caller (webhook, admin, salesperson, CLI).
+    """
     from flask import render_template
+
+    # Currency gate — only send receipts for American (USD) donations.
+    currency = (getattr(donation, 'currency', None) or 'USD').upper()
+    if currency != 'USD':
+        logger.info(
+            f"Skipping receipt email for donation {donation.id}: "
+            f"currency={currency} (non-USD donors receive receipts via "
+            f"the Israeli program)."
+        )
+        return False
 
     # Determine language
     lang = language or donor.language_pref or 'en'
