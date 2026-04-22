@@ -1,0 +1,14 @@
+[Unit]
+Description=Matat Mordechai Flask App (TEST — SSH-tunnel only)
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/var/www/matat/test
+EnvironmentFile=/var/www/matat/test/.env
+ExecStart=/var/www/matat/test/venv/bin/gunicorn --bind 127.0.0.1:5051 --workers 2 --timeout 120 run:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

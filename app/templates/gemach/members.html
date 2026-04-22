@@ -168,7 +168,7 @@
         </div>
 
         <!-- 3 search fields (RTL order: card# on the left, first name middle, last name on the right) -->
-        <form method="get" id="hsForm">
+        <form method="get" id="hsForm" autocomplete="off">
             <div class="hs-search-row">
                 <!-- In RTL the rightmost grid cell is first; fill with last_name search -->
                 <input type="text" name="last"  value="{{ s_last }}"  placeholder="שם משפחה" autofocus>
@@ -176,73 +176,58 @@
                 <input type="text" name="card"  value="{{ s_card }}"  placeholder="מס׳ כרטיס" dir="ltr"
                        style="font-family:'Courier New',monospace; text-align:center;">
             </div>
-            <!-- submit on Enter in any field; no visible button needed -->
         </form>
 
-        <!-- Grid -->
-        <div class="hs-grid-wrap">
-            <table class="hs-grid">
-                <tbody>
-                    {% for m in members.items %}
-                    <tr onclick="location.href='{{ url_for('gemach.member_detail', member_id=m.id) }}'">
-                        <td class="card">{{ m.gmach_card_no }}</td>
-                        <td class="first">{{ m.first_name or '' }}</td>
-                        <td class="last">{{ m.last_name or '' }}</td>
-                    </tr>
-                    {% else %}
-                    <tr class="empty"><td colspan="3">אין רשומות תואמות</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <!-- Results (grid + action bar + pager). Swapped in-place by JS as the user types. -->
+        <div id="hs-results">
+            {% include 'gemach/_members_results.html' %}
         </div>
-
-        <!-- Action bar: always 3 buttons (binoculars / red-next / green-last), disabled when inapplicable. -->
-        <div class="hs-action-bar">
-            <a href="{{ url_for('gemach.members') }}" class="hs-action-btn" title="חיפוש חדש">
-                <i class="fas fa-binoculars"></i>
-                <span>חדש</span>
-            </a>
-            {% if members.has_next %}
-              <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}"
-                 class="hs-action-btn" title="עמוד הבא">
-                  <span class="num red">{{ members.next_num }}</span>
-              </a>
-            {% else %}
-              <span class="hs-action-btn disabled" title="אין עמוד הבא">
-                  <span class="num red">—</span>
-              </span>
-            {% endif %}
-            {% if members.pages > 1 and members.page != members.pages %}
-              <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}"
-                 class="hs-action-btn" title="עמוד אחרון">
-                  <span class="num green">{{ members.pages }}</span>
-              </a>
-            {% else %}
-              <span class="hs-action-btn disabled" title="זה העמוד האחרון">
-                  <span class="num green">{{ members.pages or 1 }}</span>
-              </span>
-            {% endif %}
-        </div>
-
-        <!-- Small pagination strip -->
-        {% if members.pages > 1 %}
-        <div class="hs-pager">
-            <span>עמוד</span>
-            {% if members.has_prev %}
-            <a href="{{ url_for('gemach.members', page=1, card=s_card, first=s_first, last=s_last) }}">⏮</a>
-            <a href="{{ url_for('gemach.members', page=members.prev_num, card=s_card, first=s_first, last=s_last) }}">◀</a>
-            {% endif %}
-            <span>{{ members.page }} / {{ members.pages }}</span>
-            {% if members.has_next %}
-            <a href="{{ url_for('gemach.members', page=members.next_num, card=s_card, first=s_first, last=s_last) }}">▶</a>
-            <a href="{{ url_for('gemach.members', page=members.pages, card=s_card, first=s_first, last=s_last) }}">⏭</a>
-            {% endif %}
-            <span>&middot;</span>
-            <span>{{ '{:,}'.format(members.total) }} רשומות</span>
-        </div>
-        {% endif %}
     </div>
 </div>
+
+<script>
+(function () {
+    const form = document.getElementById('hsForm');
+    const results = document.getElementById('hs-results');
+    const endpoint = "{{ url_for('gemach.members') }}";
+    let timer = null;
+    let seq = 0;
+
+    function currentParams() {
+        const p = new URLSearchParams();
+        ['card', 'first', 'last'].forEach(function (n) {
+            const v = (form.elements[n].value || '').trim();
+            if (v) p.set(n, v);
+        });
+        return p;
+    }
+
+    function refresh() {
+        const params = currentParams();
+        const qs = params.toString();
+        // Reflect current filters in the address bar so refresh / bookmark works.
+        history.replaceState(null, '', qs ? ('?' + qs) : location.pathname);
+
+        const mySeq = ++seq;
+        params.set('partial', '1');
+        fetch(endpoint + '?' + params.toString(), { credentials: 'same-origin' })
+            .then(function (r) { return r.text(); })
+            .then(function (html) {
+                if (mySeq !== seq) return;  // a newer request already fired
+                results.innerHTML = html;
+            })
+            .catch(function () { /* network blip; next keystroke will retry */ });
+    }
+
+    function schedule() {
+        clearTimeout(timer);
+        timer = setTimeout(refresh, 180);
+    }
+
+    form.addEventListener('input', schedule);
+    form.addEventListener('submit', function (e) { e.preventDefault(); refresh(); });
+})();
+</script>
 {% endblock %}
 
 {% block status %}

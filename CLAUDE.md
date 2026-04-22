@@ -265,6 +265,14 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (ticket 4 — interactive members search)
+- **Ticket 4 fix on `/gemach/members`** (operator feedback: "I put in 3321 but it did not show up anything I want the search to be interactive"): all three חיפוש-dialog fields (מס׳ כרטיס / שם פרטי / שם משפחה) now filter the grid live as the operator types — no Enter, no reload. Debounced 180 ms, last-request-wins, URL reflects current filters via `history.replaceState` so refresh / bookmark still works.
+- **How it's wired:**
+  - Results block (grid + action bar + pager) extracted to `app/templates/gemach/_members_results.html`.
+  - `members()` in `app/blueprints/gemach/routes.py` returns that partial when `?partial=1`, else the full page.
+  - `app/templates/gemach/members.html` wraps the results in `<div id="hs-results">` and has a ~30-line inline `<script>` that fetches the partial on each keystroke and swaps `innerHTML`.
+- **Branch:** `fix/interactive-members-search` (off master) so the user can merge cleanly from the dev laptop; not on `operator-feedback-widget` because this fix applies everywhere, not just the operator PC.
+
 ### 2026-04-19 (ticket 3 — loans search + Access-sync UI + detail polish)
 - **Ticket 3 fix on `/gemach/loans`** (operator feedback): free-text search bar (matches last_name, first_name, teudat_zehut, gmach_card_no, gmach_num_hork, or account_number); new `מס׳ כרטיס` column showing each loan's borrowing member card number; search preserved across pagination.
 - **Gemach Access-sync UI**: new `/gemach/sync-access` page (`app/blueprints/gemach/sync.py` + `app/templates/gemach/sync_access.html`) runs `sync_live_data.bat` in a background thread, streams live output via polling, persists each run to `instance/sync_logs/<timestamp>_<ok|fail>.log`, and shows history. Switchboard gained tile #7 "סנכרון נתונים מ-Access".

@@ -1,0 +1,8 @@
+[Unit]
+Description=Matat TEST: pull origin/staging and restart if changed
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/var/www/matat/test/tools/deploy_staging.sh
