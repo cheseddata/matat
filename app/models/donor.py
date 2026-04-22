@@ -112,7 +112,23 @@ class Donor(db.Model):
 
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name or ''} {self.last_name or ''}".strip()
+
+    @property
+    def receipt_primary_name(self):
+        """Name to render on the receipt's primary 'made out to' line.
+
+        If the donor has no personal name (company-only donations), use the
+        company name as the primary line; otherwise use the person's full name.
+        """
+        name = self.full_name
+        if name:
+            return name
+        return self.company_name or ''
+
+    @property
+    def has_personal_name(self):
+        return bool(self.full_name)
 
     @property
     def full_address(self):

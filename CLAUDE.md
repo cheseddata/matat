@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (company-only donations render company as primary receipt name)
+- `Donor.receipt_primary_name` property: returns `full_name` when a personal name exists, else falls back to `company_name`. `Donor.has_personal_name` returns `True` only when first/last are non-empty.
+- All four receipt templates now use `donor.receipt_primary_name` for the top name line. The second company line renders only when the donor has *both* a personal name and a company — so company-only donations don't duplicate the name.
+- Manual-donation form: first/last-name inputs are no longer `required`. Validation now demands either (first AND last) OR a company name; hint text explains the combinations. Donor creation uses empty strings for missing first/last (columns are NOT NULL).
+
 ### 2026-04-22 (donor: company_name + receipt display)
 - New `Donor.company_name` column (`VARCHAR(200)`, nullable). Migrations `41a1612f978f` (gemach head, back-applied) → `963024d69d5c` (merge) → `3561cad40c40` (add_company_name_to_donors).
 - Manual-donation form (`/admin/donations/new-check`): added "Company name" field under the last-name row; included in the donor lookup API and auto-filled when picking an existing donor; shown on the lookup dropdown as a sub-line.

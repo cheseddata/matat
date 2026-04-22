@@ -216,10 +216,10 @@
     <div class="section">
         <div class="section-title">פרטי התורם</div>
         <div class="info-grid">
-            <div class="info-value">{{ donor.full_name }}</div>
+            <div class="info-value">{{ donor.receipt_primary_name }}</div>
             <div class="info-label">:שם</div>
 
-            {% if donor.company_name %}
+            {% if donor.has_personal_name and donor.company_name %}
             <div class="info-value">{{ donor.company_name }}</div>
             <div class="info-label">:חברה</div>
             {% endif %}

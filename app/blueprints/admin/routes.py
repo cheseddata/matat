@@ -839,8 +839,8 @@ def new_check_donation():
         receipt_override = (request.form.get('receipt_number') or '').strip()
         send_email = request.form.get('send_email') == 'on'
 
-        if not first_name or not last_name:
-            flash('Donor first and last name are required.', 'error')
+        if not (first_name and last_name) and not company_name:
+            flash('Enter a donor name (first + last) or a company name.', 'error')
             return redirect(url_for('admin.new_check_donation'))
         try:
             amount_dollars = float(amount_str)
@@ -888,11 +888,14 @@ def new_check_donation():
             _fill('zip', zip_code, overwrite=True)
             _fill('country', country, overwrite=True)
         else:
+            # Use empty strings (not NULL) for person-name columns when only a
+            # company is supplied — schema is NOT NULL.
+            email_slug = (first_name or last_name or company_name or 'unnamed').lower().replace(' ', '.')
             donor = Donor(
-                first_name=first_name,
-                last_name=last_name,
+                first_name=first_name or '',
+                last_name=last_name or '',
                 company_name=company_name or None,
-                email=email or f'no-email-{first_name.lower()}.{last_name.lower()}@matatmordechai.org',
+                email=email or f'no-email-{email_slug}@matatmordechai.org',
                 phone=phone or None,
                 address_line1=address_line1 or None,
                 address_line2=address_line2 or None,
