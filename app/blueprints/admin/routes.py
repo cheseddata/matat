@@ -774,25 +774,29 @@ def send_donation_receipt(id):
 @admin_bp.route('/donations/new-check', methods=['GET', 'POST'])
 @admin_required
 def new_check_donation():
-    """Record a check donation and optionally email the receipt."""
+    """Record a manual (check or Zelle) donation and optionally email the receipt."""
     from ...services.receipt_service import create_receipt_atomic
     from ...services.email_service import send_receipt_email
     from datetime import datetime as _dt
+    from werkzeug.utils import secure_filename
+    import os, uuid
+
+    ALLOWED_IMAGE_EXT = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'heic'}
 
     if request.method == 'POST':
         first_name = (request.form.get('first_name') or '').strip()
         last_name = (request.form.get('last_name') or '').strip()
         email = (request.form.get('email') or '').strip()
         phone = (request.form.get('phone') or '').strip()
-        teudat_zehut = (request.form.get('teudat_zehut') or '').strip()
         amount_str = (request.form.get('amount') or '').strip()
-        currency = (request.form.get('currency') or 'USD').upper()
-        check_number = (request.form.get('check_number') or '').strip()
-        check_date_str = (request.form.get('check_date') or '').strip()
+        payment_method = (request.form.get('payment_method') or 'check').strip().lower()
+        if payment_method not in ('check', 'zelle'):
+            payment_method = 'check'
+        reference = (request.form.get('reference') or '').strip()
+        payment_date_str = (request.form.get('payment_date') or '').strip()
         memo = (request.form.get('memo') or '').strip()
         send_email = request.form.get('send_email') == 'on'
 
-        # Minimal validation
         if not first_name or not last_name:
             flash('Donor first and last name are required.', 'error')
             return redirect(url_for('admin.new_check_donation'))
@@ -819,74 +823,84 @@ def new_check_donation():
             ).first()
 
         if donor:
-            # Update missing fields; don't overwrite existing data
             if email and not donor.email:
                 donor.email = email
             if phone and not donor.phone:
                 donor.phone = phone
-            if teudat_zehut and not donor.teudat_zehut:
-                donor.teudat_zehut = teudat_zehut
         else:
             donor = Donor(
                 first_name=first_name,
                 last_name=last_name,
                 email=email or f'no-email-{first_name.lower()}.{last_name.lower()}@matatmordechai.org',
                 phone=phone or None,
-                teudat_zehut=teudat_zehut or None,
             )
             db.session.add(donor)
             db.session.flush()
 
-        # Parse check date (optional)
-        check_date_iso = None
-        if check_date_str:
+        payment_date_iso = None
+        if payment_date_str:
             try:
-                check_date_iso = _dt.strptime(check_date_str, '%Y-%m-%d').date().isoformat()
+                payment_date_iso = _dt.strptime(payment_date_str, '%Y-%m-%d').date().isoformat()
             except ValueError:
-                check_date_iso = check_date_str  # store as-is if format unexpected
+                payment_date_iso = payment_date_str
+
+        # Optional image upload
+        saved_image_path = None
+        image_file = request.files.get('check_image')
+        if image_file and image_file.filename:
+            ext = image_file.filename.rsplit('.', 1)[-1].lower() if '.' in image_file.filename else ''
+            if ext not in ALLOWED_IMAGE_EXT:
+                flash(f'Unsupported image type: .{ext}. Allowed: {", ".join(sorted(ALLOWED_IMAGE_EXT))}.', 'error')
+                return redirect(url_for('admin.new_check_donation'))
+            upload_dir = '/var/www/matat/uploads/check_images'
+            os.makedirs(upload_dir, exist_ok=True)
+            safe_base = secure_filename(f'{payment_method}_{donor.id}_{uuid.uuid4().hex[:8]}')
+            saved_image_path = os.path.join(upload_dir, f'{safe_base}.{ext}')
+            image_file.save(saved_image_path)
 
         amount_cents = int(round(amount_dollars * 100))
         donation = Donation(
             donor_id=donor.id,
             salesperson_id=None,
-            payment_processor='check',
-            processor_confirmation=check_number or None,
+            payment_processor=payment_method,
+            processor_confirmation=reference or None,
             processor_metadata={
-                'check_number': check_number or None,
-                'check_date': check_date_iso,
+                'payment_method': payment_method,
+                'reference': reference or None,
+                'payment_date': payment_date_iso,
                 'memo': memo or None,
+                'image_path': saved_image_path,
                 'entered_by_user_id': current_user.id,
             },
             amount=amount_cents,
-            currency=currency.lower(),
+            currency='usd',
             status='succeeded',
             donation_type='one_time',
-            source='check',
+            source=payment_method,
         )
         db.session.add(donation)
         db.session.flush()
 
-        # Issue receipt in the same transaction
         receipt = create_receipt_atomic(donation, donor)
         db.session.commit()
 
-        # Optionally email the receipt
+        label = 'Check' if payment_method == 'check' else 'Zelle'
         if send_email:
             if not donor.email or 'no-email-' in donor.email:
-                flash(f'Check donation saved (Receipt {receipt.receipt_number}), but donor has no email — skipped sending.', 'warning')
+                flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but donor has no email — skipped sending.', 'warning')
             else:
                 ok = send_receipt_email(donor, donation, receipt)
                 if ok:
                     donation.receipt_sent = True
                     donation.receipt_sent_at = datetime.utcnow()
                     db.session.commit()
-                    flash(f'Check donation saved and receipt {receipt.receipt_number} emailed to {donor.email}.', 'success')
+                    flash(f'{label} donation saved and receipt {receipt.receipt_number} emailed to {donor.email}.', 'success')
                 else:
-                    flash(f'Check donation saved (Receipt {receipt.receipt_number}), but email sending failed.', 'warning')
+                    flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but email sending failed.', 'warning')
         else:
-            flash(f'Check donation saved. Receipt {receipt.receipt_number} generated.', 'success')
+            flash(f'{label} donation saved. Receipt {receipt.receipt_number} generated.', 'success')
 
-        return redirect(url_for('admin.donations', processor='check'))
+        return redirect(url_for('admin.donations', processor=payment_method))
 
     return render_template('admin/new_check_donation.html')
 

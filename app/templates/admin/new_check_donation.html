@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Record Check Donation - Admin{% endblock %}
+{% block title %}Record Manual Donation - Admin{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -7,13 +7,23 @@
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .form-section { margin-top: 22px; padding-top: 22px; border-top: 1px solid #eee; }
     .form-section h3 { margin-bottom: 12px; color: #2c3e50; font-size: 15px; }
-    .check-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+    .pay-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
     .hint { color: #999; font-size: 12px; margin-top: 3px; }
     .email-toggle {
         background: #e8f4f8; padding: 12px 14px; border-radius: 6px;
         display: flex; align-items: center; gap: 10px; margin-top: 18px;
     }
     .email-toggle input[type=checkbox] { width: auto; margin: 0; }
+    .upload-group {
+        border: 1px dashed #bbb; border-radius: 6px; padding: 12px 14px;
+        background: #fafafa; margin-top: 14px;
+    }
+    .upload-group label.file-label {
+        display: inline-block; padding: 8px 14px; background: #3498db; color: white;
+        border-radius: 4px; cursor: pointer; font-size: 13px;
+    }
+    .upload-group input[type=file] { display: none; }
+    #file_name { margin-left: 10px; color: #555; font-size: 13px; }
 </style>
 {% endblock %}
 
@@ -21,10 +31,10 @@
 <div class="container">
     <div class="form-card">
         <div class="card">
-            <h1 style="margin-bottom: 4px;">Record Check Donation</h1>
-            <p style="color:#666; font-size: 13px; margin: 0 0 18px;">Issues an official receipt and (optionally) emails it to the donor.</p>
+            <h1 style="margin-bottom: 4px;">Record Manual Donation</h1>
+            <p style="color:#666; font-size: 13px; margin: 0 0 18px;">For US check or Zelle donations. Issues an official receipt and (optionally) emails it to the donor.</p>
 
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <div class="form-section" style="border-top: none; margin-top: 0; padding-top: 0;">
@@ -50,42 +60,44 @@
                             <input type="tel" name="phone">
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Teudat Zehut (Israeli ID)</label>
-                        <input type="text" name="teudat_zehut" maxlength="9">
-                    </div>
                     <div class="hint">If an existing donor matches by email (or name), their record is reused.</div>
                 </div>
 
                 <div class="form-section">
-                    <h3>Check</h3>
-                    <div class="check-row">
+                    <h3>Payment</h3>
+                    <div class="pay-row">
                         <div class="form-group">
-                            <label>Amount *</label>
-                            <input type="number" step="0.01" min="0.01" name="amount" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Currency</label>
-                            <select name="currency">
-                                <option value="USD">USD ($)</option>
-                                <option value="ILS">ILS (₪)</option>
-                                <option value="EUR">EUR (€)</option>
+                            <label>Payment method *</label>
+                            <select name="payment_method" id="payment_method">
+                                <option value="check" selected>Check</option>
+                                <option value="zelle">Zelle</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Check #</label>
-                            <input type="text" name="check_number">
+                            <label>Amount (USD) *</label>
+                            <input type="number" step="0.01" min="0.01" name="amount" required>
+                        </div>
+                        <div class="form-group">
+                            <label id="reference_label">Check #</label>
+                            <input type="text" name="reference" id="reference_field">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Check date</label>
-                            <input type="date" name="check_date">
+                            <label id="date_label">Check date</label>
+                            <input type="date" name="payment_date">
                         </div>
                         <div class="form-group">
                             <label>Memo / note</label>
                             <input type="text" name="memo" placeholder="Optional">
                         </div>
+                    </div>
+
+                    <div class="upload-group">
+                        <label class="file-label" for="check_image">Upload image (optional)</label>
+                        <input type="file" name="check_image" id="check_image" accept="image/*,.pdf">
+                        <span id="file_name"></span>
+                        <div class="hint" id="upload_hint">JPG, PNG, PDF, etc. — a photo of the check or a Zelle screenshot.</div>
                     </div>
                 </div>
 
@@ -96,7 +108,7 @@
 
                 <div style="display: flex; gap: 10px; margin-top: 24px;">
                     <button type="submit" class="btn">Save &amp; Issue Receipt</button>
-                    <a href="{{ url_for('admin.donations', processor='check') }}" class="btn" style="background:#95a5a6;">Cancel</a>
+                    <a href="{{ url_for('admin.donations') }}" class="btn" style="background:#95a5a6;">Cancel</a>
                 </div>
             </form>
         </div>
@@ -106,17 +118,43 @@
 
 {% block extra_js %}
 <script>
-// Auto-disable the email checkbox when no email is entered.
 (function () {
     const emailField = document.getElementById('donor_email');
     const sendBox = document.getElementById('send_email');
-    function sync() {
+    function syncEmail() {
         const has = emailField.value.trim().length > 0;
         sendBox.disabled = !has;
         if (!has) sendBox.checked = false;
     }
-    emailField.addEventListener('input', sync);
-    sync();
+    emailField.addEventListener('input', syncEmail);
+    syncEmail();
+
+    // Relabel fields based on payment method.
+    const method = document.getElementById('payment_method');
+    const refLabel = document.getElementById('reference_label');
+    const dateLabel = document.getElementById('date_label');
+    const uploadHint = document.getElementById('upload_hint');
+    function syncMethod() {
+        const v = method.value;
+        if (v === 'zelle') {
+            refLabel.textContent = 'Zelle reference / confirmation';
+            dateLabel.textContent = 'Transaction date';
+            uploadHint.textContent = 'Optional Zelle screenshot.';
+        } else {
+            refLabel.textContent = 'Check #';
+            dateLabel.textContent = 'Check date';
+            uploadHint.textContent = 'Optional photo of the check.';
+        }
+    }
+    method.addEventListener('change', syncMethod);
+    syncMethod();
+
+    // Show selected filename.
+    const fileInput = document.getElementById('check_image');
+    const fileName = document.getElementById('file_name');
+    fileInput.addEventListener('change', () => {
+        fileName.textContent = fileInput.files.length ? fileInput.files[0].name : '';
+    });
 })();
 </script>
 {% endblock %}

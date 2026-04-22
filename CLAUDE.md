@@ -265,6 +265,15 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (manual-donation form: Check + Zelle + image upload)
+- **Form simplified and broadened** at `/admin/donations/new-check`:
+  - Removed Teudat Zehut and currency picker (always USD)
+  - Added payment-method dropdown: **Check** or **Zelle**; reference-# and date labels relabel dynamically
+  - Optional **image upload** (check photo / Zelle screenshot); files saved to `/var/www/matat/uploads/check_images/`, path stored in `processor_metadata.image_path`
+  - Submit sets `payment_processor='check'` or `'zelle'` and redirects back to the matching processor tab
+- Seeded `zelle` as an enabled PaymentProcessor (priority 16), so a Zelle tab auto-renders beside Check
+- Button on `/admin/donations` renamed from "+ Check Donation" to "+ Manual Donation"
+
 ### 2026-04-22 (check-donation tab)
 - **Check donation tab + entry form:**
   - Seeded `check` as an enabled PaymentProcessor (priority 15), so a **Check** tab auto-renders in the donations-page processor row
