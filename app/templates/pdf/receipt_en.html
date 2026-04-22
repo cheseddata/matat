@@ -71,22 +71,13 @@
         #f_amount       { top: 135mm; left: 50mm;   width: 80mm;
                           font-size: 13pt; font-weight: 700; }
 
-        /* In Words — same row as its label. Add an underline since
-           the JPEG template doesn't print one here. */
+        /* In Words — the underline is now baked into the JPEG template. */
         #f_words        { top: 143mm; left: 50mm;   width: 85mm;
                           font-size: 10pt; font-style: italic; }
-        #f_words_line   { position: absolute;
-                          top: 148mm; left: 50mm; width: 85mm;
-                          border-bottom: 0.5mm solid #c8a96a; }
 
-        /* Date — on the underline below the "date" label.
-           Signature line gets the Matat Mordechai logo as a stamp. */
+        /* Date — on the underline below the "date" label. Signature
+           stamp is baked into the template JPEG, nothing to overlay. */
         #f_date         { top: 237mm; left: 24mm;   font-size: 10pt; }
-        #f_sig_stamp    { position: absolute;
-                          top: 218mm; left: 68mm;
-                          width: 35mm; height: 22mm;
-                          object-fit: contain;
-                          opacity: 0.85; }
     </style>
 </head>
 <body>
@@ -108,12 +99,8 @@
         <div class="fld" id="f_city">{{ donor.city or '' }}{% if donor.state %}, {{ donor.state }}{% endif %}{% if donor.zip_code %} {{ donor.zip_code }}{% endif %}{% if donor.country %}, {{ donor.country }}{% endif %}</div>
         <div class="fld" id="f_amount">${{ "%.2f"|format(amount) }}</div>
         <div class="fld wrap" id="f_words">{{ amount_in_words or '' }}</div>
-        <div id="f_words_line"></div>
 
         <div class="fld" id="f_date">{{ date }}</div>
-        <img id="f_sig_stamp"
-             src="file:///var/www/matat/app/static/img/logo.png"
-             alt="Matat Mordechai stamp">
 
     </div>
 </body>
