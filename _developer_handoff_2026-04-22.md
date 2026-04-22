@@ -96,3 +96,54 @@ Three branches contain the ticket-#4 fix. Recommended disposition:
 - `tools/deploy_staging.sh` — the 60 s deploy script
 - `CLAUDE.md` (`operator-feedback-widget` branch) — today's Changelog entry has the narrative
 - `start_test.bat` / `desktop_test.py` — operator-facing test launcher
+
+---
+
+## Post-handoff: Access MDB files staged on the server
+
+After this handoff was first written, the raw Access databases from the operator
+PC were uploaded to `matat-server` (via Tailscale SSH, no password) so you can
+pull them from your laptop without needing the operator PC online:
+
+```
+matat-server:/tmp/gmach_sync/MttData.mdb   # 43 MB, sha256 c75b438ebf75b62cc2a774ebf23d04a80e787b797b4ba081468af228fd4b8d21
+matat-server:/tmp/gmach_sync/mtt2003.mdb   # 5.7 MB, sha256 c069013d7b4066cd2d870087dd487928ca4dd54be03674c15541abe1752f25fa
+matat-server:/tmp/ztorm_sync/ztormdata.mdb # 70 MB, sha256 e2114f5ca26e0df37707d5e592d1ffeb99c36aa92c1a5883986c160f66e1e044
+```
+
+These are live copies of `C:\Gmach\MttData.mdb`, `C:\Gmach\mtt2003.mdb`,
+and `C:\ztorm\ztormdata.mdb` as of 2026-04-22 ~08:58 UTC. They are **not**
+in git (too large, not source). Pull to your laptop with:
+
+```
+scp root@matat-server:/tmp/gmach_sync/*.mdb  ~/work/matat-mdbs/
+scp root@matat-server:/tmp/ztorm_sync/*.mdb  ~/work/matat-mdbs/
+```
+
+The `.mdb` files are Access-format; on macOS/Linux you can read them with
+`mdb-tools` (`sudo apt install mdbtools` / `brew install mdbtools`) or the
+existing Python `access_parser` library already in `requirements.txt`.
+
+## Untracked/uncommitted on operator-feedback-widget
+
+The operator PC's working tree still has these **pre-existing**, in-progress
+changes from before today's session (not mine, deliberately untouched):
+
+```
+M  app/blueprints/gemach/reports.py
+M  app/blueprints/gemach/routes.py           (member_detail + loans sort tweaks,
+                                              plus a db_mode_switch route)
+M  app/config.py
+M  app/templates/gemach_base.html
+M  app/utils/i18n.py
+M  start.bat
+M  sync/import_gmach_transactions.py
+?? app/templates/gemach/db_mode_restart.html
+?? app/utils/db_mode.py
+?? sync/push_to_matattest.py
+?? tools/audit_mdbs.py
+```
+
+Ask the user before committing any of these — they're a different work
+stream (SQLite-vs-MySQL DB mode toggle, MDB audit tooling) that predates
+today's test-server work.
