@@ -219,6 +219,11 @@
             <div class="info-value">{{ donor.full_name }}</div>
             <div class="info-label">:שם</div>
 
+            {% if donor.company_name %}
+            <div class="info-value">{{ donor.company_name }}</div>
+            <div class="info-label">:חברה</div>
+            {% endif %}
+
             <div class="info-value ltr">{{ donor.email }}</div>
             <div class="info-label">:דוא"ל</div>
 

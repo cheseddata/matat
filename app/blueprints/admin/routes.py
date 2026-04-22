@@ -792,6 +792,7 @@ def api_search_donors():
         'id': d.id,
         'first_name': d.first_name or '',
         'last_name': d.last_name or '',
+        'company_name': d.company_name or '',
         'email': d.email if d.email and 'no-email-' not in d.email else '',
         'phone': d.phone or '',
         'address_line1': d.address_line1 or '',
@@ -819,6 +820,7 @@ def new_check_donation():
         donor_id_str = (request.form.get('donor_id') or '').strip()
         first_name = (request.form.get('first_name') or '').strip()
         last_name = (request.form.get('last_name') or '').strip()
+        company_name = (request.form.get('company_name') or '').strip()
         email = (request.form.get('email') or '').strip()
         phone = (request.form.get('phone') or '').strip()
         address_line1 = (request.form.get('address_line1') or '').strip()
@@ -876,6 +878,7 @@ def new_check_donation():
             # Name and address: if the operator typed something different from what's on file, update it.
             _fill('first_name', first_name, overwrite=True)
             _fill('last_name', last_name, overwrite=True)
+            _fill('company_name', company_name, overwrite=True)
             _fill('email', email)  # never overwrite an existing real email
             _fill('phone', phone)
             _fill('address_line1', address_line1, overwrite=True)
@@ -888,6 +891,7 @@ def new_check_donation():
             donor = Donor(
                 first_name=first_name,
                 last_name=last_name,
+                company_name=company_name or None,
                 email=email or f'no-email-{first_name.lower()}.{last_name.lower()}@matatmordechai.org',
                 phone=phone or None,
                 address_line1=address_line1 or None,

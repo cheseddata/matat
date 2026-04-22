@@ -215,7 +215,7 @@
                 <div class="section-title">Donor Information</div>
                 <div class="info-row">
                     <div class="info-label">Name</div>
-                    <div class="info-value">{{ donor.full_name }}</div>
+                    <div class="info-value">{{ donor.full_name }}{% if donor.company_name %}<br><span style="font-weight:500;">{{ donor.company_name }}</span>{% endif %}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Email</div>

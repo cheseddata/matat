@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (donor: company_name + receipt display)
+- New `Donor.company_name` column (`VARCHAR(200)`, nullable). Migrations `41a1612f978f` (gemach head, back-applied) → `963024d69d5c` (merge) → `3561cad40c40` (add_company_name_to_donors).
+- Manual-donation form (`/admin/donations/new-check`): added "Company name" field under the last-name row; included in the donor lookup API and auto-filled when picking an existing donor; shown on the lookup dropdown as a sub-line.
+- All four receipt templates now render the company line under the donor's name when present: PDF EN (`<div class="fld" id="f_company">`), PDF HE (`<div class="info-label">:חברה</div>`), admin print, salesperson print.
+
 ### 2026-04-22 (manual donation: optional custom receipt number)
 - **`create_receipt_atomic(donation, donor, override_number=None)`**: new optional arg; when supplied, uses that exact receipt number and does **not** increment the sequential counter. Raises `ValueError` if the number is already in use. Use case: backfilling paper receipts or matching a legacy system while running both systems in parallel.
 - **Manual donation form** (`/admin/donations/new-check`): new "Receipt number (optional)" input. Blank = next auto-generated number (default), else the typed value is used verbatim.

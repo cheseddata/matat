@@ -90,6 +90,11 @@
                             <input type="text" name="last_name" id="last_name" required>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label>Company name</label>
+                        <input type="text" name="company_name" id="company_name" placeholder="Optional — e.g. ABC Corporation">
+                        <div class="hint">Shown on the receipt under the donor's name, when filled.</div>
+                    </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label>Email</label>
@@ -241,6 +246,7 @@
     const fields = {
         first_name: document.getElementById('first_name'),
         last_name: document.getElementById('last_name'),
+        company_name: document.getElementById('company_name'),
         email: document.getElementById('donor_email'),
         phone: document.getElementById('donor_phone'),
         address_line1: document.getElementById('address_line1'),
@@ -266,6 +272,7 @@
         } else {
             results.innerHTML = items.map(d => {
                 const bits = [];
+                if (d.company_name) bits.push(d.company_name);
                 if (d.email) bits.push(d.email);
                 if (d.phone) bits.push(d.phone);
                 if (d.city) bits.push(d.city + (d.state ? ', ' + d.state : ''));
@@ -285,6 +292,7 @@
         donorIdField.value = d.id;
         fields.first_name.value = d.first_name || '';
         fields.last_name.value = d.last_name || '';
+        fields.company_name.value = d.company_name || '';
         fields.email.value = d.email || '';
         fields.phone.value = d.phone || '';
         fields.address_line1.value = d.address_line1 || '';
