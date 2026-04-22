@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (manual-donation form: donor lookup + address fields)
+- **Donor lookup added at the top of `/admin/donations/new-check`** — live search as you type (2+ chars) against name / email / phone; picking a match pre-fills every donor field (name, email, phone, full mailing address). A "clear" link and a green "selected" badge show the pick state.
+- **Full mailing address** fields added to match the receipt layout: `address_line1`, `address_line2`, `city`, `state`, `zip`, `country` (default US). Saved directly onto the `Donor` record — so the receipt renders the right address.
+- **Backend**: new JSON endpoint `/admin/api/donors/search?q=...` returns up to 15 matches. The `new_check_donation` POST handler now accepts `donor_id` (from the picker), prefers it for donor matching, and updates donor name + address on save (never overwrites an existing real email).
+
 ### 2026-04-22 (manual-donation form: Check + Zelle + image upload)
 - **Form simplified and broadened** at `/admin/donations/new-check`:
   - Removed Teudat Zehut and currency picker (always USD)

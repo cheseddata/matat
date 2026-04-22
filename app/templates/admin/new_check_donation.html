@@ -3,12 +3,40 @@
 
 {% block extra_css %}
 <style>
-    .form-card { max-width: 720px; margin: 0 auto; }
+    .form-card { max-width: 760px; margin: 0 auto; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .form-row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; }
     .form-section { margin-top: 22px; padding-top: 22px; border-top: 1px solid #eee; }
     .form-section h3 { margin-bottom: 12px; color: #2c3e50; font-size: 15px; }
     .pay-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
     .hint { color: #999; font-size: 12px; margin-top: 3px; }
+
+    .lookup {
+        position: relative; background: #f1f7fa; border: 1px solid #d7e6ec;
+        border-radius: 6px; padding: 12px 14px; margin-bottom: 6px;
+    }
+    .lookup label { font-weight: 600; font-size: 13px; margin-bottom: 6px; display: block; color: #2c3e50; }
+    .lookup input { width: 100%; }
+    .lookup-results {
+        position: absolute; left: 14px; right: 14px; top: 70px;
+        background: white; border: 1px solid #d7e6ec; border-radius: 6px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08); max-height: 280px; overflow-y: auto;
+        z-index: 20; display: none;
+    }
+    .lookup-row { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
+    .lookup-row:hover, .lookup-row.active { background: #e8f4f8; }
+    .lookup-row .name { font-weight: 600; color: #2c3e50; }
+    .lookup-row .sub { color: #888; font-size: 12px; }
+    .lookup-badge {
+        display: inline-block; margin-left: 10px; padding: 2px 8px;
+        background: #27ae60; color: white; border-radius: 10px; font-size: 11px;
+    }
+    .lookup-clear {
+        float: right; font-size: 12px; color: #c0392b; cursor: pointer;
+        text-decoration: underline; display: none;
+    }
+    .lookup-clear.show { display: inline-block; }
+
     .email-toggle {
         background: #e8f4f8; padding: 12px 14px; border-radius: 6px;
         display: flex; align-items: center; gap: 10px; margin-top: 18px;
@@ -32,21 +60,34 @@
     <div class="form-card">
         <div class="card">
             <h1 style="margin-bottom: 4px;">Record Manual Donation</h1>
-            <p style="color:#666; font-size: 13px; margin: 0 0 18px;">For US check or Zelle donations. Issues an official receipt and (optionally) emails it to the donor.</p>
+            <p style="color:#666; font-size: 13px; margin: 0 0 18px;">For US check or Zelle donations. Issues an official receipt with the donor's full name and mailing address.</p>
 
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="donor_id" id="donor_id" value="">
 
-                <div class="form-section" style="border-top: none; margin-top: 0; padding-top: 0;">
+                <!-- Donor lookup -->
+                <div class="lookup">
+                    <label for="donor_search">
+                        Look up existing donor
+                        <span id="picked_badge" class="lookup-badge" style="display:none;">selected</span>
+                        <span class="lookup-clear" id="clear_donor">clear</span>
+                    </label>
+                    <input type="text" id="donor_search" placeholder="Type name, email, or phone (2+ chars)...">
+                    <div class="lookup-results" id="lookup_results"></div>
+                    <div class="hint">Pick a match to pre-fill the donor info. If no match, just fill in the fields manually — a new donor will be created.</div>
+                </div>
+
+                <div class="form-section" style="border-top: none; margin-top: 14px; padding-top: 0;">
                     <h3>Donor</h3>
                     <div class="form-row">
                         <div class="form-group">
                             <label>First name *</label>
-                            <input type="text" name="first_name" required>
+                            <input type="text" name="first_name" id="first_name" required>
                         </div>
                         <div class="form-group">
                             <label>Last name *</label>
-                            <input type="text" name="last_name" required>
+                            <input type="text" name="last_name" id="last_name" required>
                         </div>
                     </div>
                     <div class="form-row">
@@ -57,10 +98,39 @@
                         </div>
                         <div class="form-group">
                             <label>Phone</label>
-                            <input type="tel" name="phone">
+                            <input type="tel" name="phone" id="donor_phone">
                         </div>
                     </div>
-                    <div class="hint">If an existing donor matches by email (or name), their record is reused.</div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Mailing address</h3>
+                    <div class="form-group">
+                        <label>Address line 1</label>
+                        <input type="text" name="address_line1" id="address_line1">
+                    </div>
+                    <div class="form-group">
+                        <label>Address line 2</label>
+                        <input type="text" name="address_line2" id="address_line2" placeholder="Apt, suite, etc.">
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>City</label>
+                            <input type="text" name="city" id="city">
+                        </div>
+                        <div class="form-group">
+                            <label>State</label>
+                            <input type="text" name="state" id="state" placeholder="e.g. NY" maxlength="30">
+                        </div>
+                        <div class="form-group">
+                            <label>ZIP</label>
+                            <input type="text" name="zip" id="zip" maxlength="20">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Country</label>
+                        <input type="text" name="country" id="country" value="US">
+                    </div>
                 </div>
 
                 <div class="form-section">
@@ -97,7 +167,7 @@
                         <label class="file-label" for="check_image">Upload image (optional)</label>
                         <input type="file" name="check_image" id="check_image" accept="image/*,.pdf">
                         <span id="file_name"></span>
-                        <div class="hint" id="upload_hint">JPG, PNG, PDF, etc. — a photo of the check or a Zelle screenshot.</div>
+                        <div class="hint" id="upload_hint">JPG, PNG, PDF — photo of the check or a Zelle screenshot.</div>
                     </div>
                 </div>
 
@@ -119,6 +189,7 @@
 {% block extra_js %}
 <script>
 (function () {
+    // --- email checkbox auto-disable ---
     const emailField = document.getElementById('donor_email');
     const sendBox = document.getElementById('send_email');
     function syncEmail() {
@@ -129,14 +200,13 @@
     emailField.addEventListener('input', syncEmail);
     syncEmail();
 
-    // Relabel fields based on payment method.
+    // --- payment-method labels ---
     const method = document.getElementById('payment_method');
     const refLabel = document.getElementById('reference_label');
     const dateLabel = document.getElementById('date_label');
     const uploadHint = document.getElementById('upload_hint');
     function syncMethod() {
-        const v = method.value;
-        if (v === 'zelle') {
+        if (method.value === 'zelle') {
             refLabel.textContent = 'Zelle reference / confirmation';
             dateLabel.textContent = 'Transaction date';
             uploadHint.textContent = 'Optional Zelle screenshot.';
@@ -149,12 +219,110 @@
     method.addEventListener('change', syncMethod);
     syncMethod();
 
-    // Show selected filename.
+    // --- file name display ---
     const fileInput = document.getElementById('check_image');
     const fileName = document.getElementById('file_name');
     fileInput.addEventListener('change', () => {
         fileName.textContent = fileInput.files.length ? fileInput.files[0].name : '';
     });
+
+    // --- donor lookup ---
+    const search = document.getElementById('donor_search');
+    const results = document.getElementById('lookup_results');
+    const donorIdField = document.getElementById('donor_id');
+    const pickedBadge = document.getElementById('picked_badge');
+    const clearBtn = document.getElementById('clear_donor');
+    const fields = {
+        first_name: document.getElementById('first_name'),
+        last_name: document.getElementById('last_name'),
+        email: document.getElementById('donor_email'),
+        phone: document.getElementById('donor_phone'),
+        address_line1: document.getElementById('address_line1'),
+        address_line2: document.getElementById('address_line2'),
+        city: document.getElementById('city'),
+        state: document.getElementById('state'),
+        zip: document.getElementById('zip'),
+        country: document.getElementById('country'),
+    };
+
+    let debounce = null;
+    let lastQuery = '';
+
+    function hideResults() { results.style.display = 'none'; }
+    function showPicked(on) {
+        pickedBadge.style.display = on ? 'inline-block' : 'none';
+        clearBtn.classList.toggle('show', !!on);
+    }
+
+    function render(items) {
+        if (!items.length) {
+            results.innerHTML = '<div class="lookup-row" style="color:#888;">No matches.</div>';
+        } else {
+            results.innerHTML = items.map(d => {
+                const bits = [];
+                if (d.email) bits.push(d.email);
+                if (d.phone) bits.push(d.phone);
+                if (d.city) bits.push(d.city + (d.state ? ', ' + d.state : ''));
+                return `<div class="lookup-row" data-id="${d.id}">
+                    <div class="name">${escapeHtml(d.first_name + ' ' + d.last_name)}</div>
+                    <div class="sub">${escapeHtml(bits.join(' · '))}</div>
+                </div>`;
+            }).join('');
+            results.querySelectorAll('.lookup-row').forEach((row, i) => {
+                row.addEventListener('click', () => pick(items[i]));
+            });
+        }
+        results.style.display = 'block';
+    }
+
+    function pick(d) {
+        donorIdField.value = d.id;
+        fields.first_name.value = d.first_name || '';
+        fields.last_name.value = d.last_name || '';
+        fields.email.value = d.email || '';
+        fields.phone.value = d.phone || '';
+        fields.address_line1.value = d.address_line1 || '';
+        fields.address_line2.value = d.address_line2 || '';
+        fields.city.value = d.city || '';
+        fields.state.value = d.state || '';
+        fields.zip.value = d.zip || '';
+        fields.country.value = d.country || 'US';
+        showPicked(true);
+        search.value = (d.first_name + ' ' + d.last_name).trim();
+        hideResults();
+        syncEmail();
+    }
+
+    function clearPicked() {
+        donorIdField.value = '';
+        showPicked(false);
+    }
+    clearBtn.addEventListener('click', clearPicked);
+
+    search.addEventListener('input', () => {
+        const q = search.value.trim();
+        clearPicked();
+        if (debounce) clearTimeout(debounce);
+        if (q.length < 2) { hideResults(); return; }
+        debounce = setTimeout(() => {
+            lastQuery = q;
+            fetch(`/admin/api/donors/search?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(items => {
+                    if (lastQuery !== q) return;
+                    render(items);
+                })
+                .catch(() => hideResults());
+        }, 180);
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.lookup')) hideResults();
+    });
+
+    function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
 })();
 </script>
 {% endblock %}

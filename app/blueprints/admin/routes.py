@@ -771,6 +771,38 @@ def send_donation_receipt(id):
 # DONATIONS MANAGEMENT
 # =============================================================================
 
+@admin_bp.route('/api/donors/search')
+@admin_required
+def api_search_donors():
+    """Autocomplete lookup for existing donors by name / email / phone."""
+    from sqlalchemy import or_, func
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    like = f'%{q}%'
+    donors = Donor.query.filter(
+        Donor.deleted_at.is_(None),
+        or_(
+            func.concat(Donor.first_name, ' ', Donor.last_name).ilike(like),
+            Donor.email.ilike(like),
+            Donor.phone.ilike(like),
+        )
+    ).order_by(Donor.last_name, Donor.first_name).limit(15).all()
+    return jsonify([{
+        'id': d.id,
+        'first_name': d.first_name or '',
+        'last_name': d.last_name or '',
+        'email': d.email if d.email and 'no-email-' not in d.email else '',
+        'phone': d.phone or '',
+        'address_line1': d.address_line1 or '',
+        'address_line2': d.address_line2 or '',
+        'city': d.city or '',
+        'state': d.state or '',
+        'zip': d.zip or '',
+        'country': d.country or 'US',
+    } for d in donors])
+
+
 @admin_bp.route('/donations/new-check', methods=['GET', 'POST'])
 @admin_required
 def new_check_donation():
@@ -784,10 +816,17 @@ def new_check_donation():
     ALLOWED_IMAGE_EXT = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'heic'}
 
     if request.method == 'POST':
+        donor_id_str = (request.form.get('donor_id') or '').strip()
         first_name = (request.form.get('first_name') or '').strip()
         last_name = (request.form.get('last_name') or '').strip()
         email = (request.form.get('email') or '').strip()
         phone = (request.form.get('phone') or '').strip()
+        address_line1 = (request.form.get('address_line1') or '').strip()
+        address_line2 = (request.form.get('address_line2') or '').strip()
+        city = (request.form.get('city') or '').strip()
+        state = (request.form.get('state') or '').strip()
+        zip_code = (request.form.get('zip') or '').strip()
+        country = (request.form.get('country') or 'US').strip() or 'US'
         amount_str = (request.form.get('amount') or '').strip()
         payment_method = (request.form.get('payment_method') or 'check').strip().lower()
         if payment_method not in ('check', 'zelle'):
@@ -808,9 +847,14 @@ def new_check_donation():
             flash('Amount must be greater than zero.', 'error')
             return redirect(url_for('admin.new_check_donation'))
 
-        # Find existing donor: prefer email match, else same first+last name
+        # Prefer explicit donor_id from the lookup picker; else match by email or name.
         donor = None
-        if email:
+        if donor_id_str.isdigit():
+            donor = Donor.query.filter(
+                Donor.id == int(donor_id_str),
+                Donor.deleted_at.is_(None),
+            ).first()
+        if not donor and email:
             donor = Donor.query.filter(
                 Donor.email == email,
                 Donor.deleted_at.is_(None),
@@ -822,17 +866,35 @@ def new_check_donation():
                 Donor.deleted_at.is_(None),
             ).first()
 
+        def _fill(attr, new_val, overwrite=False):
+            """Set attr only if a non-empty value was supplied (and either it's empty or overwrite=True)."""
+            if new_val and (overwrite or not getattr(donor, attr, None)):
+                setattr(donor, attr, new_val)
+
         if donor:
-            if email and not donor.email:
-                donor.email = email
-            if phone and not donor.phone:
-                donor.phone = phone
+            # Name and address: if the operator typed something different from what's on file, update it.
+            _fill('first_name', first_name, overwrite=True)
+            _fill('last_name', last_name, overwrite=True)
+            _fill('email', email)  # never overwrite an existing real email
+            _fill('phone', phone)
+            _fill('address_line1', address_line1, overwrite=True)
+            _fill('address_line2', address_line2, overwrite=True)
+            _fill('city', city, overwrite=True)
+            _fill('state', state, overwrite=True)
+            _fill('zip', zip_code, overwrite=True)
+            _fill('country', country, overwrite=True)
         else:
             donor = Donor(
                 first_name=first_name,
                 last_name=last_name,
                 email=email or f'no-email-{first_name.lower()}.{last_name.lower()}@matatmordechai.org',
                 phone=phone or None,
+                address_line1=address_line1 or None,
+                address_line2=address_line2 or None,
+                city=city or None,
+                state=state or None,
+                zip=zip_code or None,
+                country=country,
             )
             db.session.add(donor)
             db.session.flush()
