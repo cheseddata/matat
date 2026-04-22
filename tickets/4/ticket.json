@@ -1,0 +1,14 @@
+{
+  "id": 4,
+  "created_at": "2026-04-22T07:05:16.510502",
+  "user": {
+    "id": 1,
+    "username": "admin",
+    "full_name": "Admin User"
+  },
+  "page_url": "http://127.0.0.1:62272/gemach/members",
+  "issue": "I put in 3321 but it did not show up anything I want the search to be interactive",
+  "console_errors": [],
+  "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36 Edg/147.0.0.0",
+  "screenshot_filename": "c00b6afcebe343ad891528fce9601e36.png"
+}
