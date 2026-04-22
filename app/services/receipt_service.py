@@ -23,7 +23,8 @@ def _amount_to_words(amount):
         whole = int(amount)
         cents = int(round((float(amount) - whole) * 100))
         words = num2words(whole, lang='en').title()
-        return f"{words} Dollars and {cents:02d}/100"
+        unit = "Dollar" if whole == 1 else "Dollars"
+        return f"{words} {unit} and {cents:02d}/100"
     except Exception:
         return f"{amount:.2f} Dollars"
 
