@@ -82,6 +82,14 @@ def members():
         q = q.order_by(GemachMember.last_name, GemachMember.first_name)
 
     paged = q.paginate(page=page, per_page=50)
+
+    # Interactive search: the page JS re-fetches this route with ?partial=1
+    # and swaps in just the grid/pager block, so each keystroke feels live.
+    if request.args.get('partial'):
+        return render_template('gemach/_members_results.html',
+                               members=paged,
+                               s_card=s_card, s_first=s_first, s_last=s_last)
+
     return render_template('gemach/members.html',
                            members=paged, search=search, sort=sort,
                            s_card=s_card, s_first=s_first, s_last=s_last)
