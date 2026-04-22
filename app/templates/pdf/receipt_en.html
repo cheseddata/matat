@@ -84,9 +84,9 @@
         {% elif donation.payment_processor == 'zelle' %}
             <div class="fld" id="f_payment">Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
         {% elif donation.payment_method_type == 'card' %}
-            <div class="fld" id="f_payment">{{ donation.payment_method_brand|capitalize }} &middot;&middot;&middot;&middot; {{ donation.payment_method_last4 }}</div>
+            <div class="fld" id="f_payment">Credit Card{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}</div>
         {% elif donation.payment_method_type == 'us_bank_account' %}
-            <div class="fld" id="f_payment">ACH &middot;&middot;&middot;&middot; {{ donation.payment_method_last4 }}</div>
+            <div class="fld" id="f_payment">ACH{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}</div>
         {% else %}
             <div class="fld" id="f_payment">Credit Card</div>
         {% endif %}

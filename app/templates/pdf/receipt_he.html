@@ -244,10 +244,10 @@
             <div class="info-value ltr">Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
             <div class="info-label">:אמצעי תשלום</div>
             {% elif donation.payment_method_type == 'card' %}
-            <div class="info-value ltr">{{ donation.payment_method_brand | capitalize }} {{ donation.payment_method_last4 }}</div>
+            <div class="info-value ltr">Credit Card{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}</div>
             <div class="info-label">:אמצעי תשלום</div>
             {% elif donation.payment_method_type == 'us_bank_account' %}
-            <div class="info-value ltr">{{ donation.bank_name or 'חשבון בנק' }} {{ donation.payment_method_last4 }}</div>
+            <div class="info-value ltr">{{ donation.bank_name or 'חשבון בנק' }}{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}</div>
             <div class="info-label">:אמצעי תשלום</div>
             {% endif %}
 

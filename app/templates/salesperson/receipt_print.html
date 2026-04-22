@@ -252,8 +252,7 @@
                         {% elif donation.payment_processor == 'zelle' %}
                             Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}
                         {% elif donation.payment_method_type == 'card' %}
-                            {{ donation.payment_method_brand|capitalize if donation.payment_method_brand else 'Card' }}
-                            {%- if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}
+                            Credit Card{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}
                         {% elif donation.payment_method_type == 'us_bank_account' %}
                             {{ donation.bank_name or 'Bank Account' }}
                             {%- if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}

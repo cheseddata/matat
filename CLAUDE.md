@@ -265,6 +265,10 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (receipt payment-method: "Credit Card ending in 1234" for card donations)
+- Changed all four receipt templates to render card donations as **"Credit Card ending in 1234"** instead of the brand name ("Visa ending in 1234"). ACH bank donations read **"ACH ending in 1234"**.
+- Regenerated 83 stored PDFs for existing card donations so their files match the new wording.
+
 ### 2026-04-22 (receipt payment-method: show Check / Zelle instead of "Credit Card")
 - **Fix**: receipts rendered as "Credit Card" for manual donations because four templates hardcoded that label for the `payment_method_type is null` branch:
   - `app/templates/pdf/receipt_en.html`, `pdf/receipt_he.html` (PDF)
