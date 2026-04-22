@@ -914,7 +914,7 @@ def new_check_donation():
             except ValueError:
                 payment_date_iso = payment_date_str
 
-        # Optional image upload
+        # Optional image upload (check photo / Zelle screenshot)
         saved_image_path = None
         image_file = request.files.get('check_image')
         if image_file and image_file.filename:
@@ -928,6 +928,18 @@ def new_check_donation():
             saved_image_path = os.path.join(upload_dir, f'{safe_base}.{ext}')
             image_file.save(saved_image_path)
 
+        # Optional additional email attachments (any number, any file type)
+        email_attachment_paths = []
+        attach_dir = '/var/www/matat/uploads/email_attachments'
+        for f in request.files.getlist('email_attachments'):
+            if not f or not f.filename:
+                continue
+            os.makedirs(attach_dir, exist_ok=True)
+            safe_name = secure_filename(f.filename) or 'attachment'
+            dest = os.path.join(attach_dir, f'{donor.id}_{uuid.uuid4().hex[:8]}_{safe_name}')
+            f.save(dest)
+            email_attachment_paths.append(dest)
+
         amount_cents = int(round(amount_dollars * 100))
         donation = Donation(
             donor_id=donor.id,
@@ -940,6 +952,7 @@ def new_check_donation():
                 'payment_date': payment_date_iso,
                 'memo': memo or None,
                 'image_path': saved_image_path,
+                'email_attachments': email_attachment_paths or None,
                 'entered_by_user_id': current_user.id,
             },
             amount=amount_cents,
@@ -964,12 +977,16 @@ def new_check_donation():
             if not donor.email or 'no-email-' in donor.email:
                 flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but donor has no email — skipped sending.', 'warning')
             else:
-                ok = send_receipt_email(donor, donation, receipt)
+                ok = send_receipt_email(
+                    donor, donation, receipt,
+                    extra_attachments=email_attachment_paths or None,
+                )
                 if ok:
                     donation.receipt_sent = True
                     donation.receipt_sent_at = datetime.utcnow()
                     db.session.commit()
-                    flash(f'{label} donation saved and receipt {receipt.receipt_number} emailed to {donor.email}.', 'success')
+                    extra_note = f' with {len(email_attachment_paths)} attachment(s)' if email_attachment_paths else ''
+                    flash(f'{label} donation saved and receipt {receipt.receipt_number} emailed to {donor.email}{extra_note}.', 'success')
                 else:
                     flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but email sending failed.', 'warning')
         else:

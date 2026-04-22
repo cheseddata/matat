@@ -451,13 +451,17 @@ def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, 
         return {'success': False, 'error': str(e)}
 
 
-def send_receipt_email(donor, donation, receipt, language=None):
+def send_receipt_email(donor, donation, receipt, language=None, extra_attachments=None):
     """Send receipt email to donor with PDF attachment.
 
     Only USD donations get an email from matatmordechai.org — Israeli
     (ILS) donors receive their receipts through the separate Israeli
     program, so we must not double-send. This is a single choke point
     for every caller (webhook, admin, salesperson, CLI).
+
+    ``extra_attachments`` is an optional list of filesystem paths attached
+    to the email in addition to the receipt PDF (e.g. supporting material
+    uploaded on the manual-donation form).
     """
     from flask import render_template
 
@@ -490,8 +494,16 @@ def send_receipt_email(donor, donation, receipt, language=None):
         amount=donation.amount_dollars
     )
 
-    # Attach PDF if available
-    attachments = [receipt.pdf_path] if receipt.pdf_path and os.path.exists(receipt.pdf_path) else None
+    # Attach PDF if available, plus any extras the caller supplied.
+    attachments = []
+    if receipt.pdf_path and os.path.exists(receipt.pdf_path):
+        attachments.append(receipt.pdf_path)
+    if extra_attachments:
+        for p in extra_attachments:
+            if p and os.path.exists(p):
+                attachments.append(p)
+    if not attachments:
+        attachments = None
 
     success = send_email(
         to=donor.email,

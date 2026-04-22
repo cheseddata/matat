@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (manual donation: extra attachments for the receipt email)
+- **`send_receipt_email(..., extra_attachments=None)`**: new optional list of filesystem paths. Each existing path is appended to the receipt PDF when building the outgoing email. Downstream (`send_email`, `_send_smtp`, `_send_mailtrap`, `_send_activetrail`) already accepted multi-attachment lists, so no changes required there.
+- **Manual-donation form**: new multi-file input "Attach file(s) to the email" right below the "Email the receipt" checkbox. Files are saved to `/var/www/matat/uploads/email_attachments/<donor_id>_<rand>_<name>`, collected into the donation's `processor_metadata.email_attachments` for audit, and forwarded to `send_receipt_email` as `extra_attachments`.
+- The attachment group visually dims when the "Email the receipt" box is unchecked (JS `syncAttachDim()`), and the success flash reports attachment count.
+
 ### 2026-04-22 (company-only donations render company as primary receipt name)
 - `Donor.receipt_primary_name` property: returns `full_name` when a personal name exists, else falls back to `company_name`. `Donor.has_personal_name` returns `True` only when first/last are non-empty.
 - All four receipt templates now use `donor.receipt_primary_name` for the top name line. The second company line renders only when the donor has *both* a personal name and a company — so company-only donations don't duplicate the name.

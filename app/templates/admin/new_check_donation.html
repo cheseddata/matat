@@ -187,6 +187,13 @@
                     <span>Email the receipt to the donor now</span>
                 </label>
 
+                <div class="upload-group" id="email_attach_group" style="margin-top: 10px;">
+                    <label class="file-label" for="email_attachments">Attach file(s) to the email</label>
+                    <input type="file" name="email_attachments" id="email_attachments" multiple>
+                    <span id="attach_names"></span>
+                    <div class="hint">Optional. Any files you pick will be attached alongside the receipt PDF when the email is sent. Ignored if the "Email the receipt" box above is unchecked.</div>
+                </div>
+
                 <div style="display: flex; gap: 10px; margin-top: 24px;">
                     <button type="submit" class="btn">Save &amp; Issue Receipt</button>
                     <a href="{{ url_for('admin.donations') }}" class="btn" style="background:#95a5a6;">Cancel</a>
@@ -236,6 +243,19 @@
     fileInput.addEventListener('change', () => {
         fileName.textContent = fileInput.files.length ? fileInput.files[0].name : '';
     });
+
+    // --- email attachments display + dim when email is off ---
+    const attachInput = document.getElementById('email_attachments');
+    const attachNames = document.getElementById('attach_names');
+    const attachGroup = document.getElementById('email_attach_group');
+    attachInput.addEventListener('change', () => {
+        attachNames.textContent = Array.from(attachInput.files).map(f => f.name).join(', ');
+    });
+    function syncAttachDim() {
+        attachGroup.style.opacity = sendBox.checked ? '1' : '0.55';
+    }
+    sendBox.addEventListener('change', syncAttachDim);
+    syncAttachDim();
 
     // --- donor lookup ---
     const search = document.getElementById('donor_search');
