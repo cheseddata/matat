@@ -9,6 +9,25 @@ from ..models.config_settings import ConfigSettings
 logger = logging.getLogger(__name__)
 
 
+def _amount_to_words(amount):
+    """Render a dollar amount like 'One Hundred Twenty-Three Dollars and 45/100'.
+    Used on the printed receipt's 'In Words' line.
+    """
+    try:
+        from num2words import num2words
+    except ImportError:
+        # Fallback — no num2words installed; just show numeric string.
+        return f"{amount:.2f} Dollars"
+
+    try:
+        whole = int(amount)
+        cents = int(round((float(amount) - whole) * 100))
+        words = num2words(whole, lang='en').title()
+        return f"{words} Dollars and {cents:02d}/100"
+    except Exception:
+        return f"{amount:.2f} Dollars"
+
+
 def generate_receipt_number_atomic():
     """
     Generate atomic sequential receipt number using SELECT FOR UPDATE.
@@ -80,6 +99,9 @@ def generate_receipt_pdf(donation, donor, language='en'):
         # English date format: Month DD, YYYY
         date_str = donation.created_at.strftime('%B %d, %Y')
 
+    # Amount in words (English only — Hebrew receipts also use English numerals here).
+    amount_in_words = _amount_to_words(donation.amount_dollars)
+
     try:
         html_content = render_template(
             template_name,
@@ -89,6 +111,7 @@ def generate_receipt_pdf(donation, donor, language='en'):
             receipt_number=donation.receipt_number,
             date=date_str,
             amount=donation.amount_dollars,
+            amount_in_words=amount_in_words,
             tax_id=config.tax_id if config else 'XX-XXXXXXX',
             org_name=config.org_name if config else 'Matat Mordechai'
         )

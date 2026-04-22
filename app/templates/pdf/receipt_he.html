@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <title>קבלה {{ receipt_number }}</title>
+    <title>Receipt {{ receipt_number }}</title>
     <style>
         @font-face {
             font-family: 'Assistant';
@@ -15,257 +15,68 @@
             font-weight: bold;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        @page { size: A4; margin: 0; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        body {
+        html, body {
+            width: 210mm;
+            height: 297mm;
             font-family: 'Assistant', Arial, sans-serif;
-            font-size: 10pt;
-            line-height: 1.4;
-            color: #333;
-            padding: 30px;
-            direction: rtl;
-            text-align: right;
+            color: #1e4a7b;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 15px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #2c3e50;
+        .page {
+            position: relative;
+            width: 210mm;
+            height: 297mm;
+            background-image: url('file:///var/www/matat/app/static/img/receiptmatat.jpg');
+            background-size: 210mm 297mm;
+            background-repeat: no-repeat;
+            background-position: 0 0;
         }
 
-        .logo {
-            max-height: 90px;
-            margin-bottom: 8px;
-        }
-
-        .org-name {
-            font-size: 20pt;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 3px;
-        }
-
-        .org-address {
-            font-size: 9pt;
-            color: #666;
-            margin-bottom: 2px;
-            direction: ltr;
-        }
-
-        .org-phone {
-            font-size: 9pt;
-            color: #666;
-            direction: ltr;
-        }
-
-        .receipt-title {
-            font-size: 14pt;
-            color: #666;
-            margin-top: 8px;
-        }
-
-        .receipt-meta {
-            display: flex;
-            flex-direction: row-reverse;
-            justify-content: space-between;
-            margin-bottom: 15px;
-            padding: 10px 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
-        }
-
-        .meta-item {
-            text-align: center;
-        }
-
-        .meta-label {
-            font-size: 8pt;
-            color: #666;
-        }
-
-        .meta-value {
-            font-size: 12pt;
-            font-weight: bold;
-            color: #2c3e50;
-            direction: ltr;
-        }
-
-        .section {
-            margin-bottom: 12px;
-        }
-
-        .section-title {
+        .fld {
+            position: absolute;
             font-size: 11pt;
-            font-weight: bold;
-            color: #2c3e50;
-            margin-bottom: 6px;
-            padding-bottom: 3px;
-            border-bottom: 1px solid #ddd;
+            color: #1e4a7b;
+            font-weight: 600;
+            white-space: nowrap;
         }
+        .fld.wrap { white-space: normal; }
 
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 100px;
-            gap: 4px;
-        }
-
-        .info-label {
-            font-weight: bold;
-            color: #666;
-            text-align: left;
-        }
-
-        .info-value {
-            color: #333;
-            text-align: right;
-        }
-
-        .info-value.ltr {
-            direction: ltr;
-            text-align: left;
-        }
-
-        .amount-box {
-            text-align: center;
-            padding: 12px;
-            background: #e8f4f8;
-            border-radius: 6px;
-            margin: 12px 0;
-        }
-
-        .amount-label {
-            font-size: 9pt;
-            color: #666;
-        }
-
-        .amount-value {
-            font-size: 26pt;
-            font-weight: bold;
-            color: #27ae60;
-            direction: ltr;
-        }
-
-        .tax-notice {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 12px 0;
-            font-size: 9pt;
-        }
-
-        .tax-notice p {
-            margin-bottom: 3px;
-        }
-
-        .tax-notice p:last-child {
-            margin-bottom: 0;
-        }
-
-        .thank-you {
-            text-align: center;
-            font-size: 12pt;
-            font-weight: bold;
-            color: #27ae60;
-            margin: 15px 0;
-        }
-
-        .footer {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
-            text-align: center;
-            font-size: 8pt;
-            color: #666;
-        }
-
-        .footer p {
-            margin-bottom: 3px;
-        }
+        #f_receipt_no   { top: 58mm;  left: 70mm;   font-size: 20pt; font-weight: 700; }
+        #f_payment      { top: 83mm;  left: 65mm;   width: 65mm; text-align: center; }
+        #f_name         { top: 108mm; left: 30mm;   width: 95mm; }
+        #f_street       { top: 116mm; left: 30mm;   width: 95mm; }
+        #f_city         { top: 124mm; left: 30mm;   width: 95mm; }
+        #f_amount       { top: 133mm; left: 30mm;   width: 95mm; }
+        #f_words        { top: 143mm; left: 30mm;   width: 100mm; font-size: 10pt; }
+        #f_date         { top: 229mm; left: 22mm;   font-size: 10pt; }
+        #f_signature    { top: 229mm; left: 72mm;   font-size: 10pt; font-style: italic; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="file:///var/www/matat/app/static/img/logo.png" alt="{{ org_name }}" class="logo">
-        <div class="org-name">{{ org_name }}</div>
-        {% if config.org_address %}
-        <div class="org-address">{{ config.org_address }}{% if config.org_city %}, {{ config.org_city }}{% endif %}{% if config.org_state %}, {{ config.org_state }}{% endif %} {{ config.org_zip or '' }}</div>
+    <div class="page">
+        <div class="fld" id="f_receipt_no">{{ receipt_number }}</div>
+
+        {% if donation.payment_method_type == 'card' %}
+            <div class="fld" id="f_payment">{{ donation.payment_method_brand|capitalize }} &middot;&middot;&middot;&middot; {{ donation.payment_method_last4 }}</div>
+        {% elif donation.payment_method_type == 'us_bank_account' %}
+            <div class="fld" id="f_payment">ACH &middot;&middot;&middot;&middot; {{ donation.payment_method_last4 }}</div>
+        {% elif donation.payment_method %}
+            <div class="fld" id="f_payment">{{ donation.payment_method }}</div>
+        {% else %}
+            <div class="fld" id="f_payment">Credit Card</div>
         {% endif %}
-        {% if config.org_phone %}
-        <div class="org-phone">{{ config.org_phone }}</div>
-        {% endif %}
-        <div class="receipt-title">קבלה על תרומה</div>
-    </div>
 
-    <div class="receipt-meta">
-        <div class="meta-item">
-            <div class="meta-label">מספר קבלה</div>
-            <div class="meta-value">{{ receipt_number }}</div>
-        </div>
-        <div class="meta-item">
-            <div class="meta-label">תאריך</div>
-            <div class="meta-value">{{ date }}</div>
-        </div>
-    </div>
+        <div class="fld" id="f_name">{{ donor.full_name }}</div>
+        <div class="fld" id="f_street">{{ donor.address_line1 or donor.address or '' }}{% if donor.address_line2 %}, {{ donor.address_line2 }}{% endif %}</div>
+        <div class="fld" id="f_city">{{ donor.city or '' }}{% if donor.state %}, {{ donor.state }}{% endif %}{% if donor.zip_code %} {{ donor.zip_code }}{% endif %}{% if donor.country %}, {{ donor.country }}{% endif %}</div>
+        <div class="fld" id="f_amount">${{ "%.2f"|format(amount) }}</div>
+        <div class="fld wrap" id="f_words">{{ amount_in_words or '' }}</div>
 
-    <div class="section">
-        <div class="section-title">פרטי התורם</div>
-        <div class="info-grid">
-            <div class="info-value">{{ donor.full_name }}</div>
-            <div class="info-label">:שם</div>
-
-            <div class="info-value ltr">{{ donor.email }}</div>
-            <div class="info-label">:דוא"ל</div>
-
-            {% if donor.full_address %}
-            <div class="info-value">{{ donor.full_address | replace('\n', '<br>') | safe }}</div>
-            <div class="info-label">:כתובת</div>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="amount-box">
-        <div class="amount-label">סכום התרומה</div>
-        <div class="amount-value">${{ "%.2f"|format(amount) }}</div>
-    </div>
-
-    <div class="section">
-        <div class="section-title">פרטי תשלום</div>
-        <div class="info-grid">
-            {% if donation.payment_method_type == 'card' %}
-            <div class="info-value ltr">{{ donation.payment_method_brand | capitalize }} {{ donation.payment_method_last4 }}</div>
-            <div class="info-label">:אמצעי תשלום</div>
-            {% elif donation.payment_method_type == 'us_bank_account' %}
-            <div class="info-value ltr">{{ donation.bank_name or 'חשבון בנק' }} {{ donation.payment_method_last4 }}</div>
-            <div class="info-label">:אמצעי תשלום</div>
-            {% endif %}
-
-            <div class="info-value ltr">{{ donation.stripe_payment_intent_id or donation.stripe_charge_id }}</div>
-            <div class="info-label">:מספר עסקה</div>
-
-            <div class="info-value">{% if donation.donation_type == 'one_time' %}חד פעמי{% else %}מתמשך{% endif %}</div>
-            <div class="info-label">:סוג תרומה</div>
-        </div>
-    </div>
-
-    <div class="tax-notice">
-        <p><strong>מספר עמותה:</strong> {{ tax_id }}</p>
-        <p>תרומה זו מוכרת לצורכי מס בהתאם לחוק.</p>
-        <p>לא סופקו מוצרים או שירותים בתמורה לתרומה זו.</p>
-    </div>
-
-    <div class="thank-you">
-        תודה רבה על תרומתך הנדיבה!
-    </div>
-
-    <div class="footer">
-        <p><strong>{{ org_name }}</strong> הינה עמותה רשומה 501(c)(3).</p>
-        <p>נא לשמור קבלה זו לצורכי מס.</p>
+        <div class="fld" id="f_date">{{ date }}</div>
+        <div class="fld" id="f_signature">{{ org_name }}</div>
     </div>
 </body>
 </html>

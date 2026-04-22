@@ -21,3 +21,4 @@ reportlab==4.*
 openpyxl==3.*
 # Reads password-protected Access MDBs for the ZTorm sync.
 access-parser==0.0.*
+num2words
