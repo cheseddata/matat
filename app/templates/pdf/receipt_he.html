@@ -38,22 +38,23 @@
         .fld {
             position: absolute;
             font-size: 11pt;
-            color: #1e4a7b;
-            font-weight: 600;
+            color: #000;
+            font-weight: 400;
             white-space: nowrap;
         }
         .fld.wrap { white-space: normal; }
 
-        #f_receipt_no   { top: 72mm;  left: 85mm;   width: 35mm;
-                          font-size: 12pt; font-weight: 700; text-align: right; }
-        #f_payment      { top: 93mm;  left: 55mm;   width: 75mm; text-align: center; font-size: 12pt; }
+        #f_receipt_no   { top: 82mm;  left: 28mm;   width: 90mm;
+                          font-size: 14pt; font-weight: 700; color: #000; }
+        #f_payment      { top: 95mm;  left: 60mm;   width: 70mm; font-size: 11pt; }
         #f_name         { top: 118mm; left: 50mm;   width: 80mm; }
         #f_street       { top: 125mm; left: 50mm;   width: 80mm; }
         #f_city         { top: 132mm; left: 50mm;   width: 80mm; }
-        #f_amount       { top: 139mm; left: 50mm;   width: 80mm; font-weight: 700; }
-        #f_words        { top: 147mm; left: 50mm;   width: 85mm; font-size: 10pt; }
+        #f_amount       { top: 139mm; left: 50mm;   width: 80mm;
+                          font-size: 13pt; font-weight: 700; }
+        #f_words        { top: 148mm; left: 50mm;   width: 85mm;
+                          font-size: 10pt; font-style: italic; }
         #f_date         { top: 232mm; left: 24mm;   font-size: 10pt; }
-        #f_signature    { top: 232mm; left: 70mm;   font-size: 10pt; font-style: italic; }
     </style>
 </head>
 <body>
@@ -77,7 +78,6 @@
         <div class="fld wrap" id="f_words">{{ amount_in_words or '' }}</div>
 
         <div class="fld" id="f_date">{{ date }}</div>
-        <div class="fld" id="f_signature">{{ org_name }}</div>
     </div>
 </body>
 </html>
