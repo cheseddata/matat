@@ -484,8 +484,12 @@ def send_receipt_email(donor, donation, receipt, language=None, extra_attachment
         )
         return False
 
-    # Determine language
-    lang = language or donor.language_pref or 'en'
+    # USD receipts are always in English (for tax purposes). The currency
+    # gate above guarantees only USD donations reach this point, so we
+    # intentionally ignore donor.language_pref here — it was producing
+    # Hebrew email bodies for US-dollar receipts when the donor's
+    # preferred language happened to be Hebrew.
+    lang = language or 'en'
     if lang not in ('en', 'he'):
         lang = 'en'
 

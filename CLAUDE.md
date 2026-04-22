@@ -265,6 +265,10 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-22 (USD receipt emails always in English)
+- **Bug**: `send_receipt_email` defaulted the email body language to `donor.language_pref`, so a USD receipt addressed to a donor with `language_pref='he'` shipped the email in Hebrew even though the PDF itself (which keys off `donor.country`) was in English.
+- **Fix**: the currency gate at the top of the function already guarantees only USD donations reach the body-rendering step; after it, language defaults to `'en'` unconditionally. An explicit `language=` arg from a test caller can still force Hebrew.
+
 ### 2026-04-22 (manual donation: optional BCC)
 - **`send_email(..., extra_bcc=None)`** and **`send_receipt_email(..., extra_bcc=None)`**: optional list of BCC addresses added alongside the fixed `support@matatmordechai.org` audit copy.
 - Plumbed through all four providers: `_send_smtp`, `_send_mailtrap`, `_send_sendgrid`, `_send_activetrail`. Each dedupes against the audit address so the BCC list never has duplicates.
