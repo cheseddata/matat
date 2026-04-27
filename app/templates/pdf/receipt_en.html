@@ -123,7 +123,9 @@
         <div class="fld" id="f_company">{{ donor.company_name }}</div>
         {% endif %}
         <div class="fld" id="f_street">{{ donor.address_line1 or donor.address or '' }}{% if donor.address_line2 %}, {{ donor.address_line2 }}{% endif %}</div>
-        <div class="fld" id="f_city">{{ donor.city or '' }}{% if donor.state %}, {{ donor.state }}{% endif %}{% if donor.zip_code %} {{ donor.zip_code }}{% endif %}{% if donor.country %}, {{ donor.country }}{% endif %}</div>
+        {# Donor model field is `zip` (not `zip_code`); keep the alias check
+           in case some donor record uses zip_code via a property somewhere. #}
+        <div class="fld" id="f_city">{{ donor.city or '' }}{% if donor.state %}, {{ donor.state }}{% endif %}{% set _zip = donor.zip or donor.zip_code %}{% if _zip %} {{ _zip }}{% endif %}{% if donor.country %}, {{ donor.country }}{% endif %}</div>
         <div class="fld" id="f_amount">${{ "%.2f"|format(amount) }}</div>
         <div class="fld wrap" id="f_words">{{ amount_in_words or '' }}</div>
 

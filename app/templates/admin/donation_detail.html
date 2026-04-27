@@ -218,7 +218,7 @@
                 <div class="detail-value">
                     {{ donation.donor.address_line1 }}<br>
                     {% if donation.donor.address_line2 %}{{ donation.donor.address_line2 }}<br>{% endif %}
-                    {{ donation.donor.city }}, {{ donation.donor.state }} {{ donation.donor.zip_code }}<br>
+                    {{ donation.donor.city }}, {{ donation.donor.state }} {{ donation.donor.zip or donation.donor.zip_code or '' }}<br>
                     {{ donation.donor.country }}
                 </div>
             </div>
