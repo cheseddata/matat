@@ -92,27 +92,19 @@ def generate_receipt_pdf(donation, donor, language='en'):
 
     template_name = f'pdf/receipt_{language}.html'
 
-    # Receipt date — for manual donations the operator types a date into
-    # the form (check date / charge date / Zelle transaction date). That
-    # value lands in processor_metadata['payment_date'] as ISO YYYY-MM-DD.
-    # Use it when present, else fall back to the row's created_at.
-    pay_dt = None
-    md = getattr(donation, 'processor_metadata', None) or {}
-    iso = md.get('payment_date') if isinstance(md, dict) else None
-    if iso:
-        try:
-            from datetime import datetime as _dt
-            pay_dt = _dt.strptime(iso, '%Y-%m-%d')
-        except (ValueError, TypeError):
-            pay_dt = None
-    receipt_date = pay_dt or donation.created_at
+    # Receipt date — bottom-of-page "issue date". This is when the
+    # donation was first entered into our system (donation.created_at).
+    # The actual *payment* date (check date, charge date, Zelle
+    # transaction date) is shown separately in the transaction-details
+    # table later in the template; do NOT mix the two — that would tell
+    # the donor we issued the receipt on a date weeks before we actually
+    # received their check.
+    receipt_date = donation.created_at
 
     if language == 'he':
-        # Hebrew date format: DD/MM/YYYY
-        date_str = receipt_date.strftime('%d/%m/%Y')
+        date_str = receipt_date.strftime('%d/%m/%Y')   # DD/MM/YYYY
     else:
-        # English date format: Month DD, YYYY
-        date_str = receipt_date.strftime('%B %d, %Y')
+        date_str = receipt_date.strftime('%B %d, %Y')  # Month DD, YYYY
 
     # Amount in words (English only — Hebrew receipts also use English numerals here).
     amount_in_words = _amount_to_words(donation.amount_dollars)
