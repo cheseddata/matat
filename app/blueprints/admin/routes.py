@@ -834,6 +834,13 @@ def new_check_donation():
         if payment_method not in ('check', 'zelle', 'credit_card'):
             payment_method = 'check'
         reference = (request.form.get('reference') or '').strip()
+        # Currency: USD by default, ILS for Israeli donors. The receipt-
+        # routing logic in send_receipt_email reads donor.country (NOT
+        # currency) — but the donation's currency still has to match the
+        # actual charge so the receipt shows the right symbol.
+        currency = (request.form.get('currency') or 'USD').strip().lower()
+        if currency not in ('usd', 'ils'):
+            currency = 'usd'
         payment_date_str = (request.form.get('payment_date') or '').strip()
         memo = (request.form.get('memo') or '').strip()
         # Credit-card-specific fields (manual entry, no live charge)
@@ -976,7 +983,7 @@ def new_check_donation():
                 'entered_by_user_id': current_user.id,
             },
             amount=amount_cents,
-            currency='usd',
+            currency=currency,
             status='succeeded',
             donation_type='one_time',
             source=processor_code,

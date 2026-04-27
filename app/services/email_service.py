@@ -474,13 +474,15 @@ def send_receipt_email(donor, donation, receipt, language=None, extra_attachment
     """
     from flask import render_template
 
-    # Currency gate — only send receipts for American (USD) donations.
-    currency = (getattr(donation, 'currency', None) or 'USD').upper()
-    if currency != 'USD':
+    # Country gate — Israel-resident donors get their kabala through
+    # the Israeli system (YeshInvoice). EVERYONE ELSE — US, UK, Canada,
+    # rest of world — gets the matatmordechai.org US-501(c)(3) receipt.
+    country = (getattr(donor, 'country', None) or '').strip().upper()
+    is_israel = country in ('IL', 'ISRAEL', 'ISR', 'ISRA')
+    if is_israel:
         logger.info(
-            f"Skipping receipt email for donation {donation.id}: "
-            f"currency={currency} (non-USD donors receive receipts via "
-            f"the Israeli program)."
+            f"Skipping US receipt email for donation {donation.id}: "
+            f"donor.country={country!r} → Israeli kabala flow handles it."
         )
         return False
 

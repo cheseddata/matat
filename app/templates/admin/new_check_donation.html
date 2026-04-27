@@ -134,7 +134,58 @@
                     </div>
                     <div class="form-group">
                         <label>{{ t('manual_donation.country') }}</label>
-                        <input type="text" name="country" id="country" value="US">
+                        <select name="country" id="country">
+                            {# Top 4 — Israel, USA, UK, Canada — chosen because that's where
+                               our donors actually live. Israel first because it controls
+                               receipt-routing (Israeli kabala vs US 501c3). #}
+                            <option value="IL">Israel</option>
+                            <option value="US" selected>United States</option>
+                            <option value="GB">United Kingdom</option>
+                            <option value="CA">Canada</option>
+                            <option disabled>──────────</option>
+                            <option value="AR">Argentina</option>
+                            <option value="AU">Australia</option>
+                            <option value="AT">Austria</option>
+                            <option value="BE">Belgium</option>
+                            <option value="BR">Brazil</option>
+                            <option value="CL">Chile</option>
+                            <option value="CO">Colombia</option>
+                            <option value="CZ">Czech Republic</option>
+                            <option value="DK">Denmark</option>
+                            <option value="EG">Egypt</option>
+                            <option value="FI">Finland</option>
+                            <option value="FR">France</option>
+                            <option value="DE">Germany</option>
+                            <option value="GR">Greece</option>
+                            <option value="HK">Hong Kong</option>
+                            <option value="HU">Hungary</option>
+                            <option value="IN">India</option>
+                            <option value="IE">Ireland</option>
+                            <option value="IT">Italy</option>
+                            <option value="JP">Japan</option>
+                            <option value="JO">Jordan</option>
+                            <option value="LU">Luxembourg</option>
+                            <option value="MX">Mexico</option>
+                            <option value="NL">Netherlands</option>
+                            <option value="NZ">New Zealand</option>
+                            <option value="NO">Norway</option>
+                            <option value="PA">Panama</option>
+                            <option value="PE">Peru</option>
+                            <option value="PL">Poland</option>
+                            <option value="PT">Portugal</option>
+                            <option value="RU">Russia</option>
+                            <option value="ZA">South Africa</option>
+                            <option value="KR">South Korea</option>
+                            <option value="ES">Spain</option>
+                            <option value="SE">Sweden</option>
+                            <option value="CH">Switzerland</option>
+                            <option value="TR">Turkey</option>
+                            <option value="UA">Ukraine</option>
+                            <option value="AE">United Arab Emirates</option>
+                            <option value="UY">Uruguay</option>
+                            <option value="VE">Venezuela</option>
+                            <option value="OTHER">Other / not listed</option>
+                        </select>
                     </div>
                 </div>
 
@@ -147,6 +198,13 @@
                                 <option value="check" selected>{{ t('manual_donation.method_check') }}</option>
                                 <option value="zelle">{{ t('manual_donation.method_zelle') }}</option>
                                 <option value="credit_card">{{ t('manual_donation.method_credit_card') }}</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Currency *</label>
+                            <select name="currency" id="currency">
+                                <option value="USD" selected>USD ($)</option>
+                                <option value="ILS">ILS (₪)</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -287,6 +345,22 @@
     }
     method.addEventListener('change', syncMethod);
     syncMethod();
+
+    // --- Currency → country auto-default ---
+    // ILS picks Israel; USD picks USA. Operator can still override. We
+    // ONLY auto-flip the country when it's still on the previous default,
+    // so a manually-typed country isn't clobbered.
+    const currencyEl = document.getElementById('currency');
+    const countryEl = document.getElementById('country');
+    let lastAutoCountry = countryEl.value;
+    function syncCurrency() {
+        const want = currencyEl.value === 'ILS' ? 'IL' : 'US';
+        if (countryEl.value === lastAutoCountry || countryEl.value === '') {
+            countryEl.value = want;
+            lastAutoCountry = want;
+        }
+    }
+    currencyEl.addEventListener('change', syncCurrency);
 
     // --- check image: file name, preview, clipboard paste ---
     const fileInput = document.getElementById('check_image');
@@ -452,7 +526,14 @@
         fields.city.value = d.city || '';
         fields.state.value = d.state || '';
         fields.zip.value = d.zip || '';
-        fields.country.value = d.country || 'US';
+        // Country dropdown: try the stored value as-is, fall back to "OTHER"
+        // if the donor's country isn't in the list (rare).
+        const wantCountry = (d.country || 'US').toUpperCase();
+        fields.country.value = wantCountry;
+        if (fields.country.value !== wantCountry) {
+            fields.country.value = 'OTHER';
+        }
+        lastAutoCountry = fields.country.value;
         showPicked(true);
         search.value = (d.first_name + ' ' + d.last_name).trim();
         hideResults();

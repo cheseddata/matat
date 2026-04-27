@@ -117,6 +117,42 @@ def generate_receipt_pdf(donation, donor, language='en'):
     # Amount in words (English only — Hebrew receipts also use English numerals here).
     amount_in_words = _amount_to_words(donation.amount_dollars)
 
+    # Pull check / card details out of processor_metadata so the
+    # template can render a dedicated transaction-details box and the
+    # uploaded check / card-slip image (if any).
+    meta = donation.processor_metadata or {}
+    if isinstance(meta, str):
+        import json
+        try: meta = json.loads(meta)
+        except Exception: meta = {}
+
+    pay_label_date = meta.get('payment_date') or ''
+    if pay_label_date and len(pay_label_date) >= 10 and pay_label_date[4] == '-':
+        try:
+            from datetime import datetime as _dt
+            pay_label_date = _dt.strptime(pay_label_date[:10], '%Y-%m-%d').strftime('%b %d, %Y')
+        except Exception:
+            pass
+
+    payment_processor = (donation.payment_processor or '').lower()
+    is_card = payment_processor in ('card', 'manual_card', 'credit_card')
+
+    # Checks / Zelle: the "number" column shows the check or reference number.
+    # Cards: the "number" column shows the masked PAN or last-4 digits.
+    if is_card:
+        ref_number = (donation.payment_method_last4
+                      or donation.processor_confirmation
+                      or meta.get('reference')
+                      or '')
+        if ref_number and not ref_number.startswith('•'):
+            ref_number = f'•••• {ref_number}' if len(ref_number) <= 6 else ref_number
+        ref_label = 'Card Number'
+    else:
+        ref_number = donation.processor_confirmation or meta.get('reference') or ''
+        ref_label = 'Check Number' if payment_processor == 'check' else 'Reference'
+
+    image_path = meta.get('image_path') or None
+
     try:
         html_content = render_template(
             template_name,
@@ -127,6 +163,12 @@ def generate_receipt_pdf(donation, donor, language='en'):
             date=date_str,
             amount=donation.amount_dollars,
             amount_in_words=amount_in_words,
+            payment_processor=payment_processor,
+            is_card_payment=is_card,
+            tx_date=pay_label_date,
+            tx_ref_number=ref_number,
+            tx_ref_label=ref_label,
+            tx_image_path=image_path,
             tax_id=config.tax_id if config else 'XX-XXXXXXX',
             org_name=config.org_name if config else 'Matat Mordechai'
         )

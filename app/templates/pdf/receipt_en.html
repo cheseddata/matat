@@ -71,6 +71,32 @@
         #f_words        { top: 143mm; left: 40mm;   width: 95mm;
                           font-size: 10pt; font-style: italic; }
 
+        /* Company line — under the primary name, only when donor has BOTH a
+           personal name AND a *different* company name. */
+        #f_company      { top: 118mm; left: 40mm;   width: 90mm;
+                          font-size: 10pt; font-style: italic; }
+
+        /* Transaction-details box — three columns: date | check#/card# | amount.
+           Sits in the open space between In Words and the signature.
+           Same shape for checks, Zelle, and credit-card manual entries. */
+        #tx_box         { position: absolute; top: 158mm; left: 12mm;
+                          width: 138mm; font-size: 10pt; color: #000; }
+        #tx_box table   { width: 100%; border-collapse: collapse; }
+        #tx_box th      { text-align: left; font-weight: 600;
+                          color: #1e4a7b; border-bottom: 0.3mm solid #c8a96a;
+                          padding: 1mm 2mm; font-size: 9pt;
+                          text-transform: uppercase; letter-spacing: 0.3mm; }
+        #tx_box td      { padding: 2mm; font-size: 11pt; font-weight: 500; }
+
+        /* Uploaded check / Zelle / card-slip image with caption. */
+        #tx_caption     { position: absolute; top: 178mm; left: 12mm;
+                          width: 138mm; font-size: 10pt; font-style: italic;
+                          color: #1e4a7b; }
+        #tx_image       { position: absolute; top: 184mm; left: 12mm;
+                          max-width: 138mm; max-height: 50mm;
+                          object-fit: contain;
+                          border: 0.2mm solid #c0c0c0; }
+
         /* Date — on SAME baseline as the "date" label, ~6 chars right. */
         #f_date         { top: 239mm; left: 36mm;   font-size: 10pt; }
     </style>
@@ -92,11 +118,49 @@
         {% endif %}
 
         <div class="fld" id="f_name">{{ donor.receipt_primary_name }}</div>
-        {% if donor.has_personal_name and donor.company_name %}<div class="fld" id="f_company">{{ donor.company_name }}</div>{% endif %}
+        {% if donor.has_personal_name and donor.company_name
+              and donor.company_name|trim != donor.full_name|trim %}
+        <div class="fld" id="f_company">{{ donor.company_name }}</div>
+        {% endif %}
         <div class="fld" id="f_street">{{ donor.address_line1 or donor.address or '' }}{% if donor.address_line2 %}, {{ donor.address_line2 }}{% endif %}</div>
         <div class="fld" id="f_city">{{ donor.city or '' }}{% if donor.state %}, {{ donor.state }}{% endif %}{% if donor.zip_code %} {{ donor.zip_code }}{% endif %}{% if donor.country %}, {{ donor.country }}{% endif %}</div>
         <div class="fld" id="f_amount">${{ "%.2f"|format(amount) }}</div>
         <div class="fld wrap" id="f_words">{{ amount_in_words or '' }}</div>
+
+        {# Transaction details + image — for checks, Zelle, and manual
+           credit-card entries. Auto-charged Stripe card donations skip
+           this section (the card webhook fills payment_processor='stripe',
+           not one of the values listed below). #}
+        {% if payment_processor in ('check', 'zelle', 'card', 'manual_card', 'credit_card') %}
+        <div id="tx_box">
+            <table>
+                <thead><tr>
+                    <th>{% if payment_processor == 'check' %}Date of Check
+                        {%- elif is_card_payment %}Date of Charge
+                        {%- else %}Transaction Date{% endif %}</th>
+                    <th>{{ tx_ref_label }}</th>
+                    <th>Amount</th>
+                </tr></thead>
+                <tbody><tr>
+                    <td>{{ tx_date or '—' }}</td>
+                    <td>{{ tx_ref_number or '—' }}</td>
+                    <td>${{ "%.2f"|format(amount) }}</td>
+                </tr></tbody>
+            </table>
+        </div>
+        {% if tx_image_path %}
+        <div id="tx_caption">
+            A copy of your
+            {%- if payment_processor == 'check' %} check
+            {%- elif payment_processor == 'zelle' %} Zelle transaction
+            {%- elif is_card_payment %} card receipt
+            {%- else %} payment
+            {%- endif %} is provided below for your records.
+        </div>
+        <img id="tx_image" src="file://{{ tx_image_path }}"
+             alt="payment record">
+        {% endif %}
+        {% endif %}
 
         <div class="fld" id="f_date">{{ date }}</div>
 
