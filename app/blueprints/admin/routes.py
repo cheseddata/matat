@@ -726,6 +726,66 @@ def download_receipt(id):
     return redirect(url_for('admin.receipts'))
 
 
+@admin_bp.route('/donations/<int:id>/reissue-receipt', methods=['POST'])
+@login_required
+def reissue_donation_receipt(id):
+    """Force-regenerate the PDF from the current template, then email it.
+
+    Use case: a donation was originally issued via a previous platform / older
+    template and the donor now needs a Matat-branded receipt with current
+    layout (zip code, transaction box, embedded check image, etc.).
+    Unlike "Resend" — which sends the cached PDF on disk — Reissue rewrites
+    the file from scratch using the current `pdf/receipt_<lang>.html` and
+    the latest donor / donation data.
+    """
+    from ...services.receipt_service import (
+        create_receipt_atomic, regenerate_receipt_pdf,
+    )
+    from ...services.email_service import send_receipt_email
+    import os, traceback
+
+    try:
+        donation = Donation.query.get_or_404(id)
+        donor = Donor.query.get(donation.donor_id)
+
+        if not donor:
+            return jsonify({'error': 'Donor not found'}), 400
+        if not donor.email or 'no-email-' in (donor.email or ''):
+            return jsonify({'error': 'Donor has no email on file.'}), 400
+        if donation.status != 'succeeded':
+            return jsonify({'error': 'Can only reissue receipts for successful donations.'}), 400
+
+        # Receipt may not exist for older donations from the previous platform.
+        receipt = donation.receipt
+        if not receipt:
+            receipt = create_receipt_atomic(donation, donor)
+            db.session.commit()
+
+        # Always regenerate — even if a PDF is on disk — so the donor gets
+        # the latest template.
+        try:
+            regenerate_receipt_pdf(receipt)
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({'error': f'PDF regeneration failed: {e}'}), 500
+
+        if not (receipt.pdf_path and os.path.exists(receipt.pdf_path)):
+            return jsonify({'error': 'Regeneration produced no PDF.'}), 500
+
+        success = send_receipt_email(donor, donation, receipt)
+        if not success:
+            return jsonify({'error': 'Email send failed — check provider config.'}), 500
+
+        return jsonify({
+            'success': True,
+            'message': f'Receipt {receipt.receipt_number} regenerated and emailed to {donor.email}.',
+            'receipt_number': receipt.receipt_number,
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/donations/<int:id>/send-receipt', methods=['POST'])
 @admin_required
 def send_donation_receipt(id):

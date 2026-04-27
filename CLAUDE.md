@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (Reissue button on donations list)
+- New `POST /admin/donations/<id>/reissue-receipt` (login_required, both admin and salesperson can hit it). Forces `regenerate_receipt_pdf(receipt)` from the current template, then `send_receipt_email`. Creates the receipt row first if the donation predates our system. Returns JSON `{success, message, receipt_number}` or `{error}`.
+- Orange **"Reissue"** button next to the green **"Resend"** on every row of `/admin/donations`. Use case: donors whose receipts were originally produced on a different platform now need a Matat-branded receipt with the current template (zip code, transaction box, embedded check image, etc.). Resend ships the cached PDF; Reissue rewrites it.
+- Confirmation prompt names the donor email; success flips the button to "Sent!" for 2 s. Disabled when the donor has no email on file.
+
 ### 2026-04-27 (zip code on receipt; bottom-date = issue date; bulk regen)
 
 **Bug — every US receipt was missing its ZIP code**:

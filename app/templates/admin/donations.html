@@ -150,6 +150,19 @@
         cursor: not-allowed;
     }
 
+    .reissue-btn {
+        background: #d35400;
+    }
+
+    .reissue-btn:hover {
+        background: #a04000;
+    }
+
+    .reissue-btn:disabled {
+        background: #95a5a6;
+        cursor: not-allowed;
+    }
+
     .action-buttons {
         display: flex;
         gap: 5px;
@@ -329,6 +342,7 @@
                         <button class="view-btn print-btn" onclick="printReceipt({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">Print</button>
                         <button class="view-btn pdf-btn" onclick="downloadPdf({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">PDF</button>
                         <button class="view-btn resend-btn" onclick="resendReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)">Resend</button>
+                        <button class="view-btn reissue-btn" onclick="reissueReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)" title="Regenerate the PDF with the current template and email it">Reissue</button>
                     </div>
                 </td>
             </tr>
@@ -390,6 +404,44 @@ function downloadPdf(donationId, donorName) {
         return;
     }
     window.location.href = `/admin/donations/${donationId}/receipt/pdf`;
+}
+
+function reissueReceipt(donationId, donorEmail, btn) {
+    if (!donorEmail || donorEmail.trim() === '') {
+        alert('Donor email is required to reissue a receipt.');
+        return;
+    }
+    if (!confirm(`Regenerate the receipt PDF (using the current template) and email it to ${donorEmail}?`)) {
+        return;
+    }
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Reissuing...';
+
+    fetch(`/admin/donations/${donationId}/reissue-receipt`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.textContent = 'Sent!';
+            setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        alert('Error reissuing receipt');
+        btn.textContent = originalText;
+        btn.disabled = false;
+    });
 }
 
 function resendReceipt(donationId, donorEmail, btn) {
