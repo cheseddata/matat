@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-API_BASE_URL = 'https://api.yeshinvoice.co.il/api/v1'
+API_BASE_URL = 'https://api.yeshinvoice.co.il/api/user'
 
 # Document type mapping
 DOC_TYPES = {
@@ -132,7 +132,7 @@ def create_receipt(donation, donor, config=None):
     if donation.receipt_number:
         payload['Remarks'] += f" (Receipt {donation.receipt_number})"
 
-    result = _api_request('createDocument', payload, config)
+    result = _api_request('createInvoice', payload, config)
 
     if result['success']:
         data = result['data']
@@ -197,7 +197,7 @@ def create_credit_note(donation, config=None):
     if config.get('account_id'):
         payload['AccountID'] = config['account_id']
 
-    result = _api_request('createDocument', payload, config)
+    result = _api_request('createInvoice', payload, config)
 
     if result['success']:
         data = result['data']
@@ -213,6 +213,21 @@ def create_credit_note(donation, config=None):
 
 
 def find_or_create_customer(donor, config=None):
+    """NOT SUPPORTED on YeshInvoice's public API.
+
+    The /api/user/ namespace exposes only `createInvoice`. Customer
+    management lives in the internal /api/v1.1/ portal API which uses
+    a different (login-session) auth flow we don't have access to.
+
+    Documents created through `create_receipt()` will auto-create the
+    customer on YeshInvoice's side based on the customer name + email
+    we pass in the createInvoice payload, so this helper is a no-op.
+    """
+    return {'success': True, 'customer_id': None,
+            'message': 'Customer auto-created on createInvoice; no separate API call needed.'}
+
+
+def _legacy_find_or_create_customer(donor, config=None):
     """Find or create a customer in YeshInvoice.
 
     Args:
@@ -261,6 +276,17 @@ def find_or_create_customer(donor, config=None):
 
 
 def get_document(doc_id, config=None):
+    """NOT SUPPORTED on YeshInvoice's public API.
+
+    Document retrieval lives in /api/v1.1/ which uses login-session
+    auth. The PDF link returned at creation time (Donation.yeshinvoice_pdf_url)
+    is the only handle we have to the issued document.
+    """
+    return {'success': False,
+            'error': 'YeshInvoice public API does not expose document lookup.'}
+
+
+def _legacy_get_document(doc_id, config=None):
     """Get document details including PDF URL.
 
     Args:
@@ -300,32 +326,44 @@ def get_document(doc_id, config=None):
 
 
 def test_connection(config=None):
-    """Test API connection with current credentials.
+    """Test YeshInvoice credentials.
 
-    Args:
-        config: Optional config dict. If not provided, reads from DB.
+    There is no dedicated "ping" endpoint on the public API, so we hit
+    `createInvoice` with a deliberately empty payload. Two outcomes:
 
-    Returns:
-        dict with success boolean and message
+    - "מפתח SECRET KEY לא חוקי"  → keys are wrong (auth fail)
+    - "אנא הזן שם הלקוח/בית העסק" → keys are GOOD (auth passed; we just
+                                       didn't supply a customer name).
+
+    Anything else is treated as failure.
     """
     if config is None:
         config = get_yeshinvoice_config()
     if not config:
         return {'success': False, 'error': 'YeshInvoice not configured or not enabled'}
 
-    payload = {}
-    if config.get('account_id'):
-        payload['AccountID'] = config['account_id']
+    import requests
+    url = f"{API_BASE_URL}/createInvoice"
+    payload = {'UserKey': config['user_key'], 'SecretKey': config['secret_key']}
+    try:
+        r = requests.post(url, json=payload, timeout=15)
+    except requests.exceptions.RequestException as e:
+        return {'success': False, 'error': f'Connection error: {e}'}
 
-    result = _api_request('getAccountInfo', payload, config)
+    body = {}
+    try: body = r.json()
+    except Exception: pass
+    err = (body.get('ErrorMessage') or '') if isinstance(body, dict) else ''
 
-    if result['success']:
-        data = result['data']
-        account_name = data.get('AccountName', 'Unknown')
+    # Auth-fail signature
+    if 'SECRET KEY' in err.upper() or 'מפתח' in err and 'חוקי' in err:
+        return {'success': False, 'error': 'Invalid YeshInvoice keys (auth rejected)'}
+    # Auth-pass signature: API got past the key check and is asking for body fields
+    if 'הלקוח' in err or 'בית העסק' in err or 'CustomerName' in err:
         return {
             'success': True,
-            'message': f'Connected successfully. Account: {account_name}',
-            'account_name': account_name,
+            'message': 'Connected successfully — credentials accepted by YeshInvoice.',
         }
 
-    return result
+    # Any other response — surface the raw error
+    return {'success': False, 'error': err or f'HTTP {r.status_code}: {r.text[:200]}'}
