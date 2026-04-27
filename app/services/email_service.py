@@ -263,7 +263,13 @@ def _send_mailtrap(to, subject, html_body, text_body=None, attachments=None, con
                 "name": config.get('from_name', 'Matat Mordechai')
             },
             "to": [{"email": to}],
-            "bcc": [{"email": e} for e in ([BCC_EMAIL] + [x for x in (extra_bcc or []) if x and x != BCC_EMAIL])],
+            # BCC the audit address — but skip it if it's the same as the
+            # primary recipient (Mailtrap rejects duplicate addresses).
+            "bcc": [{"email": e} for e in (
+                ([BCC_EMAIL] if (BCC_EMAIL and BCC_EMAIL.lower() != (to or '').lower()) else [])
+                + [x for x in (extra_bcc or [])
+                   if x and x.lower() != BCC_EMAIL.lower() and x.lower() != (to or '').lower()]
+            )],
             "subject": subject,
             "html": html_body,
             # Enable tracking
