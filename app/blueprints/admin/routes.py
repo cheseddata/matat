@@ -1,6 +1,6 @@
 import logging
 from flask import render_template, request, redirect, url_for, flash, jsonify
-from flask_login import current_user
+from flask_login import current_user, login_required
 from sqlalchemy import func, extract
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -772,7 +772,7 @@ def send_donation_receipt(id):
 # =============================================================================
 
 @admin_bp.route('/api/donors/search')
-@admin_required
+@login_required
 def api_search_donors():
     """Autocomplete lookup for existing donors by name / email / phone."""
     from sqlalchemy import or_, func
@@ -805,7 +805,7 @@ def api_search_donors():
 
 
 @admin_bp.route('/donations/new-check', methods=['GET', 'POST'])
-@admin_required
+@login_required
 def new_check_donation():
     """Record a manual (check or Zelle) donation and optionally email the receipt."""
     from ...services.receipt_service import create_receipt_atomic
@@ -947,10 +947,13 @@ def new_check_donation():
             f.save(dest)
             email_attachment_paths.append(dest)
 
+        # If a salesperson is filling this in, credit them; admins enter
+        # for nobody by default and can re-assign on the donations list.
+        sp_id = current_user.id if getattr(current_user, 'role', None) == 'salesperson' else None
         amount_cents = int(round(amount_dollars * 100))
         donation = Donation(
             donor_id=donor.id,
-            salesperson_id=None,
+            salesperson_id=sp_id,
             payment_processor=payment_method,
             processor_confirmation=reference or None,
             processor_metadata={
@@ -1005,7 +1008,9 @@ def new_check_donation():
         else:
             flash(f'{label} donation saved. Receipt {receipt.receipt_number} generated.', 'success')
 
-        return redirect(url_for('admin.donations', processor=payment_method))
+        if getattr(current_user, 'role', None) == 'admin':
+            return redirect(url_for('admin.donations', processor=payment_method))
+        return redirect(url_for('salesperson.my_donations'))
 
     return render_template('admin/new_check_donation.html')
 

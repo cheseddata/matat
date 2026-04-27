@@ -265,6 +265,13 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (open charging flows to salespersons)
+- `/admin/donations/new-check` and `/admin/api/donors/search` switched from `@admin_required` → `@login_required`. Salespersons can now record check/Zelle donations and use the donor lookup.
+- The form auto-credits the salesperson on submit when filled by a salesperson (`salesperson_id = current_user.id`); admins still default to no salesperson.
+- Cancel link and post-submit redirect now route to `/salesperson/my-donations` for salespersons (avoiding a 403 on `/admin/donations`).
+- Nav: added "+ Check / Zelle" link in the salesperson menu (alongside Donations / Send Link / Phone Entry / ZTorm).
+- Note: the existing CC charging endpoints (`/salesperson/phone-entry` for Stripe, `/ztorm/charge` for Shva) were already login-gated for any role; only the manual donation form was admin-only.
+
 ### 2026-04-22 (check image: paste from clipboard + live preview)
 - **Manual-donation form — check-image upload** accepts clipboard images now: click in the upload box and press Ctrl/Cmd+V, or click the green **"Paste from clipboard"** button (uses the async Clipboard API; HTTPS-only).
 - Pasted blobs are wrapped in a `File` and assigned to the `check_image` input via a `DataTransfer`, so the server POST path is unchanged.

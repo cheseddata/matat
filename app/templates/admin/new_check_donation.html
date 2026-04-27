@@ -204,7 +204,7 @@
 
                 <div style="display: flex; gap: 10px; margin-top: 24px;">
                     <button type="submit" class="btn">Save &amp; Issue Receipt</button>
-                    <a href="{{ url_for('admin.donations') }}" class="btn" style="background:#95a5a6;">Cancel</a>
+                    <a href="{{ url_for('admin.donations') if current_user.role == 'admin' else url_for('salesperson.my_donations') }}" class="btn" style="background:#95a5a6;">Cancel</a>
                 </div>
             </form>
         </div>
