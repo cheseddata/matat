@@ -466,7 +466,7 @@ def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, 
         return {'success': False, 'error': str(e)}
 
 
-def send_receipt_email(donor, donation, receipt, language=None, extra_attachments=None, extra_bcc=None):
+def send_receipt_email(donor, donation, receipt, language=None, extra_attachments=None, extra_bcc=None, override_country_gate=False):
     """Send receipt email to donor with PDF attachment.
 
     Only USD donations get an email from matatmordechai.org — Israeli
@@ -477,6 +477,11 @@ def send_receipt_email(donor, donation, receipt, language=None, extra_attachment
     ``extra_attachments`` is an optional list of filesystem paths attached
     to the email in addition to the receipt PDF (e.g. supporting material
     uploaded on the manual-donation form).
+
+    ``override_country_gate`` (default False) bypasses the Israel-resident
+    skip. Used by the manual "Reissue → Matat email" admin button when
+    the operator explicitly wants the Matat-branded receipt sent even to
+    an IL donor (e.g., the Israeli system never sent them anything).
     """
     from flask import render_template
 
@@ -485,7 +490,7 @@ def send_receipt_email(donor, donation, receipt, language=None, extra_attachment
     # rest of world — gets the matatmordechai.org US-501(c)(3) receipt.
     country = (getattr(donor, 'country', None) or '').strip().upper()
     is_israel = country in ('IL', 'ISRAEL', 'ISR', 'ISRA')
-    if is_israel:
+    if is_israel and not override_country_gate:
         logger.info(
             f"Skipping US receipt email for donation {donation.id}: "
             f"donor.country={country!r} → Israeli kabala flow handles it."

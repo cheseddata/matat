@@ -265,6 +265,15 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (Reissue: choose YeshInvoice vs Matat email at click time)
+- **Reissue** now prompts the operator twice:
+  1. "Reissue receipt for {email}?" — Cancel aborts.
+  2. "Send via YeshInvoice? OK = YeshInvoice; Cancel = Matat email."
+- Server route `POST /admin/donations/<id>/reissue-receipt?via=yesh|matat`:
+  - `via=yesh` → calls `yeshinvoice_service.create_receipt(donation, donor)`. Will fail today with a Hebrew validation error until the `createInvoice` payload schema is corrected (still blocked on the YeshInvoice doc panel). Will JSON-error with the API's response so the operator sees what went wrong.
+  - `via=matat` (default) → regenerates the local PDF and emails via Mailtrap. **Bypasses the Israel-resident country gate** (`override_country_gate=True`) so an IL donor who never received their Israeli kabala can still get a Matat-branded receipt.
+- New `send_receipt_email(..., override_country_gate=False)` arg. Default behaviour unchanged for every other caller (webhook, salesperson resend, etc.); only the Reissue → Matat path passes True.
+
 ### 2026-04-27 (Reissue button on donations list)
 - New `POST /admin/donations/<id>/reissue-receipt` (login_required, both admin and salesperson can hit it). Forces `regenerate_receipt_pdf(receipt)` from the current template, then `send_receipt_email`. Creates the receipt row first if the donation predates our system. Returns JSON `{success, message, receipt_number}` or `{error}`.
 - Orange **"Reissue"** button next to the green **"Resend"** on every row of `/admin/donations`. Use case: donors whose receipts were originally produced on a different platform now need a Matat-branded receipt with the current template (zip code, transaction box, embedded check image, etc.). Resend ships the cached PDF; Reissue rewrites it.

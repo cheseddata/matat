@@ -407,19 +407,31 @@ function downloadPdf(donationId, donorName) {
 }
 
 function reissueReceipt(donationId, donorEmail, btn) {
-    if (!donorEmail || donorEmail.trim() === '') {
-        alert('Donor email is required to reissue a receipt.');
-        return;
-    }
-    if (!confirm(`Regenerate the receipt PDF (using the current template) and email it to ${donorEmail}?`)) {
+    // Step 1 — confirm intent. Cancel here aborts entirely.
+    const intro = donorEmail
+        ? `Reissue receipt for ${donorEmail}?`
+        : `Reissue receipt for this donation?`;
+    if (!confirm(intro)) return;
+
+    // Step 2 — choose the channel.
+    //   OK     = YeshInvoice (Israeli kabala — for IL/ILS donations)
+    //   Cancel = Matat-branded email (regenerates PDF then emails via Mailtrap)
+    const useYesh = confirm(
+        'Send via YeshInvoice (Israeli kabala)?\n\n' +
+        'OK    = YeshInvoice — issues an Israeli kabala. ILS / IL donors.\n' +
+        'Cancel = Matat email — regenerate the PDF and email a US-style receipt.'
+    );
+    if (!useYesh && !donorEmail) {
+        alert('Donor email is required for the Matat receipt path. Pick YeshInvoice or add an email to the donor first.');
         return;
     }
 
     btn.disabled = true;
     const originalText = btn.textContent;
-    btn.textContent = 'Reissuing...';
+    btn.textContent = useYesh ? 'YeshInvoice...' : 'Reissuing...';
 
-    fetch(`/admin/donations/${donationId}/reissue-receipt`, {
+    const via = useYesh ? 'yesh' : 'matat';
+    fetch(`/admin/donations/${donationId}/reissue-receipt?via=${via}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -429,8 +441,8 @@ function reissueReceipt(donationId, donorEmail, btn) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            btn.textContent = 'Sent!';
-            setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2000);
+            btn.textContent = useYesh ? 'YeshInvoice ✓' : 'Sent!';
+            setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 2500);
         } else {
             alert('Error: ' + (data.error || 'Unknown error'));
             btn.textContent = originalText;

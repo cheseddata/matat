@@ -729,14 +729,18 @@ def download_receipt(id):
 @admin_bp.route('/donations/<int:id>/reissue-receipt', methods=['POST'])
 @login_required
 def reissue_donation_receipt(id):
-    """Force-regenerate the PDF from the current template, then email it.
+    """Force-regenerate / re-issue a receipt.
 
-    Use case: a donation was originally issued via a previous platform / older
-    template and the donor now needs a Matat-branded receipt with current
-    layout (zip code, transaction box, embedded check image, etc.).
-    Unlike "Resend" — which sends the cached PDF on disk — Reissue rewrites
-    the file from scratch using the current `pdf/receipt_<lang>.html` and
-    the latest donor / donation data.
+    Query string ``via`` selects the channel:
+      * ``via=yesh``   — issue an Israeli kabala via YeshInvoice
+                         (`yeshinvoice_service.create_receipt`).
+      * ``via=matat``  — regenerate our local PDF from the current template
+                         and email it via Mailtrap. Bypasses the Israel-resident
+                         country gate so an IL donor who never received their
+                         Israeli kabala can still get a Matat-branded receipt.
+
+    Default is ``matat`` (matches the original Reissue behaviour for
+    non-IL donors).
     """
     from ...services.receipt_service import (
         create_receipt_atomic, regenerate_receipt_pdf,
@@ -744,16 +748,47 @@ def reissue_donation_receipt(id):
     from ...services.email_service import send_receipt_email
     import os, traceback
 
+    via = (request.args.get('via') or 'matat').lower()
+    if via not in ('matat', 'yesh'):
+        via = 'matat'
+
     try:
         donation = Donation.query.get_or_404(id)
         donor = Donor.query.get(donation.donor_id)
 
         if not donor:
             return jsonify({'error': 'Donor not found'}), 400
-        if not donor.email or 'no-email-' in (donor.email or ''):
-            return jsonify({'error': 'Donor has no email on file.'}), 400
         if donation.status != 'succeeded':
             return jsonify({'error': 'Can only reissue receipts for successful donations.'}), 400
+
+        # ---- YeshInvoice path ----
+        if via == 'yesh':
+            from ...services.yeshinvoice_service import (
+                create_receipt as yesh_create_receipt,
+                get_yeshinvoice_config,
+            )
+            cfg = get_yeshinvoice_config()
+            if not cfg:
+                return jsonify({'error': 'YeshInvoice is not enabled or credentials are missing. Set them in Admin → Settings.'}), 400
+            result = yesh_create_receipt(donation, donor, config=cfg)
+            if result.get('success'):
+                return jsonify({
+                    'success': True,
+                    'message': (
+                        f'YeshInvoice receipt {result.get("doc_number") or result.get("doc_id") or ""} '
+                        f'created for {donor.full_name or donor.email}.'
+                    ),
+                    'doc_id': result.get('doc_id'),
+                    'doc_number': result.get('doc_number'),
+                    'pdf_url': result.get('pdf_url'),
+                })
+            return jsonify({
+                'error': f'YeshInvoice rejected the request: {result.get("error", "unknown error")}'
+            }), 502
+
+        # ---- Matat email path ----
+        if not donor.email or 'no-email-' in (donor.email or ''):
+            return jsonify({'error': 'Donor has no email on file — cannot send Matat receipt.'}), 400
 
         # Receipt may not exist for older donations from the previous platform.
         receipt = donation.receipt
@@ -761,8 +796,7 @@ def reissue_donation_receipt(id):
             receipt = create_receipt_atomic(donation, donor)
             db.session.commit()
 
-        # Always regenerate — even if a PDF is on disk — so the donor gets
-        # the latest template.
+        # Always regenerate so the donor gets the latest template.
         try:
             regenerate_receipt_pdf(receipt)
         except Exception as e:
@@ -772,7 +806,7 @@ def reissue_donation_receipt(id):
         if not (receipt.pdf_path and os.path.exists(receipt.pdf_path)):
             return jsonify({'error': 'Regeneration produced no PDF.'}), 500
 
-        success = send_receipt_email(donor, donation, receipt)
+        success = send_receipt_email(donor, donation, receipt, override_country_gate=True)
         if not success:
             return jsonify({'error': 'Email send failed — check provider config.'}), 500
 
