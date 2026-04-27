@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (PDF receipt language follows currency, not country)
+- **Bug**: an operator typed `USD` into the manual-donation form's Country field. `get_receipt_language()` did not recognise `'USD'` as a US country, so it fell through to the donor's `language_pref='he'` and generated the receipt **PDF** in Hebrew. The email body was already English (post the earlier currency-gate fix), but the attached PDF was Hebrew — donor received a wrong-language receipt.
+- **Fix**: `get_receipt_language(donor, donation=None)` now treats currency as the strongest signal — `donation.currency == 'USD'` always returns `'en'`, regardless of `donor.country` or `donor.language_pref`. Both callers (`create_receipt_atomic`, `regenerate_receipt_pdf`) pass `donation=`.
+- Patched the affected donor's record (`country: 'USD' -> 'US'`) and regenerated the PDF for receipt MM-2026-00388.
+
 ### 2026-04-27 (manual-donation form: Credit Card option, recording-only)
 - New `Credit Card` option added to the Payment-method dropdown on `/admin/donations/new-check`. **Records** an off-platform charge (terminal / mobile reader) — does **not** run a live charge.
 - Seeded a new `manual_card` PaymentProcessor (priority 12, between Shva and Stripe), so manual CC entries get their own tab and don't get conflated with real Stripe transactions.

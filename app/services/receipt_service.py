@@ -148,13 +148,24 @@ def store_receipt(pdf_bytes, receipt_number):
     return filepath
 
 
-def get_receipt_language(donor):
+def get_receipt_language(donor, donation=None):
     """
-    Determine receipt language based on donor's country.
+    Determine receipt language for the PDF.
 
-    US donations MUST be in English (for tax purposes).
-    Other countries can use donor's language preference.
+    Currency is the strongest signal: USD donations MUST always be in
+    English (for tax purposes), regardless of any other field. The donor's
+    `country` is operator-typed and unreliable (we have seen 'USD',
+    'United States of America', etc. saved into it).
+
+    For non-USD donations we look at country first, then `language_pref`,
+    then default to English.
     """
+    # Currency override — USD is always English.
+    if donation is not None:
+        currency = (getattr(donation, 'currency', None) or '').upper()
+        if currency == 'USD':
+            return 'en'
+
     # US donations must always be in English
     if donor.country in ('US', 'USA', 'United States'):
         return 'en'
@@ -196,8 +207,8 @@ def create_receipt_atomic(donation, donor, override_number=None):
 
         config = ConfigSettings.query.first()
 
-        # Determine language - US donations must be in English
-        language = get_receipt_language(donor)
+        # Determine language - USD always English; otherwise donor.country / language_pref
+        language = get_receipt_language(donor, donation=donation)
 
         # Generate PDF (outside of critical transaction section)
         pdf_bytes = generate_receipt_pdf(donation, donor, language)
@@ -278,8 +289,8 @@ def regenerate_receipt_pdf(receipt):
         logger.error(f"Cannot regenerate receipt {receipt.receipt_number}: missing donation or donor")
         return None
 
-    # US donations must be in English
-    language = get_receipt_language(donor)
+    # USD donations always English; otherwise donor.country / language_pref
+    language = get_receipt_language(donor, donation=donation)
     pdf_bytes = generate_receipt_pdf(donation, donor, language)
 
     if pdf_bytes:
