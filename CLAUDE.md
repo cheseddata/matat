@@ -265,6 +265,46 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (zip code on receipt; bottom-date = issue date; bulk regen)
+
+**Bug — every US receipt was missing its ZIP code**:
+- `receipt_en.html` and `admin/donation_detail.html` both referenced
+  `donor.zip_code`, but the `Donor` model field is `donor.zip` (no underscore).
+  Jinja silently rendered an empty string for an undefined attribute, so for
+  *every* US receipt rendered to date the City line was missing the ZIP.
+  Fixed both templates to read `donor.zip` with a `donor.zip_code` fallback
+  in case anything else relies on the alias.
+
+**Bug — bottom-of-page date was the check date, not the issue date**:
+- An earlier well-intentioned fix made `generate_receipt_pdf` use
+  `processor_metadata['payment_date']` as the receipt date when present,
+  to avoid a separate "today's date" bug. But the receipt now ALSO has a
+  transaction-details box that explicitly shows the check / charge / Zelle
+  date in its own column — so the bottom-of-page date was duplicating that
+  value, telling the donor the receipt was issued weeks before we actually
+  received it (e.g. Khal Beis Aba's receipt was bottom-dated Mar 23 / check
+  date but we entered it Apr 22).
+- Reverted: `receipt_date = donation.created_at` (the entry/issue
+  timestamp). The actual payment date stays in the transaction box.
+
+**Bulk regeneration of past US receipts**:
+- New `tools/bulk_regen_us_receipts.py` walks every Receipt whose
+  donor.country is US-ish (`US`, `USA`, `United States`, …, plus null /
+  empty), re-renders the PDF in place via `regenerate_receipt_pdf`, and
+  rewrites stale `pdf_path` values left over from the old `/root/matat/`
+  server location. **Does not email**. Supports `--dry-run`.
+- Run twice today: once to pick up the zip-code fix, once to pick up the
+  bottom-date fix. 86 receipts regenerated each pass, 0 failures.
+
+**Retroactive image attach for donation #981 (Khal Beis Aba)**:
+- The original donation was entered without the check image. Today the
+  operator re-supplied it; uploaded to
+  `/var/www/matat/uploads/check_images/check_2084_kehalbeisaba.jpg`,
+  patched into `donation #981.processor_metadata.image_path`, PDF re-
+  rendered. Receipt now shows the embedded check under the transaction-
+  details table, captioned "A copy of your check is provided below for
+  your records."
+
 ### 2026-04-27 (receipts: country-based routing + transaction box + image embed; YeshInvoice: real API endpoint discovered)
 
 **Receipt template (`receipt_en.html`)** — restored two sections that an earlier merge stripped:
