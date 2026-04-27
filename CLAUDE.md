@@ -265,6 +265,68 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (receipts: country-based routing + transaction box + image embed; YeshInvoice: real API endpoint discovered)
+
+**Receipt template (`receipt_en.html`)** — restored two sections that an earlier merge stripped:
+- **Transaction-details box** below "In Words": three columns —
+  *date* / *check #-or-card #-or-reference* / *amount*. Headers swap based on `payment_processor`:
+  `DATE OF CHECK` / `DATE OF CHARGE` / `TRANSACTION DATE` and `CHECK NUMBER` / `CARD NUMBER` / `REFERENCE`.
+  For card payments, the number column shows `•••• 1234` (last-4 mask).
+- **Uploaded image embed** with caption: any check photo / Zelle screenshot / card-receipt slip uploaded
+  through Admin → New Check Donation now appears under the table on the receipt PDF, with a
+  context-appropriate caption ("A copy of your check / Zelle transaction / card receipt is provided
+  below for your records.").
+- **`#f_company` finally has CSS positioning** AND only renders when `donor.company_name` differs from
+  `donor.full_name|trim`. Previously the bare `<div>` had no `top/left` so it floated to (0,0)
+  outside the artwork — visible as a duplicate "Khal Beis Aba" in the page's top-left margin.
+
+**Manual-donation form (`new_check_donation.html` + `routes.py`)**:
+- **Currency picker** (USD / ILS) — was hardcoded to `usd`. Donations entered as ILS persist as ILS.
+- **Country dropdown** replaces the free-text input. Top of list: Israel, USA, UK, Canada (where our
+  donors live). Then a curated alphabetical list of ~40 other countries plus an "Other / not listed"
+  fallback. JS auto-flips country to match currency (ILS → IL, USD → US) but only when the operator
+  hasn't manually overridden — `lastAutoCountry` tracks the previous default.
+- **Card last-4** is captured: when `payment_method == 'credit_card'`, we read `card_brand` and
+  `card_last4` from the form (or, as a fallback, parse digits out of the reference field) and store
+  them on `donation.payment_method_type / brand / last4` so the receipt template renders
+  "Credit Card ending in 1234".
+
+**Receipt routing (`email_service.py send_receipt_email`)**:
+- **Country-based**, replacing the older USD-only currency gate. Logic: if
+  `donor.country in ('IL','ISRAEL','ISR','ISRA')` → skip the matatmordechai.org email (Israeli donors
+  get their kabala through YeshInvoice). **Everyone else** — US, UK, Canada, rest of world — gets the
+  US 501(c)(3) receipt email.
+- Bonus fix: BCC now deduplicates against the To: address. Previously, sending TO
+  `support@matatmordechai.org` failed at Mailtrap with `"address ... is not unique in the request"`
+  because the same address was auto-BCC'd. Fixed in the Mailtrap-payload builder.
+
+**YeshInvoice service (`yeshinvoice_service.py`) — base URL & endpoint corrections**:
+- **Real public API endpoint** (discovered by reading `https://user.yeshinvoice.co.il/api/doc`): base
+  URL is `https://api.yeshinvoice.co.il/api/user/`, NOT `/api/v1/`. The single public action is
+  `createInvoice`. The `/api/v1/createDocument`, `/api/v1/getAccountInfo`, and
+  `/api/v1/createOrUpdateCustomer` we were calling don't exist.
+- **`API_BASE_URL`** updated, **`createDocument` → `createInvoice`** in `create_receipt`.
+- **`test_connection()`** rewritten: there is no dedicated ping endpoint, so we send `createInvoice`
+  with body `{UserKey, SecretKey}` only and read the Hebrew error message —
+  `"מפתח SECRET KEY לא חוקי"` ⇒ auth failed; `"אנא הזן שם הלקוח/בית העסק"` ⇒ auth passed (it's now
+  asking for a customer name). Verified working with real keys.
+- **`find_or_create_customer()` and `get_document()` stubbed** — the public API doesn't expose these
+  endpoints. Customers are auto-created on `createInvoice` based on the customer fields we send;
+  document retrieval requires the internal `/api/v1.1/` API which uses login-session auth we don't
+  have.
+- **NOT YET WIRED** to the live ILS donation flow. To complete: copy the full `createInvoice` body
+  from the YeshInvoice docs (`Documents → Create Document` panel) and rewrite `create_receipt()` to
+  send all required fields. The `CustomerName` field name we tried doesn't work — needs the real
+  field name from the docs.
+
+**Receipt PDF preview tooling**:
+- `tools/preview_receipt_local.py` (Windows) — renders the receipt template via headless Chrome
+  (`--print-to-pdf`) so the editor can iterate on layout without WeasyPrint/GTK on Windows.
+  Output: `F:/matat_git/preview.pdf` and `app/static/preview.pdf`. Test mode via argv:
+  `python tools/preview_receipt_local.py en 1000 check` (or `zelle`, or `card`).
+- `tools/render_receipt_preview.py` (server-side) — same idea but via WeasyPrint, for confirming
+  the live render matches the local preview before deploying.
+
 ### 2026-04-27 (receipt date honors the operator-entered payment date)
 - **Bug**: the manual donation form has a "Check date / Charge date / Transaction date" field that saves to `donation.processor_metadata['payment_date']` (ISO YYYY-MM-DD) — but `generate_receipt_pdf` ignored it and printed `donation.created_at` (the timestamp the operator filled in the form). Receipts came out dated "today" instead of the actual payment date.
 - **Fix**: `generate_receipt_pdf` now reads `processor_metadata.payment_date` first; falls back to `created_at` when missing or malformed. Works for both EN (`Month DD, YYYY`) and HE (`DD/MM/YYYY`) formats. Regenerated PDFs for the three most recent manual donations.
