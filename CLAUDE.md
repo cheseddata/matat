@@ -265,6 +265,13 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (manual-donation form: Credit Card option, recording-only)
+- New `Credit Card` option added to the Payment-method dropdown on `/admin/donations/new-check`. **Records** an off-platform charge (terminal / mobile reader) — does **not** run a live charge.
+- Seeded a new `manual_card` PaymentProcessor (priority 12, between Shva and Stripe), so manual CC entries get their own tab and don't get conflated with real Stripe transactions.
+- When the operator picks "Credit Card", a yellow panel reveals: Card brand (Visa / MC / Amex / Discover / Other) and Last 4 digits. The existing **Reference** field relabels to "Transaction / authorization #" and the **Date** field to "Charge date".
+- Server: maps `payment_method='credit_card'` → `payment_processor='manual_card'` and writes `payment_method_type='card'` + `payment_method_brand` + `payment_method_last4`. The receipt templates already render this as **"Credit Card ending in 1234"** thanks to the existing `payment_method_type == 'card'` branch.
+- Translations: ~14 new keys under `manual_donation.*` in both `en.json` and `he.json` (method label, brand options, last-4, auth code hints).
+
 ### 2026-04-27 (manual-donation form: full Hebrew translation + RTL)
 - Added `nav.manual_donation` and a complete `manual_donation.*` block (~50 keys) to both `app/i18n/en.json` and `app/i18n/he.json`. Includes title/subtitle, donor-lookup placeholder & hint, donor section, full mailing-address section, payment section (method, amount, check #/Zelle reference, dates, memo), receipt-number override, image upload + paste, BCC, extra attachments, save/cancel.
 - `app/templates/admin/new_check_donation.html`: replaced every hardcoded English label/placeholder/hint with `t('manual_donation.*')`. Page wrapper gets `dir="rtl"` when `lang == 'he'`. Method-swap JS now reads strings from a `window.MD_I18N` block injected by Jinja so the dynamic relabeling (Check↔Zelle) is also localized.

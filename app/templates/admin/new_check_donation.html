@@ -146,6 +146,7 @@
                             <select name="payment_method" id="payment_method">
                                 <option value="check" selected>{{ t('manual_donation.method_check') }}</option>
                                 <option value="zelle">{{ t('manual_donation.method_zelle') }}</option>
+                                <option value="credit_card">{{ t('manual_donation.method_credit_card') }}</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -166,6 +167,26 @@
                             <label>{{ t('manual_donation.memo') }}</label>
                             <input type="text" name="memo" placeholder="{{ t('manual_donation.memo_placeholder') }}">
                         </div>
+                    </div>
+
+                    <div id="card_fields" style="display: none; margin-top: 8px; padding: 12px 14px; background:#fdf6e3; border: 1px solid #f1d77a; border-radius: 6px;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>{{ t('manual_donation.card_brand') }}</label>
+                                <select name="card_brand">
+                                    <option value="visa">{{ t('manual_donation.card_brand_visa') }}</option>
+                                    <option value="mastercard">{{ t('manual_donation.card_brand_mastercard') }}</option>
+                                    <option value="amex">{{ t('manual_donation.card_brand_amex') }}</option>
+                                    <option value="discover">{{ t('manual_donation.card_brand_discover') }}</option>
+                                    <option value="other">{{ t('manual_donation.card_brand_other') }}</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>{{ t('manual_donation.card_last4') }}</label>
+                                <input type="text" name="card_last4" inputmode="numeric" maxlength="4" pattern="\d{4}" placeholder="{{ t('manual_donation.card_last4_placeholder') }}">
+                            </div>
+                        </div>
+                        <div class="hint" style="margin-top: 6px;">{{ t('manual_donation.card_section_hint') }}</div>
                     </div>
 
                     <div class="form-group" style="margin-top: 4px;">
@@ -216,8 +237,10 @@
     window.MD_I18N = {
         check_number: {{ t('manual_donation.check_number') | tojson }},
         zelle_reference: {{ t('manual_donation.zelle_reference') | tojson }},
+        card_reference: {{ t('manual_donation.card_reference') | tojson }},
         check_date: {{ t('manual_donation.check_date') | tojson }},
         transaction_date: {{ t('manual_donation.transaction_date') | tojson }},
+        card_date: {{ t('manual_donation.card_date') | tojson }},
         upload_hint_check: {{ t('manual_donation.upload_hint_check') | tojson }},
         upload_hint_zelle: {{ t('manual_donation.upload_hint_zelle') | tojson }},
     };
@@ -243,17 +266,24 @@
     const refLabel = document.getElementById('reference_label');
     const dateLabel = document.getElementById('date_label');
     const uploadHint = document.getElementById('upload_hint');
+    const cardFields = document.getElementById('card_fields');
     function syncMethod() {
         const I = window.MD_I18N || {};
-        if (method.value === 'zelle') {
+        const v = method.value;
+        if (v === 'zelle') {
             refLabel.textContent = I.zelle_reference || 'Zelle reference / confirmation';
             dateLabel.textContent = I.transaction_date || 'Transaction date';
             uploadHint.textContent = I.upload_hint_zelle || 'Optional Zelle screenshot.';
+        } else if (v === 'credit_card') {
+            refLabel.textContent = I.card_reference || 'Transaction / authorization #';
+            dateLabel.textContent = I.card_date || 'Charge date';
+            uploadHint.textContent = I.upload_hint_check || '';
         } else {
             refLabel.textContent = I.check_number || 'Check #';
             dateLabel.textContent = I.check_date || 'Check date';
             uploadHint.textContent = I.upload_hint_check || 'Optional photo of the check.';
         }
+        cardFields.style.display = (v === 'credit_card') ? 'block' : 'none';
     }
     method.addEventListener('change', syncMethod);
     syncMethod();

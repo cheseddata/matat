@@ -831,11 +831,16 @@ def new_check_donation():
         country = (request.form.get('country') or 'US').strip() or 'US'
         amount_str = (request.form.get('amount') or '').strip()
         payment_method = (request.form.get('payment_method') or 'check').strip().lower()
-        if payment_method not in ('check', 'zelle'):
+        if payment_method not in ('check', 'zelle', 'credit_card'):
             payment_method = 'check'
         reference = (request.form.get('reference') or '').strip()
         payment_date_str = (request.form.get('payment_date') or '').strip()
         memo = (request.form.get('memo') or '').strip()
+        # Credit-card-specific fields (manual entry, no live charge)
+        card_brand = (request.form.get('card_brand') or '').strip().lower()
+        card_last4 = (request.form.get('card_last4') or '').strip()
+        # Keep only digits, max 4
+        card_last4 = ''.join(ch for ch in card_last4 if ch.isdigit())[:4]
         receipt_override = (request.form.get('receipt_number') or '').strip()
         send_email = request.form.get('send_email') == 'on'
 
@@ -951,10 +956,15 @@ def new_check_donation():
         # for nobody by default and can re-assign on the donations list.
         sp_id = current_user.id if getattr(current_user, 'role', None) == 'salesperson' else None
         amount_cents = int(round(amount_dollars * 100))
-        donation = Donation(
+
+        # Map the form's "credit_card" choice to the manual_card processor;
+        # check/zelle map directly. Card metadata flows into the existing
+        # payment_method_* columns the receipt templates already render.
+        processor_code = 'manual_card' if payment_method == 'credit_card' else payment_method
+        donation_kwargs = dict(
             donor_id=donor.id,
             salesperson_id=sp_id,
-            payment_processor=payment_method,
+            payment_processor=processor_code,
             processor_confirmation=reference or None,
             processor_metadata={
                 'payment_method': payment_method,
@@ -969,8 +979,15 @@ def new_check_donation():
             currency='usd',
             status='succeeded',
             donation_type='one_time',
-            source=payment_method,
+            source=processor_code,
         )
+        if payment_method == 'credit_card':
+            donation_kwargs['payment_method_type'] = 'card'
+            if card_brand:
+                donation_kwargs['payment_method_brand'] = card_brand
+            if card_last4:
+                donation_kwargs['payment_method_last4'] = card_last4
+        donation = Donation(**donation_kwargs)
         db.session.add(donation)
         db.session.flush()
 
@@ -982,7 +999,7 @@ def new_check_donation():
             return redirect(url_for('admin.new_check_donation'))
         db.session.commit()
 
-        label = 'Check' if payment_method == 'check' else 'Zelle'
+        label = {'check': 'Check', 'zelle': 'Zelle', 'credit_card': 'Credit Card'}.get(payment_method, payment_method.title())
         if send_email:
             if not donor.email or 'no-email-' in donor.email:
                 flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but donor has no email — skipped sending.', 'warning')
@@ -1009,7 +1026,7 @@ def new_check_donation():
             flash(f'{label} donation saved. Receipt {receipt.receipt_number} generated.', 'success')
 
         if getattr(current_user, 'role', None) == 'admin':
-            return redirect(url_for('admin.donations', processor=payment_method))
+            return redirect(url_for('admin.donations', processor=processor_code))
         return redirect(url_for('salesperson.my_donations'))
 
     return render_template('admin/new_check_donation.html')
