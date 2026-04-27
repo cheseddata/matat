@@ -224,7 +224,7 @@
                 + {{ t('admin.process_donation') }}
             </a>
             <a href="{{ url_for('admin.new_check_donation') }}" class="btn" style="font-size: 14px; background:#8e44ad; color:white;">
-                + Manual Donation
+                {{ t('nav.manual_donation') }}
             </a>
             <a href="{{ url_for('salesperson.send_link') }}" class="btn btn-primary" style="font-size: 14px;">
                 {{ t('admin.send_donation_link') }}

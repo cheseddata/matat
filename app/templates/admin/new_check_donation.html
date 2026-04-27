@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Record Manual Donation - Admin{% endblock %}
+{% block title %}{{ t('manual_donation.title') }} - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -56,11 +56,11 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container" {% if lang == 'he' %}dir="rtl"{% endif %}>
     <div class="form-card">
         <div class="card">
-            <h1 style="margin-bottom: 4px;">Record Manual Donation</h1>
-            <p style="color:#666; font-size: 13px; margin: 0 0 18px;">For US check or Zelle donations. Issues an official receipt with the donor's full name and mailing address.</p>
+            <h1 style="margin-bottom: 4px;">{{ t('manual_donation.title') }}</h1>
+            <p style="color:#666; font-size: 13px; margin: 0 0 18px;">{{ t('manual_donation.subtitle') }}</p>
 
             <form method="POST" enctype="multipart/form-data" autocomplete="off">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -69,147 +69,159 @@
                 <!-- Donor lookup -->
                 <div class="lookup">
                     <label for="donor_search">
-                        Look up existing donor
-                        <span id="picked_badge" class="lookup-badge" style="display:none;">selected</span>
-                        <span class="lookup-clear" id="clear_donor">clear</span>
+                        {{ t('manual_donation.lookup_label') }}
+                        <span id="picked_badge" class="lookup-badge" style="display:none;">{{ t('manual_donation.lookup_selected') }}</span>
+                        <span class="lookup-clear" id="clear_donor">{{ t('manual_donation.lookup_clear') }}</span>
                     </label>
-                    <input type="text" id="donor_search" placeholder="Type name, email, or phone (2+ chars)...">
+                    <input type="text" id="donor_search" placeholder="{{ t('manual_donation.lookup_placeholder') }}">
                     <div class="lookup-results" id="lookup_results"></div>
-                    <div class="hint">Pick a match to pre-fill the donor info. If no match, just fill in the fields manually — a new donor will be created.</div>
+                    <div class="hint">{{ t('manual_donation.lookup_hint') }}</div>
                 </div>
 
                 <div class="form-section" style="border-top: none; margin-top: 14px; padding-top: 0;">
-                    <h3>Donor</h3>
+                    <h3>{{ t('manual_donation.donor') }}</h3>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>First name</label>
+                            <label>{{ t('manual_donation.first_name') }}</label>
                             <input type="text" name="first_name" id="first_name">
                         </div>
                         <div class="form-group">
-                            <label>Last name</label>
+                            <label>{{ t('manual_donation.last_name') }}</label>
                             <input type="text" name="last_name" id="last_name">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Company name</label>
-                        <input type="text" name="company_name" id="company_name" placeholder="e.g. ABC Corporation">
-                        <div class="hint">Enter a person's name <strong>or</strong> a company name. If both are given, the person is the primary name on the receipt and the company appears on a second line. If only the company is given, the company is the primary name.</div>
+                        <label>{{ t('manual_donation.company_name') }}</label>
+                        <input type="text" name="company_name" id="company_name" placeholder="{{ t('manual_donation.company_placeholder') }}">
+                        <div class="hint">{{ t('manual_donation.company_hint') }}</div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label>Email</label>
+                            <label>{{ t('manual_donation.email') }}</label>
                             <input type="email" name="email" id="donor_email">
-                            <div class="hint">Required if you want to email the receipt.</div>
+                            <div class="hint">{{ t('manual_donation.email_hint') }}</div>
                         </div>
                         <div class="form-group">
-                            <label>Phone</label>
+                            <label>{{ t('manual_donation.phone') }}</label>
                             <input type="tel" name="phone" id="donor_phone">
                         </div>
                     </div>
                 </div>
 
                 <div class="form-section">
-                    <h3>Mailing address</h3>
+                    <h3>{{ t('manual_donation.address_section') }}</h3>
                     <div class="form-group">
-                        <label>Address line 1</label>
+                        <label>{{ t('manual_donation.address_line1') }}</label>
                         <input type="text" name="address_line1" id="address_line1">
                     </div>
                     <div class="form-group">
-                        <label>Address line 2</label>
-                        <input type="text" name="address_line2" id="address_line2" placeholder="Apt, suite, etc.">
+                        <label>{{ t('manual_donation.address_line2') }}</label>
+                        <input type="text" name="address_line2" id="address_line2" placeholder="{{ t('manual_donation.address_line2_placeholder') }}">
                     </div>
                     <div class="form-row-3">
                         <div class="form-group">
-                            <label>City</label>
+                            <label>{{ t('manual_donation.city') }}</label>
                             <input type="text" name="city" id="city">
                         </div>
                         <div class="form-group">
-                            <label>State</label>
-                            <input type="text" name="state" id="state" placeholder="e.g. NY" maxlength="30">
+                            <label>{{ t('manual_donation.state') }}</label>
+                            <input type="text" name="state" id="state" placeholder="{{ t('manual_donation.state_placeholder') }}" maxlength="30">
                         </div>
                         <div class="form-group">
-                            <label>ZIP</label>
+                            <label>{{ t('manual_donation.zip') }}</label>
                             <input type="text" name="zip" id="zip" maxlength="20">
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Country</label>
+                        <label>{{ t('manual_donation.country') }}</label>
                         <input type="text" name="country" id="country" value="US">
                     </div>
                 </div>
 
                 <div class="form-section">
-                    <h3>Payment</h3>
+                    <h3>{{ t('manual_donation.payment_section') }}</h3>
                     <div class="pay-row">
                         <div class="form-group">
-                            <label>Payment method *</label>
+                            <label>{{ t('manual_donation.payment_method') }} *</label>
                             <select name="payment_method" id="payment_method">
-                                <option value="check" selected>Check</option>
-                                <option value="zelle">Zelle</option>
+                                <option value="check" selected>{{ t('manual_donation.method_check') }}</option>
+                                <option value="zelle">{{ t('manual_donation.method_zelle') }}</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label>Amount (USD) *</label>
+                            <label>{{ t('manual_donation.amount_usd') }} *</label>
                             <input type="number" step="0.01" min="0.01" name="amount" required>
                         </div>
                         <div class="form-group">
-                            <label id="reference_label">Check #</label>
+                            <label id="reference_label">{{ t('manual_donation.check_number') }}</label>
                             <input type="text" name="reference" id="reference_field">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label id="date_label">Check date</label>
+                            <label id="date_label">{{ t('manual_donation.check_date') }}</label>
                             <input type="date" name="payment_date">
                         </div>
                         <div class="form-group">
-                            <label>Memo / note</label>
-                            <input type="text" name="memo" placeholder="Optional">
+                            <label>{{ t('manual_donation.memo') }}</label>
+                            <input type="text" name="memo" placeholder="{{ t('manual_donation.memo_placeholder') }}">
                         </div>
                     </div>
 
                     <div class="form-group" style="margin-top: 4px;">
-                        <label>Receipt number (optional)</label>
-                        <input type="text" name="receipt_number" placeholder="Leave blank to auto-generate (e.g. MM-2026-00387)">
-                        <div class="hint">Use only to backfill against an existing paper receipt or a legacy system number. Blank = next sequential number. Must be unique.</div>
+                        <label>{{ t('manual_donation.receipt_number') }}</label>
+                        <input type="text" name="receipt_number" placeholder="{{ t('manual_donation.receipt_number_placeholder') }}">
+                        <div class="hint">{{ t('manual_donation.receipt_number_hint') }}</div>
                     </div>
 
                     <div class="upload-group" id="check_image_zone" tabindex="0">
-                        <label class="file-label" for="check_image">Upload image (optional)</label>
-                        <button type="button" class="file-label" id="paste_btn" style="background:#27ae60; margin-left: 6px;">Paste from clipboard</button>
+                        <label class="file-label" for="check_image">{{ t('manual_donation.upload_label') }}</label>
+                        <button type="button" class="file-label" id="paste_btn" style="background:#27ae60; margin-left: 6px;">{{ t('manual_donation.paste_btn') }}</button>
                         <input type="file" name="check_image" id="check_image" accept="image/*,.pdf">
                         <span id="file_name"></span>
-                        <div class="hint" id="upload_hint">JPG, PNG, PDF — photo of the check or a Zelle screenshot. Tip: click in this box and press <kbd>Ctrl</kbd>+<kbd>V</kbd> to paste an image directly.</div>
+                        <div class="hint" id="upload_hint">{{ t('manual_donation.upload_hint_check') }}</div>
                         <img id="check_image_preview" alt="" style="display:none; max-height: 120px; margin-top: 10px; border: 1px solid #ddd; border-radius: 4px;">
                     </div>
                 </div>
 
                 <label class="email-toggle">
                     <input type="checkbox" name="send_email" id="send_email">
-                    <span>Email the receipt to the donor now</span>
+                    <span>{{ t('manual_donation.send_email') }}</span>
                 </label>
 
                 <div class="form-group" id="email_bcc_group" style="margin-top: 10px;">
-                    <label>BCC (optional)</label>
-                    <input type="text" name="bcc" id="bcc" placeholder="person1@example.com, person2@example.com">
-                    <div class="hint">Comma-separated list. These recipients receive the receipt email silently, on top of the standard support@matatmordechai.org audit copy. Ignored if "Email the receipt" is unchecked.</div>
+                    <label>{{ t('manual_donation.bcc_label') }}</label>
+                    <input type="text" name="bcc" id="bcc" placeholder="{{ t('manual_donation.bcc_placeholder') }}">
+                    <div class="hint">{{ t('manual_donation.bcc_hint') }}</div>
                 </div>
 
                 <div class="upload-group" id="email_attach_group" style="margin-top: 10px;">
-                    <label class="file-label" for="email_attachments">Attach file(s) to the email</label>
+                    <label class="file-label" for="email_attachments">{{ t('manual_donation.attach_label') }}</label>
                     <input type="file" name="email_attachments" id="email_attachments" multiple>
                     <span id="attach_names"></span>
-                    <div class="hint">Optional. Any files you pick will be attached alongside the receipt PDF when the email is sent. Ignored if the "Email the receipt" box above is unchecked.</div>
+                    <div class="hint">{{ t('manual_donation.attach_hint') }}</div>
                 </div>
 
                 <div style="display: flex; gap: 10px; margin-top: 24px;">
-                    <button type="submit" class="btn">Save &amp; Issue Receipt</button>
-                    <a href="{{ url_for('admin.donations') if current_user.role == 'admin' else url_for('salesperson.my_donations') }}" class="btn" style="background:#95a5a6;">Cancel</a>
+                    <button type="submit" class="btn">{{ t('manual_donation.save_btn') }}</button>
+                    <a href="{{ url_for('admin.donations') if current_user.role == 'admin' else url_for('salesperson.my_donations') }}" class="btn" style="background:#95a5a6;">{{ t('manual_donation.cancel') }}</a>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+    // Strings used by the dynamic JS (payment-method label swap, etc.)
+    window.MD_I18N = {
+        check_number: {{ t('manual_donation.check_number') | tojson }},
+        zelle_reference: {{ t('manual_donation.zelle_reference') | tojson }},
+        check_date: {{ t('manual_donation.check_date') | tojson }},
+        transaction_date: {{ t('manual_donation.transaction_date') | tojson }},
+        upload_hint_check: {{ t('manual_donation.upload_hint_check') | tojson }},
+        upload_hint_zelle: {{ t('manual_donation.upload_hint_zelle') | tojson }},
+    };
+</script>
 {% endblock %}
 
 {% block extra_js %}
@@ -232,14 +244,15 @@
     const dateLabel = document.getElementById('date_label');
     const uploadHint = document.getElementById('upload_hint');
     function syncMethod() {
+        const I = window.MD_I18N || {};
         if (method.value === 'zelle') {
-            refLabel.textContent = 'Zelle reference / confirmation';
-            dateLabel.textContent = 'Transaction date';
-            uploadHint.textContent = 'Optional Zelle screenshot.';
+            refLabel.textContent = I.zelle_reference || 'Zelle reference / confirmation';
+            dateLabel.textContent = I.transaction_date || 'Transaction date';
+            uploadHint.textContent = I.upload_hint_zelle || 'Optional Zelle screenshot.';
         } else {
-            refLabel.textContent = 'Check #';
-            dateLabel.textContent = 'Check date';
-            uploadHint.textContent = 'Optional photo of the check.';
+            refLabel.textContent = I.check_number || 'Check #';
+            dateLabel.textContent = I.check_date || 'Check date';
+            uploadHint.textContent = I.upload_hint_check || 'Optional photo of the check.';
         }
     }
     method.addEventListener('change', syncMethod);

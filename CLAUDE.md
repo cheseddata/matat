@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (manual-donation form: full Hebrew translation + RTL)
+- Added `nav.manual_donation` and a complete `manual_donation.*` block (~50 keys) to both `app/i18n/en.json` and `app/i18n/he.json`. Includes title/subtitle, donor-lookup placeholder & hint, donor section, full mailing-address section, payment section (method, amount, check #/Zelle reference, dates, memo), receipt-number override, image upload + paste, BCC, extra attachments, save/cancel.
+- `app/templates/admin/new_check_donation.html`: replaced every hardcoded English label/placeholder/hint with `t('manual_donation.*')`. Page wrapper gets `dir="rtl"` when `lang == 'he'`. Method-swap JS now reads strings from a `window.MD_I18N` block injected by Jinja so the dynamic relabeling (Check↔Zelle) is also localized.
+- Salesperson nav and admin "+ Manual Donation" button now use `t('nav.manual_donation')` so they read "+ צ'ק / Zelle" in Hebrew, "+ Check / Zelle" in English.
+
 ### 2026-04-27 (open charging flows to salespersons)
 - `/admin/donations/new-check` and `/admin/api/donors/search` switched from `@admin_required` → `@login_required`. Salespersons can now record check/Zelle donations and use the donor lookup.
 - The form auto-credits the salesperson on submit when filled by a salesperson (`salesperson_id = current_user.id`); admins still default to no salesperson.
