@@ -92,13 +92,27 @@ def generate_receipt_pdf(donation, donor, language='en'):
 
     template_name = f'pdf/receipt_{language}.html'
 
-    # Format date based on language
+    # Receipt date — for manual donations the operator types a date into
+    # the form (check date / charge date / Zelle transaction date). That
+    # value lands in processor_metadata['payment_date'] as ISO YYYY-MM-DD.
+    # Use it when present, else fall back to the row's created_at.
+    pay_dt = None
+    md = getattr(donation, 'processor_metadata', None) or {}
+    iso = md.get('payment_date') if isinstance(md, dict) else None
+    if iso:
+        try:
+            from datetime import datetime as _dt
+            pay_dt = _dt.strptime(iso, '%Y-%m-%d')
+        except (ValueError, TypeError):
+            pay_dt = None
+    receipt_date = pay_dt or donation.created_at
+
     if language == 'he':
         # Hebrew date format: DD/MM/YYYY
-        date_str = donation.created_at.strftime('%d/%m/%Y')
+        date_str = receipt_date.strftime('%d/%m/%Y')
     else:
         # English date format: Month DD, YYYY
-        date_str = donation.created_at.strftime('%B %d, %Y')
+        date_str = receipt_date.strftime('%B %d, %Y')
 
     # Amount in words (English only — Hebrew receipts also use English numerals here).
     amount_in_words = _amount_to_words(donation.amount_dollars)

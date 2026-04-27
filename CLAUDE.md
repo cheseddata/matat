@@ -265,6 +265,10 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-27 (receipt date honors the operator-entered payment date)
+- **Bug**: the manual donation form has a "Check date / Charge date / Transaction date" field that saves to `donation.processor_metadata['payment_date']` (ISO YYYY-MM-DD) — but `generate_receipt_pdf` ignored it and printed `donation.created_at` (the timestamp the operator filled in the form). Receipts came out dated "today" instead of the actual payment date.
+- **Fix**: `generate_receipt_pdf` now reads `processor_metadata.payment_date` first; falls back to `created_at` when missing or malformed. Works for both EN (`Month DD, YYYY`) and HE (`DD/MM/YYYY`) formats. Regenerated PDFs for the three most recent manual donations.
+
 ### 2026-04-27 (PDF receipt language follows currency, not country)
 - **Bug**: an operator typed `USD` into the manual-donation form's Country field. `get_receipt_language()` did not recognise `'USD'` as a US country, so it fell through to the donor's `language_pref='he'` and generated the receipt **PDF** in Hebrew. The email body was already English (post the earlier currency-gate fix), but the attached PDF was Hebrew — donor received a wrong-language receipt.
 - **Fix**: `get_receipt_language(donor, donation=None)` now treats currency as the strongest signal — `donation.currency == 'USD'` always returns `'en'`, regardless of `donor.country` or `donor.language_pref`. Both callers (`create_receipt_atomic`, `regenerate_receipt_pdf`) pass `donation=`.
