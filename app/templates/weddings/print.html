@@ -4,32 +4,42 @@
 <meta charset="UTF-8">
 <title>חתונות — Matat Mordechai</title>
 <style>
-    /* Force landscape A4. Belt and braces — Chrome's print engine has
-       silently dropped the orientation in past versions; declaring the
-       same intent three different ways covers every case I've seen. */
-    @page { size: A4 landscape; margin: 8mm; }
+    /* Force landscape A4. */
+    @page { size: A4 landscape; margin: 6mm; }
     @page { size: landscape; }
-    @page { size: 297mm 210mm; }
 
     html, body {
         font-family: 'Assistant', 'David', Arial, sans-serif;
-        margin: 0; padding: 8mm;
+        margin: 0; padding: 6mm;
         color: #000;
     }
-    h1 { text-align: center; margin: 0 0 4mm; color: #1e4a7b; font-size: 18pt; }
-    .meta { text-align: center; color: #555; font-size: 10pt; margin-bottom: 5mm; }
-    table { width: 100%; border-collapse: collapse; font-size: 10.5pt; table-layout: fixed; }
-    th, td { padding: 3px 6px; border-bottom: 1px solid #aaa; vertical-align: top; word-wrap: break-word; }
-    th { background: #e8eef3; text-align: right; font-weight: 700; }
+    h1 { text-align: center; margin: 0 0 2mm; color: #1e4a7b; font-size: 14pt; }
+    .meta { text-align: center; color: #555; font-size: 8.5pt; margin-bottom: 3mm; }
+
+    /* Compact table: fixed layout + narrow padding + smaller font + tight
+       column widths so the whole list fits cleanly on the page without
+       Chrome shrinking-to-fit. */
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; table-layout: fixed; }
+    th, td {
+        padding: 1.5px 4px;
+        border-bottom: 1px solid #aaa;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+        line-height: 1.25;
+    }
+    th { background: #e8eef3; text-align: right; font-weight: 700; font-size: 8.5pt; }
     tr:nth-child(even) td { background: #fafbfc; }
-    .notes-row td { padding-top: 0; color: #555; font-size: 9pt; font-style: italic; }
-    /* Column widths tuned for landscape A4 */
-    .col-date    { width: 13%; }
-    .col-groom   { width: 17%; }
-    .col-bride   { width: 17%; }
-    .col-hall    { width: 19%; }
+    .notes-row td { padding-top: 0; color: #555; font-size: 8pt; font-style: italic; }
+
+    /* Column widths — only what each field actually needs. Date and phone
+       are short, so we squeeze them; names and hall get the rest. */
+    .col-date    { width: 10%; }
+    .col-groom   { width: 19%; }
+    .col-bride   { width: 19%; }
+    .col-hall    { width: 21%; }
     .col-contact { width: 17%; }
-    .col-phone   { width: 17%; }
+    .col-phone   { width: 14%; }
 
     .toolbar { text-align: center; margin-bottom: 4mm; }
     .toolbar button {
