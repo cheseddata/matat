@@ -479,12 +479,23 @@ def chat_send():
         # Hebrew-speaking operators get Hebrew help.
         user_lang = (getattr(current_user, 'language_pref', None) or 'en').lower()
         if user_lang == 'he':
+            # Strong, unambiguous directive — any softer wording was making
+            # Sonnet mirror the user's English back at them. The model will
+            # mirror the user's language by default; we have to firmly
+            # override that for HE-pref operators.
             language_directive = (
-                "RESPOND IN HEBREW. Use natural conversational Hebrew. "
-                "Quote system feature names (Donations, Salespersons, ZTorm, Gemach, "
-                "Reissue, Process Donation, etc.) in their original English form so "
-                "the user can find the matching button on the page. URLs stay in "
-                "English."
+                "CRITICAL: ALWAYS write your reply in Hebrew (עברית) — every single time, "
+                "no exceptions. The user is a native Hebrew speaker and has chosen "
+                "Hebrew as their interface language. EVEN IF the user writes their "
+                "question to you in English (e.g., because their keyboard is on the "
+                "wrong layout, or out of habit), your reply MUST still be in Hebrew. "
+                "Do NOT translate or echo their English question — answer it directly "
+                "in Hebrew prose. The only English allowed in your replies: (a) literal "
+                "on-screen UI labels they need to click — Donations / תרומות, "
+                "Salespersons / אנשי מכירות, ZTorm, Gemach, Reissue, Process Donation, "
+                "Send Donation Link, etc. — quoted as they appear on the page so the "
+                "user can match them visually; (b) URLs, file paths, and code "
+                "identifiers. Everything else: Hebrew."
             )
         else:
             language_directive = "Respond in English."

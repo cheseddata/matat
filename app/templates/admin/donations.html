@@ -274,7 +274,9 @@
         <a href="{{ url_for('admin.donations', status=status_filter, processor='all') }}" class="filter-btn {{ 'active' if processor_filter == 'all' else '' }}">{{ t('common.all') }}</a>
         {% endif %}
         {% for proc in visible_processors %}
-        <a href="{{ url_for('admin.donations', status=status_filter, processor=proc.code) }}" class="filter-btn {{ 'active' if processor_filter == proc.code else '' }}">{{ proc.name }}</a>
+        {% set tabkey = 'processor.' ~ proc.code %}
+        {% set tabname = t(tabkey) %}
+        <a href="{{ url_for('admin.donations', status=status_filter, processor=proc.code) }}" class="filter-btn {{ 'active' if processor_filter == proc.code else '' }}">{{ tabname if tabname != tabkey else proc.name }}</a>
         {% endfor %}
     </div>
     {% endif %}
@@ -286,7 +288,7 @@
                 <th>{{ t('common.date') }}</th>
                 <th>{{ t('my_links.donor') }}</th>
                 <th>{{ t('common.amount') }}</th>
-                <th>Processor</th>
+                <th>{{ t('common.processor') }}</th>
                 <th>{{ t('common.type') }}</th>
                 <th>{{ t('admin.salesperson_info') }}</th>
                 <th>{{ t('common.source') }}</th>
@@ -313,36 +315,47 @@
                     {% endif %}
                 </td>
                 <td>
+                    {% set pcode = donation.payment_processor or 'stripe' %}
+                    {% set pkey = 'processor.' ~ pcode %}
+                    {% set pname = t(pkey) %}
                     <span style="font-size:12px; padding:2px 8px; border-radius:10px;
-                        {% if donation.payment_processor == 'stripe' %}background:#e8f4f8; color:#1a73e8;
-                        {% elif donation.payment_processor == 'nedarim' %}background:#e8f5e9; color:#2e7d32;
+                        {% if pcode == 'stripe' %}background:#e8f4f8; color:#1a73e8;
+                        {% elif pcode == 'nedarim' %}background:#e8f5e9; color:#2e7d32;
                         {% else %}background:#f3e5f5; color:#7b1fa2;{% endif %}">
-                        {{ donation.payment_processor or 'stripe' }}
+                        {{ pname if pname != pkey else pcode }}
                     </span>
                 </td>
                 <td>
-                    <span class="type-badge">{{ donation.donation_type|replace('_', ' ')|title }}</span>
+                    {% set tkey = 'common.' ~ donation.donation_type %}
+                    {% set tname = t(tkey) %}
+                    <span class="type-badge">{{ tname if tname != tkey else (donation.donation_type|replace('_', ' ')|title) }}</span>
                 </td>
                 <td>
                     <select class="sp-dropdown" onchange="updateSalesperson({{ donation.id }}, this.value, this)" data-original="{{ donation.salesperson_id or '' }}">
-                        <option value="">— None —</option>
+                        <option value="">{{ t('common.none_dash') }}</option>
                         {% for sp in salespersons %}
                         <option value="{{ sp.id }}" {{ 'selected' if donation.salesperson_id == sp.id else '' }}>{{ sp.full_name }}</option>
                         {% endfor %}
                     </select>
                 </td>
-                <td>{{ donation.source or 'direct' }}</td>
                 <td>
-                    <span class="status-badge {{ donation.status }}">{{ donation.status|capitalize }}</span>
+                    {% set skey = 'processor.' ~ (donation.source or '') %}
+                    {% set sname = t(skey) %}
+                    {{ sname if sname != skey else (donation.source or t('common.direct')) }}
+                </td>
+                <td>
+                    {% set stkey = 'common.' ~ donation.status %}
+                    {% set stname = t(stkey) %}
+                    <span class="status-badge {{ donation.status }}">{{ stname if stname != stkey else (donation.status|capitalize) }}</span>
                 </td>
                 <td>
                     <div class="action-buttons">
                         <a href="{{ url_for('admin.donation_detail', id=donation.id) }}" class="view-btn">{{ t('common.view') }}</a>
                         <a href="{{ url_for('admin.edit_donation', id=donation.id) }}" class="edit-btn">{{ t('common.edit') }}</a>
-                        <button class="view-btn print-btn" onclick="printReceipt({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">Print</button>
-                        <button class="view-btn pdf-btn" onclick="downloadPdf({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">PDF</button>
-                        <button class="view-btn resend-btn" onclick="resendReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)">Resend</button>
-                        <button class="view-btn reissue-btn" onclick="reissueReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)" title="Regenerate the PDF with the current template and email it">Reissue</button>
+                        <button class="view-btn print-btn" onclick="printReceipt({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">{{ t('common.print') }}</button>
+                        <button class="view-btn pdf-btn" onclick="downloadPdf({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">{{ t('common.pdf') }}</button>
+                        <button class="view-btn resend-btn" onclick="resendReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)">{{ t('common.resend') }}</button>
+                        <button class="view-btn reissue-btn" onclick="reissueReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)" title="Regenerate the PDF with the current template and email it">{{ t('common.reissue') }}</button>
                     </div>
                 </td>
             </tr>

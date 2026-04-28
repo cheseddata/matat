@@ -265,6 +265,13 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (Hebrew donations page + stronger Hebrew chat directive — Sara tickets #3/#4/#5)
+- **Donations list (`/admin/donations`)** localized: column header `Processor` → `t('common.processor')` (`מעבד תשלום`); processor cell, processor-tab labels, status badge, type badge, source cell, salesperson dropdown placeholder, and the row-action buttons (Print/PDF/Resend/Reissue) all routed through translation keys with safe fallbacks. Cards keep brand names (Stripe / Zelle / Nedarim Plus stay Latin); descriptive labels (Check, Credit Card (Manual)) are Hebrew (`צ'ק`, `כרטיס אשראי (ידני)`).
+- **New `processor.*` translation block** in `en.json` and `he.json` keyed by processor `code` — covers all 18 processors. Templates can do `t('processor.' ~ code)` and fall back to the raw name if a code is missing.
+- **Common keys added**: `processor`, `print`, `pdf`, `reissue`, `one_time`, `recurring`, `none_dash`.
+- **Help-widget Hebrew enforced more firmly** (`/claude/chat/send` system prompt). Sara reported the widget kept replying in English. Sonnet was mirroring her English-keyboard messages back. The directive is now an explicit "CRITICAL: ALWAYS write your reply in Hebrew — every single time, no exceptions" with examples of what stays English (UI labels, URLs, code). The directive only applies to users with `language_pref='he'`.
+- Tickets #3 / #4 / #5 marked `resolved`.
+
 ### 2026-04-28 (Claude widget: mirror to bottom-left in RTL; resolves Sara's ticket #2)
 - **Bug** (Sara, ticket #2): in Hebrew the orange feedback button is anchored to bottom-right (matching reading direction), but the purple Claude help launcher was hardcoded to bottom-right too — so the purple button covered the orange one.
 - **Fix**: `claude_widget.html` now mirrors based on `is_rtl`. In RTL the launcher *and* the open chat box (including its small-screen `@media` override) anchor to `left: 20px`. In LTR the existing bottom-right anchor is unchanged. Two widgets now sit on opposite corners regardless of language.
