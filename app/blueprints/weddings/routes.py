@@ -52,12 +52,16 @@ def index():
 @weddings_bp.route('/print')
 @login_required
 def print_view():
-    """Print-friendly version — same data, stripped chrome, large font.
-    Browser's "Save as PDF" turns this into the PDF export."""
+    """Print-friendly version — same data, stripped chrome.
+    Browser's "Save as PDF" turns this into the PDF export.
+
+    Defaults to portrait. Pass ?landscape=1 to switch."""
     _admin_or_salesperson_required()
     show_hidden = request.args.get('show_hidden') == '1'
+    landscape = request.args.get('landscape') == '1'
     rows = _ordered_query(show_hidden=show_hidden).all()
-    return render_template('weddings/print.html', weddings=rows)
+    return render_template('weddings/print.html',
+                           weddings=rows, landscape=landscape)
 
 
 @weddings_bp.route('/export.csv')
