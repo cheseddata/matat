@@ -12,9 +12,15 @@ from ...models.wedding import Wedding
 from . import weddings_bp
 
 
+# Username allowlist for the wedding tracker. The list is small and
+# rarely changes, so a hardcoded set is simpler than a permission row.
+# (Same set is mirrored in templates/base.html for the nav-link gate.)
+_WEDDING_USERNAMES = {'admin', 'ggoldblum', 'matatmor@gmail.com'}
+
+
 def _admin_or_salesperson_required():
-    role = getattr(current_user, 'role', None)
-    if role not in ('admin', 'salesperson'):
+    """Wedding-tracker access: only the operators on the allowlist."""
+    if (getattr(current_user, 'username', None) or '') not in _WEDDING_USERNAMES:
         abort(403)
 
 

@@ -140,7 +140,10 @@
 
             <a href="{{ url_for('admin.campaigns') }}" class="nav-direct">{{ t('nav.campaigns') }}</a>
             <a href="{{ url_for('admin.reports') }}" class="nav-direct">{{ t('nav.reports') }}</a>
+            {# Weddings: scoped to the operators who actually manage the list. #}
+            {% if current_user.username in ['admin', 'ggoldblum', 'matatmor@gmail.com'] %}
             <a href="{{ url_for('weddings.index') }}" class="nav-direct">💍 Weddings</a>
+            {% endif %}
             <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             {% if current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" class="nav-direct" style="color: #90EE90; font-weight: bold;">💚 Gemach</a>{% endif %}
 
@@ -162,7 +165,9 @@
             <a href="{{ url_for('salesperson.send_link') }}" class="nav-direct">{{ t('nav.send_link') }}</a>
             <a href="{{ url_for('salesperson.phone_entry') }}" class="nav-direct">{{ t('nav.phone_entry') }}</a>
             <a href="{{ url_for('admin.new_check_donation') }}" class="nav-direct">{{ t('nav.manual_donation') }}</a>
+            {% if current_user.username in ['admin', 'ggoldblum', 'matatmor@gmail.com'] %}
             <a href="{{ url_for('weddings.index') }}" class="nav-direct">💍 Weddings</a>
+            {% endif %}
             <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             {% if current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" class="nav-direct" style="color: #90EE90; font-weight: bold;">💚 Gemach</a>{% endif %}
             <a href="{{ url_for('salesperson.my_links') }}" class="nav-direct">{{ t('nav.my_links') }}</a>
