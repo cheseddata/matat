@@ -428,7 +428,15 @@ def my_commissions():
 @salesperson_bp.route('/my-donations')
 @salesperson_required
 def my_donations():
-    """View all donations attributed to this salesperson."""
+    """View all donations attributed to this salesperson.
+
+    If the user has the `can_view_all_donations` flag (granted via
+    Admin → Donation Permissions), bounce them to the full
+    /admin/donations list instead — same convention the nav link uses.
+    """
+    if getattr(current_user, 'can_view_all_donations', False) or current_user.role == 'admin':
+        return redirect(url_for('admin.donations'))
+
     # Strictly scoped to current user
     donations = Donation.query.filter(
         Donation.salesperson_id == current_user.id,

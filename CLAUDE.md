@@ -265,6 +265,10 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (my_donations honors the can_view_all_donations flag)
+- Sara still saw only her one credited donation after the flag-flip because the salesperson dashboard's "View →" tile (and any direct visit to `/salesperson/my-donations`) hit the strictly-scoped salesperson route.
+- `salesperson.my_donations`: at the top of the handler, if `current_user.can_view_all_donations` is True (or the user is an admin) we now redirect to `/admin/donations`. Same convention the nav link already uses, so every entry path lands in the right place.
+
 ### 2026-04-28 (Hebrew donations page + stronger Hebrew chat directive — Sara tickets #3/#4/#5)
 - **Donations list (`/admin/donations`)** localized: column header `Processor` → `t('common.processor')` (`מעבד תשלום`); processor cell, processor-tab labels, status badge, type badge, source cell, salesperson dropdown placeholder, and the row-action buttons (Print/PDF/Resend/Reissue) all routed through translation keys with safe fallbacks. Cards keep brand names (Stripe / Zelle / Nedarim Plus stay Latin); descriptive labels (Check, Credit Card (Manual)) are Hebrew (`צ'ק`, `כרטיס אשראי (ידני)`).
 - **New `processor.*` translation block** in `en.json` and `he.json` keyed by processor `code` — covers all 18 processors. Templates can do `t('processor.' ~ code)` and fall back to the raw name if a code is missing.
