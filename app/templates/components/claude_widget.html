@@ -313,8 +313,8 @@
         <div class="claude-chat-header" id="claudeChatHeader">
             <div class="claude-chat-avatar">🤖</div>
             <div class="claude-chat-info">
-                <div class="name">{% if current_user.username == 'admin' %}Claude Code{% else %}Claude Assistant{% endif %}</div>
-                <div class="status">{% if current_user.username == 'admin' %}Developer Terminal{% else %}Here to help!{% endif %}</div>
+                <div class="name">{% if current_user.username == 'admin' %}Claude Code{% else %}{{ t('claude_widget.name') }}{% endif %}</div>
+                <div class="status">{% if current_user.username == 'admin' %}Developer Terminal{% else %}{{ t('claude_widget.status') }}{% endif %}</div>
             </div>
             <div class="claude-chat-controls">
                 <button onclick="toggleMaximize()" title="Maximize">⬜</button>
@@ -329,14 +329,14 @@
         <!-- Other users: AI Chat -->
         <div class="claude-messages" id="claudeMessages">
             <div class="claude-welcome">
-                <h3>Hi {{ current_user.first_name or current_user.username }}! 👋</h3>
-                <p>Ask me anything about the system.<br>Ctrl+V to paste a screenshot.</p>
+                <h3>{{ t('claude_widget.greeting').replace('{name}', current_user.first_name or current_user.username) }}</h3>
+                <p>{{ t('claude_widget.tagline') }}<br>{{ t('claude_widget.paste_hint') }}</p>
             </div>
         </div>
         <div class="claude-input-area">
             <div class="claude-input-row">
                 <div class="claude-input-wrapper">
-                    <textarea class="claude-input" id="claudeInput" placeholder="Type your message..." rows="1" onkeydown="handleInputKey(event)"></textarea>
+                    <textarea class="claude-input" id="claudeInput" placeholder="{{ t('claude_widget.input_placeholder') }}" rows="1" onkeydown="handleInputKey(event)"></textarea>
                 </div>
                 <button class="claude-send-btn" id="claudeSendBtn" onclick="sendMessage()">➤</button>
             </div>
@@ -345,11 +345,11 @@
 
         <!-- Screenshot / Upload bar (everyone) -->
         <div style="padding:8px 12px; background:#f0f0f0; border-top:1px solid #ccc; display:flex; gap:6px; align-items:center; flex-shrink:0;">
-            <button class="claude-action-btn" onclick="takeScreenshot()" style="padding:5px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📸 Screenshot</button>
-            <button class="claude-action-btn" onclick="pasteFromClipboard()" style="padding:5px 12px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📋 Paste</button>
-            <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()" style="padding:5px 12px; background:#9b59b6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">📁 Upload</button>
+            <button class="claude-action-btn" onclick="takeScreenshot()" style="padding:5px 12px; background:#3498db; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">{{ t('claude_widget.btn_screenshot') }}</button>
+            <button class="claude-action-btn" onclick="pasteFromClipboard()" style="padding:5px 12px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">{{ t('claude_widget.btn_paste') }}</button>
+            <button class="claude-action-btn" onclick="document.getElementById('claudeFileInput').click()" style="padding:5px 12px; background:#9b59b6; color:white; border:none; border-radius:4px; cursor:pointer; font-size:12px;">{{ t('claude_widget.btn_upload') }}</button>
             {% if current_user.username != 'admin' %}
-            <button class="claude-action-btn" onclick="clearChat()" style="padding:5px 12px;">🗑️ Clear</button>
+            <button class="claude-action-btn" onclick="clearChat()" style="padding:5px 12px;">{{ t('claude_widget.btn_clear') }}</button>
             {% endif %}
             <input type="file" id="claudeFileInput" accept="image/*" style="display:none" onchange="uploadFileWidget(this)">
             <div class="claude-upload-status" id="claudeUploadStatus" style="flex:1; font-size:11px; color:#666;"></div>
@@ -498,7 +498,7 @@ async function sendMessage() {
 }
 
 async function clearChat() {
-    if (!confirm('Clear chat history?')) return;
+    if (!confirm({{ t('claude_widget.confirm_clear') | tojson }})) return;
     try {
         await fetch('/claude/chat/clear', { method: 'POST' });
         document.getElementById('claudeMessages').innerHTML = '<div class="claude-welcome"><h3>Chat cleared! 👋</h3><p>How can I help you?</p></div>';
@@ -522,7 +522,7 @@ async function takeScreenshot() {
         form.append('file', blob, 'screenshot.png');
         form.append('description', 'Page: ' + location.href);
 
-        status.textContent = 'Uploading...';
+        status.textContent = {{ t('claude_widget.uploading') | tojson }};
         const res = await fetch('/claude/screenshot/upload', { method: 'POST', body: form });
         const data = await res.json();
 
@@ -530,7 +530,7 @@ async function takeScreenshot() {
             const fullUrl = window.location.origin + data.url;
             status.innerHTML = '✓ <a href="' + data.url + '" target="_blank" style="color:#3498db">' + data.filename + '</a> <span style="cursor:pointer;color:#27ae60" onclick="navigator.clipboard.writeText(\'' + fullUrl + '\');this.textContent=\'Copied!\'">[Copy URL]</span>';
         } else {
-            status.textContent = 'Error: ' + (data.error || 'Upload failed');
+            status.textContent = 'Error: ' + (data.error || {{ t('claude_widget.upload_failed') | tojson }});
         }
     } catch (err) {
         chatBox.style.display = 'flex';
@@ -543,7 +543,7 @@ async function takeScreenshot() {
 function uploadFileWidget(input) {
     if (!input.files.length) return;
     const status = document.getElementById('claudeUploadStatus');
-    status.textContent = 'Uploading...';
+    status.textContent = {{ t('claude_widget.uploading') | tojson }};
 
     const form = new FormData();
     form.append('file', input.files[0]);
@@ -582,7 +582,7 @@ async function pasteFromClipboard() {
                     const fullUrl = window.location.origin + data.url;
                     status.innerHTML = '✓ <a href="' + data.url + '" target="_blank" style="color:#3498db">' + data.filename + '</a> <span style="cursor:pointer;color:#27ae60" onclick="navigator.clipboard.writeText(\'' + fullUrl + '\');this.textContent=\'Copied!\'">[Copy URL]</span>';
                 } else {
-                    status.textContent = 'Error: ' + (data.error || 'Upload failed');
+                    status.textContent = 'Error: ' + (data.error || {{ t('claude_widget.upload_failed') | tojson }});
                 }
                 return;
             }
@@ -624,7 +624,7 @@ document.addEventListener('paste', async function(e) {
                     const fullUrl = window.location.origin + data.url;
                     status.innerHTML = '✓ <a href="' + data.url + '" target="_blank" style="color:#3498db">' + data.filename + '</a> <span style="cursor:pointer;color:#27ae60" onclick="navigator.clipboard.writeText(\'' + fullUrl + '\');this.textContent=\'Copied!\'">[Copy URL]</span>';
                 } else {
-                    status.textContent = 'Error: ' + (data.error || 'Upload failed');
+                    status.textContent = 'Error: ' + (data.error || {{ t('claude_widget.upload_failed') | tojson }});
                 }
             } catch (err) {
                 status.textContent = 'Error: ' + err.message;

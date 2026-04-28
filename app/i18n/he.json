@@ -181,6 +181,21 @@
     "language": "שפה",
     "send_sms_btn": "שלח קישור SMS"
   },
+  "claude_widget": {
+    "name": "עוזר Claude",
+    "status": "כאן לעזור!",
+    "greeting": "שלום {name}! 👋",
+    "tagline": "שאלי אותי כל דבר על המערכת.",
+    "paste_hint": "Ctrl+V להדבקת צילום מסך.",
+    "input_placeholder": "הקלידי הודעה...",
+    "btn_screenshot": "📸 צילום מסך",
+    "btn_paste": "📋 הדבק",
+    "btn_upload": "📁 העלה קובץ",
+    "btn_clear": "🗑️ נקה",
+    "confirm_clear": "לנקות את היסטוריית הצ'אט?",
+    "uploading": "מעלה...",
+    "upload_failed": "ההעלאה נכשלה"
+  },
   "manual_donation": {
     "title": "רישום תרומה ידנית",
     "subtitle": "עבור תרומות בצ'ק או ב-Zelle (ארה\"ב). מנפיק קבלה רשמית עם שם התורם המלא וכתובת למשלוח דואר.",

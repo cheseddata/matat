@@ -181,6 +181,21 @@
     "language": "Language",
     "send_sms_btn": "Send SMS Link"
   },
+  "claude_widget": {
+    "name": "Claude Assistant",
+    "status": "Here to help!",
+    "greeting": "Hi {name}! 👋",
+    "tagline": "Ask me anything about the system.",
+    "paste_hint": "Ctrl+V to paste a screenshot.",
+    "input_placeholder": "Type your message...",
+    "btn_screenshot": "📸 Screenshot",
+    "btn_paste": "📋 Paste",
+    "btn_upload": "📁 Upload",
+    "btn_clear": "🗑️ Clear",
+    "confirm_clear": "Clear chat history?",
+    "uploading": "Uploading...",
+    "upload_failed": "Upload failed"
+  },
   "manual_donation": {
     "title": "Record Manual Donation",
     "subtitle": "For US check or Zelle donations. Issues an official receipt with the donor's full name and mailing address.",

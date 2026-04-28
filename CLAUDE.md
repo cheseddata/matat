@@ -265,6 +265,12 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (Claude widget UI translated to Hebrew — Sara tickets #6/#7)
+- Sara reported the chat widget *chrome* was still English even though replies came back in Hebrew. The earlier system-prompt fix only affected the AI's response language; the wrapping HTML had hardcoded "Claude Assistant", "Here to help!", "Hi {name}!", "Ask me anything…", "Type your message…", and the four action buttons (Screenshot / Paste / Upload / Clear).
+- Added a **`claude_widget.*` translation block** to en.json / he.json (~13 keys covering name/status/greeting/tagline/paste-hint/placeholder/btn_screenshot/btn_paste/btn_upload/btn_clear/confirm_clear/uploading/upload_failed). The `greeting` uses a `{name}` token that the template substitutes with `current_user.first_name`.
+- Wired all the strings through `t('claude_widget.*')` in `components/claude_widget.html`. The JS string literals (`Uploading...`, `Upload failed`, the `Clear chat history?` confirm) now also pull from translations via `{{ t(...) | tojson }}`.
+- Tickets #6 / #7 marked `resolved`.
+
 ### 2026-04-28 (donation salesperson dropdown: include admins)
 - Two donation dropdowns (`admin.donations` row-level and `admin.edit_donation`) filtered to `role == 'salesperson'`. Admins (e.g. Sara) couldn't be attributed to a donation. Both queries now use `role.in_(['salesperson', 'admin'])` and only active users, ordered admins-first then by first name. Other role-counting queries (commission month view, salesperson admin list, dashboard stats) stay unchanged because those are intentionally salesperson-only.
 
