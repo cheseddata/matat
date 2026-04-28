@@ -423,27 +423,39 @@
     </nav>
     {% endif %}
 
-    <!-- Access-style toolbar (mirrors the Access menubar icons) -->
+    <!-- Access-style toolbar — items mirror Access `menu: main` (חברים, סוגים,
+         תכניות, דוחות, תחזוקה, עזרה). No persistent toolbar exists in the
+         original Access app; this is sandbox-only convenience but the labels
+         and order are kept faithful to the Access menu so it doesn't invent
+         categories that don't exist there. -->
     <div class="access-toolbar">
         <a href="{{ url_for('gemach.switchboard') }}"
            class="tb-btn {% if request.endpoint == 'gemach.switchboard' %}active{% endif %}">
-            <i class="fas fa-home"></i> {{ t('gemach.nav.home') }}
+            <i class="fas fa-home"></i> תפריט ראשי
         </a>
         <a href="{{ url_for('gemach.members') }}"
            class="tb-btn {% if 'member' in (request.endpoint or '') %}active{% endif %}">
-            <i class="fas fa-users"></i> {{ t('gemach.nav.members') }}
+            <i class="fas fa-users"></i> חברים
         </a>
-        <a href="{{ url_for('gemach.loans') }}"
-           class="tb-btn {% if 'loan' in (request.endpoint or '') %}active{% endif %}">
-            <i class="fas fa-hand-holding-usd"></i> {{ t('gemach.nav.loans') }}
+        <a href="{{ url_for('gemach.types_menu') }}"
+           class="tb-btn {% if request.endpoint == 'gemach.types_menu' %}active{% endif %}">
+            <i class="fas fa-tags"></i> סוגים
         </a>
-        <a href="{{ url_for('gemach.transactions') }}"
-           class="tb-btn {% if 'transactions' in (request.endpoint or '') %}active{% endif %}">
-            <i class="fas fa-exchange-alt"></i> {{ t('gemach.nav.transactions') }}
+        <a href="{{ url_for('gemach.progs_menu') }}"
+           class="tb-btn {% if request.endpoint in ('gemach.progs_menu','gemach.masav_prep','gemach.siumim','gemach.hazarot_list','gemach.hash_export') %}active{% endif %}">
+            <i class="fas fa-cogs"></i> תכניות
         </a>
         <a href="{{ url_for('gemach.reports') }}"
-           class="tb-btn {% if 'reports' in (request.endpoint or '') %}active{% endif %}">
-            <i class="fas fa-chart-bar"></i> {{ t('gemach.nav.reports') }}
+           class="tb-btn {% if 'reports' in (request.endpoint or '') or 'report_' in (request.endpoint or '') %}active{% endif %}">
+            <i class="fas fa-chart-bar"></i> דוחות
+        </a>
+        <a href="{{ url_for('gemach.maint_menu') }}"
+           class="tb-btn {% if request.endpoint == 'gemach.maint_menu' %}active{% endif %}">
+            <i class="fas fa-wrench"></i> תחזוקה
+        </a>
+        <a href="{{ url_for('gemach.help_page') }}"
+           class="tb-btn {% if request.endpoint == 'gemach.help_page' %}active{% endif %}">
+            <i class="fas fa-question-circle"></i> עזרה
         </a>
         <div class="tb-spacer"></div>
         <a href="{{ url_for('ztorm.switchboard') }}" class="tb-btn tb-ztorm" title="ZTorm">🏛 ZTorm</a>

@@ -23,6 +23,9 @@
 .w2k-btn:hover { background:#F5F3E8; color:#000; }
 .w2k-btn:active { border-top-color:#808080; border-left-color:#808080; border-right-color:#FFF; border-bottom-color:#FFF; }
 .w2k-btn.narrow { width:110px; }
+.w2k-btn.todo  { color:#888; cursor:not-allowed; background:#E5E2D6; }
+.w2k-btn.todo:hover { background:#E5E2D6; color:#888; }
+.w2k-btn .todo-mark { font-size:10px; color:#A33; margin-right:4px; }
 .w2k-exit { margin-top:18px; display:flex; align-items:center; justify-content:flex-start; padding-left:8px; }
 .w2k-exit a { width:52px; height:42px; background:#ECE9D8; border:1px solid #000; border-top-color:#FFF; border-left-color:#FFF; border-right-color:#808080; border-bottom-color:#808080; box-shadow:1px 1px 0 #404040; display:inline-flex; align-items:center; justify-content:center; text-decoration:none; font-size:22px; color:#2F5597; }
 .w2k-exit a:hover { background:#F5F3E8; color:#C62828; }
@@ -35,8 +38,15 @@
     <div class="w2k-body">
         <div class="w2k-banner">{{ banner }}</div>
         <div class="w2k-button-col">
-            {% for label, href in items %}
-            <a href="{{ href }}" class="w2k-btn">{{ label }}</a>
+            {% for item in items %}
+              {% set label = item[0] %}
+              {% set href = item[1] %}
+              {% set status = item[2] if item|length > 2 else 'ok' %}
+              {% if status == 'todo' %}
+                <span class="w2k-btn todo" title="טרם הופעל בסנדבוקס — מעבר לאקסס">{{ label }}<span class="todo-mark">⋯</span></span>
+              {% else %}
+                <a href="{{ href }}" class="w2k-btn">{{ label }}</a>
+              {% endif %}
             {% endfor %}
         </div>
         <div class="w2k-exit">

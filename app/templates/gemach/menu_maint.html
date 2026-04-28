@@ -1,20 +1,25 @@
 {% extends "gemach_base.html" %}
 {% from 'gemach/_w2k_menu.html' import w2k_menu %}
 {% block title %}תחזוקה — גמ״ח{% endblock %}
+
+{# Faithful port of Access form `menu: maint`.
+   VBA buttons in declaration order (form_menu_ maint.txt):
+     button1 → undo_msv (ביטול מס"ב אחרון)
+     button2 → close_hidden_forms (לא רלוונטי בגרסת ווב)
+     button3 → DoCmd.OpenForm "setup" (הגדרות)
+#}
 {% block content %}
   {{ w2k_menu(
        title='תחזוקה',
        banner='תחזוקה',
        items=[
-         ('מוסדות',          url_for('gemach.switchboard') ~ '#todo-institutions'),
-         ('סיבות ביטול',     url_for('gemach.switchboard') ~ '#todo-bitul'),
-         ('סוגי תנועות',     url_for('gemach.switchboard') ~ '#todo-sugei-tnua'),
-         ('חשבונאי (Hash)',  url_for('gemach.switchboard') ~ '#todo-hash'),
-         ('משתמשים',         '/admin/users'),
+         ('ביטול מס״ב אחרון',  '#', 'todo'),
+         ('סגירת טפסים מוסתרים','#', 'todo'),
+         ('הגדרות',             '#', 'todo'),
        ],
        back_url=url_for('gemach.switchboard')
   ) }}
-  <div style="max-width: 480px; margin: 8px auto; text-align:center; font-size: 11px; color:#666;">
-      (שלושת הקישורים הראשונים יופעלו בשלב הבא — בינתיים ניתן לראות את הטבלאות בלוח הבקרה)
+  <div style="max-width:480px;margin:8px auto;text-align:center;font-size:11px;color:#666;">
+    התפריט תואם את <code>menu: maint</code> באקסס. הפעולות עצמן יבוצעו במערכת האקסס עד שיופעלו בסנדבוקס.
   </div>
 {% endblock %}

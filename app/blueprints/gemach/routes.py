@@ -107,10 +107,10 @@ def member_detail(member_id):
         GemachLoan.start_date.desc(),
     ).all()
 
-    # Tab 4 (תנועות): general transactions, oldest first within the last 200
-    transactions = list(reversed(
-        member.transactions.order_by(GemachTransaction.transaction_date.desc()).limit(200).all()
-    ))
+    # Tab 4 (תנועות): all general transactions for this member, oldest first.
+    transactions = member.transactions.order_by(
+        GemachTransaction.transaction_date.asc()
+    ).all()
 
     # Tab 5 (מעקב):
     #   RIGHT grid = general transactions for this member (deposits,
@@ -121,7 +121,7 @@ def member_detail(member_id):
         .join(GemachLoan, GemachLoanTransaction.loan_id == GemachLoan.id)
         .filter(GemachLoan.member_id == member.id)
         .order_by(GemachLoanTransaction.transaction_date.desc())
-        .limit(200).all()
+        .all()
     )
 
     # Totals by category for the bottom bar on tab 5.
@@ -266,6 +266,32 @@ def maint_menu():
 def help_page():
     """עזרה — Help / about page."""
     return render_template('gemach/help.html')
+
+
+@gemach_bp.route('/types')
+@gemach_required
+def types_menu():
+    """סוגים — popup-style submenu mirroring the Access `סוגים` button on
+    `menu: main`. Access opens an A_DIALOG `menu` with 4 options (sugei
+    torem / sugei truma / sugei hork / sugei tnua), each opening a lookup
+    table directly. The Flask sandbox does not yet expose those lookup
+    tables, so all 4 entries are stubbed as 'todo'.
+    """
+    return render_template('gemach/menu_types.html')
+
+
+@gemach_bp.route('/reports/masav-menu')
+@gemach_required
+def reports_masav_menu():
+    """מס״ב — סיכומים — popup-style submenu mirroring the Access `מס"ב
+    סיכומים` button on `menu: reports`. The original VBA `button3_Click`
+    opens A_DIALOG `menu` with 4 options:
+       1. סיכום הו"ק   → form `reports: sach hiuvim`
+       2. טוטל מס"ב סיכום → report `msv totals`
+       3. טוטל מס"ב פירוט → report `single hiuv`
+       4. מס"ב           → form `MsvExport`
+    """
+    return render_template('gemach/menu_masav.html')
 
 
 # ============================================================
