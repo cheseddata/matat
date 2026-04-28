@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <title>חתונות — Matat Mordechai</title>
 <style>
-    /* Force landscape A4. Use explicit dimensions instead of `A4 landscape`
-       because some Chrome versions silently ignore the orientation keyword
-       and fall back to portrait. 297mm x 210mm = A4 landscape. */
-    @page { size: 297mm 210mm; margin: 8mm; }
+    /* Force landscape A4. Belt and braces — Chrome's print engine has
+       silently dropped the orientation in past versions; declaring the
+       same intent three different ways covers every case I've seen. */
+    @page { size: A4 landscape; margin: 8mm; }
+    @page { size: landscape; }
+    @page { size: 297mm 210mm; }
 
     html, body {
         font-family: 'Assistant', 'David', Arial, sans-serif;
