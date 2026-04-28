@@ -473,8 +473,25 @@ def chat_send():
 
         # Build system prompt with user context
         user_notes = current_user.claude_notes or ''
+        # Pick the response language from the user's stored preference. The
+        # CLAUDE.md system docs stay English (it's source-of-truth code-level
+        # documentation), but the *replies* go out in the user's language so
+        # Hebrew-speaking operators get Hebrew help.
+        user_lang = (getattr(current_user, 'language_pref', None) or 'en').lower()
+        if user_lang == 'he':
+            language_directive = (
+                "RESPOND IN HEBREW. Use natural conversational Hebrew. "
+                "Quote system feature names (Donations, Salespersons, ZTorm, Gemach, "
+                "Reissue, Process Donation, etc.) in their original English form so "
+                "the user can find the matching button on the page. URLs stay in "
+                "English."
+            )
+        else:
+            language_directive = "Respond in English."
         system_prompt = f"""You are a helpful assistant for the Matat Mordechai donation management system.
 You help users with questions about using the system, finding features, and resolving issues.
+
+LANGUAGE: {language_directive}
 
 USER CONTEXT:
 {user_notes}

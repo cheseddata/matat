@@ -265,6 +265,12 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (login: apply user.language_pref as cookie; help widget answers in Hebrew)
+- **Bug**: the lang resolver in `app/utils/i18n.py` checks `?lang= → cookie → user.language_pref → 'en'` in that order. So a stale `lang=en` cookie from a prior browser session beat the user's stored `language_pref='he'`, and Hebrew-speaking operators (Sara Gehrlitz `matatmor@gmail.com`) kept landing on the English UI.
+- **Fix**: `auth.login` now writes `resp.set_cookie('lang', user.language_pref, max_age=1y, samesite=Lax)` on every successful login. The cookie is overwritten on each fresh login so each user's first page after sign-in matches their profile preference. The user can still flip via the lang-toggle without losing the override.
+- **Help widget** (`/claude/chat/send`): system prompt now embeds a `LANGUAGE:` directive derived from `current_user.language_pref`. For `'he'` users the assistant is instructed to **reply in Hebrew** while keeping system feature names (Donations, ZTorm, Reissue, etc.) in English so the user can match the on-screen button. CLAUDE.md docs themselves remain English.
+- Note: the cookie is set fresh at login, so existing logged-in sessions with a stale cookie pick up the change after their next login (or after a manual lang-toggle click).
+
 ### 2026-04-28 (wedding tracker; user-allowlist nav scoping; print/export tooling)
 
 **New `Wedding` model + `/weddings` blueprint** — replaces an unstructured

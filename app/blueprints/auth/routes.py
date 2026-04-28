@@ -25,10 +25,20 @@ def login():
         if user and user.active and not user.is_deleted:
             if bcrypt.check_password_hash(user.password_hash, password):
                 login_user(user)
-                if user.is_temp_password:
-                    return redirect(url_for('auth.change_password'))
-                return redirect(url_for('auth.dashboard_redirect'))
-        
+                # Apply the user's stored language preference to the lang cookie
+                # so they see their preferred language right away, regardless of
+                # what the previous browser session left behind.
+                target = (
+                    url_for('auth.change_password')
+                    if user.is_temp_password else url_for('auth.dashboard_redirect')
+                )
+                resp = redirect(target)
+                pref = (user.language_pref or 'en').lower()
+                if pref not in ('en', 'he'):
+                    pref = 'en'
+                resp.set_cookie('lang', pref, max_age=60 * 60 * 24 * 365, samesite='Lax')
+                return resp
+
         flash('Invalid username or password.', 'error')
     
     return render_template('auth/login.html')
