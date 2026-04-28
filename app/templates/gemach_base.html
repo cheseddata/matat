@@ -67,6 +67,19 @@
             padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
             margin: 0 6px;
         }
+        .matat-nav .db-chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 3px 10px; border-radius: 12px;
+            font-size: 11px; font-weight: bold;
+            margin: 0 6px;
+            border: none; cursor: pointer; color: white;
+        }
+        .matat-nav .db-chip.local  { background: #2E7D32; }
+        .matat-nav .db-chip.remote { background: #C62828; }
+        .matat-nav .db-chip:hover  { filter: brightness(1.15); }
+        .matat-nav .db-chip .dot {
+            width: 7px; height: 7px; border-radius: 50%; background: #fff;
+        }
 
         /* ====== ACCESS TOOLBAR ====== */
         .access-toolbar {
@@ -394,6 +407,15 @@
         <div class="spacer"></div>
         <a href="/ztorm/" class="ztorm-link">🏛 ZTorm</a>
         <a href="/gemach/" class="gemach-link">💚 {{ t('gemach.nav.home') }}</a>
+        <form action="{{ url_for('gemach.db_mode_switch') }}" method="post" style="display:inline; margin:0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit"
+                    class="db-chip {{ db_mode }}"
+                    title="מקור נתונים — לחץ להחלפה (דורש הפעלה מחדש)">
+                <span class="dot"></span>
+                DB: {{ 'מקומי' if db_mode == 'local' else 'שרת' }}
+            </button>
+        </form>
         <button class="lang-btn" onclick="toggleLanguage()">
             {% if lang == 'he' %}{{ t('nav.switch_to_english') }}{% else %}{{ t('nav.switch_to_hebrew') }}{% endif %}
         </button>

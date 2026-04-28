@@ -1,0 +1,191 @@
+{% extends "gemach_base.html" %}
+
+{% block title %}היסטוריה מלאה — {{ header.last_name or '' }} {{ header.first_name or '' }} (כרטיס {{ card_no }}){% endblock %}
+
+{% block extra_css %}
+<style>
+/* Reuse the Access 2003 look from member_detail.html, simplified for a single
+   wide grid view. */
+.kt-window {
+    background: #206B65;
+    border: 1px solid #0A246A;
+    color: #000;
+    margin: 4px;
+    min-height: calc(100vh - 130px);
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.4);
+    font-family: 'Segoe UI','David','Arial',sans-serif;
+}
+.kt-titlebar {
+    background: linear-gradient(to bottom, #B9B5AA, #7A7067);
+    color: white; padding: 3px 8px;
+    font: bold 13px 'Segoe UI', sans-serif;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.kt-titlebar .x {
+    background:#C62828; color:white; width:22px; height:18px;
+    display:inline-flex; align-items:center; justify-content:center;
+    border:1px solid #8B0000; text-decoration: none; font-weight: bold;
+}
+.kt-toolbar {
+    background: #206B65; padding: 8px 12px; color: white;
+    display: flex; gap: 18px; flex-wrap: wrap; align-items: center;
+}
+.kt-toolbar .pill {
+    background: #ECE9D8; border: 1px outset #888;
+    padding: 3px 10px; color: #000; font-weight: bold; font-size: 12px;
+    display: inline-flex; align-items: center; gap: 8px;
+}
+.kt-toolbar .pill .amt {
+    background: white; border: 1px inset #888; padding: 1px 6px;
+    font-family: 'Courier New', monospace; min-width: 30px; text-align: center;
+}
+.kt-toolbar .back-link {
+    background: #ECE9D8; border: 1px outset #888; color: #000;
+    padding: 4px 12px; font-weight: bold; text-decoration: none; font-size: 12px;
+}
+.kt-toolbar .back-link:hover { background: #F5F3E8; }
+
+.kt-content { padding: 14px; }
+
+.kt-grid-wrap {
+    background: #C0C0C0; border: 1px solid #808080; padding: 0;
+    max-height: calc(100vh - 290px);
+    overflow: auto;
+}
+.kt-grid {
+    width: 100%; border-collapse: collapse; font-size: 12px;
+    font-family: 'Segoe UI','David',sans-serif; background: #C0C0C0;
+}
+.kt-grid thead th {
+    background: #000080; color: white; font-weight: normal;
+    padding: 4px 8px; border: 1px solid #000; text-align: center;
+    white-space: nowrap; position: sticky; top: 0; z-index: 1;
+}
+.kt-grid tbody tr { background: white; }
+.kt-grid tbody tr:nth-child(even) { background: #F0F0F0; }
+.kt-grid tbody tr:hover { background: #FFFDE7; }
+.kt-grid td {
+    padding: 3px 8px; border: 1px solid #D0D0D0; white-space: nowrap;
+}
+.kt-grid .num { font-family: 'Courier New', monospace; text-align: right; }
+.kt-grid .center { text-align: center; }
+.kt-grid .empty td { padding: 40px 0; text-align: center; color: #888; }
+
+/* Source/kind colour pills */
+.src-gmach { background:#E1F5FE; color:#01579B; padding:1px 6px;
+             border:1px solid #4FC3F7; font-size:10px; font-weight:bold; }
+.src-ztorm { background:#FFF3E0; color:#E65100; padding:1px 6px;
+             border:1px solid #FFB74D; font-size:10px; font-weight:bold; }
+.kind-kabala    { color:#1B5E20; font-weight:bold; }
+.kind-tashlumim { color:#0D47A1; }
+.kind-truma     { color:#4A148C; font-weight:bold; }
+.kind-peulot    { color:#01579B; }
+.kind-tnuot     { color:#3E2723; }
+
+.kt-grid .canceled { text-decoration: line-through; opacity: 0.55; }
+
+.kt-status {
+    background: #D4D0C8; border-top: 1px solid #808080;
+    padding: 4px 10px; font-size: 11px; color: #000;
+    font-family: 'Segoe UI','David',sans-serif;
+    display: flex; justify-content: space-between;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="kt-window">
+
+    <!-- Titlebar -->
+    <div class="kt-titlebar">
+        <span>היסטוריה מלאה — {{ header.last_name or '' }} {{ header.first_name or '' }} (מס׳ כרטיס {{ card_no }})</span>
+        <a href="{{ url_for('gemach.member_detail', member_id=card_no) if False else url_for('gemach.members', card=card_no) }}"
+           class="x" title="סגור">✕</a>
+    </div>
+
+    <!-- Toolbar: counts per source -->
+    <div class="kt-toolbar">
+        <a href="{{ url_for('gemach.members', card=card_no) }}" class="back-link">← חזרה לחיפוש</a>
+        <span style="font-weight:bold;">סה״כ אירועים:</span>
+        <span class="pill">סה״כ <span class="amt">{{ events|length }}</span></span>
+
+        <span style="margin-right:18px; opacity:0.7;">|</span>
+        <span style="font-weight:bold;">גמ״ח:</span>
+        <span class="pill">פעולות הו״ק <span class="amt">{{ counts.peulot }}</span></span>
+        <span class="pill">תנועות <span class="amt">{{ counts.tnuot_gmach }}</span></span>
+
+        <span style="margin-right:18px; opacity:0.7;">|</span>
+        <span style="font-weight:bold;">ZTorm:</span>
+        <span class="pill">תרומות <span class="amt">{{ counts.trumot }}</span></span>
+        <span class="pill">תשלומים <span class="amt">{{ counts.tashlumim }}</span></span>
+        <span class="pill">קבלות <span class="amt">{{ counts.kabalot }}</span></span>
+
+        {% if num_torem %}
+        <span style="margin-right:18px; opacity:0.7;">|</span>
+        <span style="font-size:11px; opacity:0.85;">קישור ZTorm: num_torem = <strong>{{ num_torem }}</strong></span>
+        {% else %}
+        <span style="margin-right:18px; opacity:0.7;">|</span>
+        <span style="font-size:11px; opacity:0.85; color:#FFCDD2;">⚠ אין קישור ל־ZTorm (Haverim.num_torem ריק)</span>
+        {% endif %}
+    </div>
+
+    <!-- Single unified timeline grid -->
+    <div class="kt-content">
+        <div class="kt-grid-wrap">
+            <table class="kt-grid">
+                <thead>
+                    <tr>
+                        <th style="width:90px;">תאריך</th>
+                        <th style="width:70px;">מקור</th>
+                        <th style="width:90px;">סוג</th>
+                        <th style="width:110px;">סכום</th>
+                        <th style="width:50px;">מטבע</th>
+                        <th style="width:90px;">מס׳ אסמכתא / קבלה</th>
+                        <th style="width:80px;">מזהה</th>
+                        <th>פרטים</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in events %}
+                    <tr class="{% if e.canceled %}canceled{% endif %}">
+                        <td class="num">{{ e.date }}</td>
+                        <td class="center">
+                            {% if e.source == 'gmach' %}
+                                <span class="src-gmach">גמ״ח</span>
+                            {% else %}
+                                <span class="src-ztorm">ZTorm</span>
+                            {% endif %}
+                        </td>
+                        <td class="center kind-{{ e.kind }}">{{ e.kind_he }}</td>
+                        <td class="num">{{ '{:,.2f}'.format(e.amount or 0) }}</td>
+                        <td class="center">
+                            {% if e.currency == 'USD' %}$
+                            {% elif e.currency == 'ILS' %}₪
+                            {% else %}{{ e.currency }}
+                            {% endif %}
+                        </td>
+                        <td class="num">{{ e.asmachta or '' }}</td>
+                        <td class="num">{{ e.ref or '' }}</td>
+                        <td>{{ e.description or '' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr class="empty"><td colspan="8">אין רשומות היסטוריות לחבר זה</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="kt-status">
+        <span>מקור: <code>instance/mirror/MttData.db</code> + <code>instance/mirror/ztormdata.db</code> (קריאה בלבד)</span>
+        <span>הרשומות מסודרות מהחדש לישן.</span>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block status %}
+היסטוריה מלאה &middot; כרטיס #{{ card_no }} &middot; {{ header.last_name or '' }} {{ header.first_name or '' }}
+&middot; {{ events|length }} אירועים
+{% endblock %}

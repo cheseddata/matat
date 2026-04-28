@@ -13,3 +13,6 @@ gunicorn*.log
 *.pdf
 uploads/
 feedback_git/
+
+# Live Access mirror — NEVER commit her live MDB or screenshots
+/access_mirror/

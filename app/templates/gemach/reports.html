@@ -98,6 +98,41 @@
         </div>
     </div>
 
+    <!-- Access-faithful ports (read directly from instance/mirror/MttData.db) -->
+    <div style="padding: 8px 14px 0 14px;">
+        <div class="switchboard-heading" style="margin-top: 12px;">
+            <i class="fas fa-database"></i> דו״חות Access (קריאה ישירה מ־MttData.db)
+        </div>
+        <div class="switchboard-sub">פורט מילולי משדות Access המקוריים (num_hork, card_no, schum, schum_d…)</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+            <a href="{{ url_for('gemach.report_access_halvaot') }}" class="switchboard-btn">
+                <span class="num">A1</span>
+                <i class="fas fa-hand-holding-usd" style="color: #2E7D32;"></i>
+                <span style="flex: 1;">Halvaot — דו״ח הלוואות (Hork)</span>
+            </a>
+            <a href="{{ url_for('gemach.report_access_gmach_totals') }}" class="switchboard-btn">
+                <span class="num">A2</span>
+                <i class="fas fa-calculator" style="color: #2F5597;"></i>
+                <span style="flex: 1;">Gmach Totals — סיכומי גמ״ח</span>
+            </a>
+            <a href="{{ url_for('gemach.report_access_trumot') }}" class="switchboard-btn">
+                <span class="num orange">A3</span>
+                <i class="fas fa-donate" style="color: #E65100;"></i>
+                <span style="flex: 1;">Trumot — תרומות (Tnuot sug=תרו)</span>
+            </a>
+            <a href="{{ url_for('gemach.report_access_tnuot0') }}" class="switchboard-btn">
+                <span class="num purple">A4</span>
+                <i class="fas fa-list" style="color: #6A1B9A;"></i>
+                <span style="flex: 1;">Tnuot0 — תנועות בתאריך</span>
+            </a>
+            <a href="{{ url_for('gemach.report_access_single_hiuv') }}" class="switchboard-btn">
+                <span class="num red">A5</span>
+                <i class="fas fa-file-invoice" style="color: #C62828;"></i>
+                <span style="flex: 1;">Single hiuv — חיוב בודד (Peulot)</span>
+            </a>
+        </div>
+    </div>
+
     <div style="padding: 4px 14px 16px 14px;">
         <div style="background: #FFFDE7; border: 1px solid #FBC02D; padding: 10px 14px; font-size: 12px; color: #5D4037;">
             <strong>ℹ️ {{ t('gemach.reports.note') }}:</strong>

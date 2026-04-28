@@ -139,10 +139,16 @@ def init_i18n(app):
             sbx = is_sandbox()
         except Exception:
             sbx = False
+        try:
+            from .db_mode import get_db_mode
+            dbm = get_db_mode()
+        except Exception:
+            dbm = 'local'
         return {
             't': t,
             'lang': lang,
             'is_rtl': is_rtl(lang),
             'text_dir': 'rtl' if is_rtl(lang) else 'ltr',
             'sandbox_mode': sbx,
+            'db_mode': dbm,
         }

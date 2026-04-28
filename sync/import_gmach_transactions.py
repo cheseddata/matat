@@ -307,9 +307,10 @@ def import_munz():
 def main():
     app = create_app('development')
     with app.app_context():
-        # SQLite performance knobs
-        db.session.execute(text('PRAGMA synchronous = OFF'))
-        db.session.execute(text('PRAGMA journal_mode = MEMORY'))
+        # SQLite-only performance knobs (no-op elsewhere)
+        if db.engine.dialect.name == 'sqlite':
+            db.session.execute(text('PRAGMA synchronous = OFF'))
+            db.session.execute(text('PRAGMA journal_mode = MEMORY'))
 
         import_munz()
         import_peulot()

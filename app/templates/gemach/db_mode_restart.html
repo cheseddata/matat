@@ -1,0 +1,43 @@
+{% extends 'gemach_base.html' %}
+{% block title %}החלפת מצב מסד נתונים{% endblock %}
+
+{% block content %}
+<div class="access-window" style="max-width: 620px; margin: 40px auto;">
+    <div class="access-title-bar">
+        <span>החלפת מצב מסד נתונים</span>
+        <span class="win-btns"><span>×</span></span>
+    </div>
+    <div style="padding: 24px;">
+        <div style="background:#FFF3CD; border:1px solid #F57C00; padding:12px 16px; margin-bottom:20px;">
+            <strong>מצב חדש נשמר:</strong>
+            <span style="font-family:'Courier New',monospace; font-weight:bold; color:#E65100;">{{ new_mode }}</span>
+            (היה: <span style="font-family:'Courier New',monospace;">{{ old_mode }}</span>)
+        </div>
+
+        <p style="font-size:14px; line-height:1.6;">
+            כדי שהשינוי ייכנס לתוקף, יש לסגור את החלון הזה
+            ולהפעיל מחדש את
+            <code style="background:#eee; padding:1px 6px;">start.bat</code>.
+        </p>
+
+        {% if new_mode == 'remote' %}
+        <div style="background:#FFEBEE; border:1px solid #B71C1C; padding:10px 14px; font-size:13px; color:#B71C1C; margin-top:14px;">
+            ⚠ <strong>מצב remote:</strong> האפליקציה תתחבר למסד
+            <code>matattest</code> בשרת דרך מנהרת SSH.
+            ודא ש־<code>start.bat</code> פותח את המנהרה (ברירת מחדל).
+            שינויים יישמרו בשרת ולא מקומית.
+        </div>
+        {% else %}
+        <div style="background:#E8F5E9; border:1px solid #2E7D32; padding:10px 14px; font-size:13px; color:#2E7D32; margin-top:14px;">
+            ✓ <strong>מצב local:</strong> האפליקציה תשתמש ב־SQLite מקומי
+            (<code>instance/matat.db</code>). מהיר, לא דורש חיבור לשרת.
+        </div>
+        {% endif %}
+
+        <div style="margin-top:22px; display:flex; gap:10px;">
+            <a href="{{ url_for('gemach.switchboard') }}" class="tb-btn"
+               style="padding:6px 16px;">חזור לתפריט ראשי</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

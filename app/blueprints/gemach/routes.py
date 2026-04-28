@@ -102,7 +102,10 @@ def member_detail(member_id):
     tab = request.args.get('tab', '1')  # Access-style: 1/2/3/4/5
 
     # Tab 3 (הו״ק): loans grid
-    loans = member.loans.order_by(GemachLoan.start_date.desc().nullslast()).all()
+    loans = member.loans.order_by(
+        GemachLoan.start_date.is_(None).asc(),
+        GemachLoan.start_date.desc(),
+    ).all()
 
     # Tab 4 (תנועות): general transactions, oldest first within the last 200
     transactions = list(reversed(
@@ -191,7 +194,10 @@ def loans():
             GemachLoan.gmach_num_hork == digits,
             GemachLoan.account_number.ilike(pat),
         ))
-    q = q.order_by(GemachLoan.start_date.desc().nullslast())
+    q = q.order_by(
+        GemachLoan.start_date.is_(None).asc(),
+        GemachLoan.start_date.desc(),
+    )
 
     paged = q.paginate(page=page, per_page=50)
     institutions = GemachInstitution.query.order_by(GemachInstitution.name).all()
@@ -288,3 +294,47 @@ def api_member_search():
         'tz': m.teudat_zehut or '',
         'city': m.city or '',
     } for m in results])
+
+
+# ============================================================
+# DB mode switch (local SQLite <-> remote matattest via SSH tunnel)
+# ============================================================
+@gemach_bp.route('/db-mode/switch', methods=['POST'])
+@gemach_required
+def db_mode_switch():
+    """Flip the DB mode flag and show a restart-the-app page.
+
+    The change only takes effect after the Flask process restarts, because
+    SQLAlchemy's engine is bound to the URI at startup.
+    """
+    from ...utils.db_mode import get_db_mode, set_db_mode, LOCAL, REMOTE
+    current = get_db_mode()
+    new_mode = REMOTE if current == LOCAL else LOCAL
+    set_db_mode(new_mode)
+    return render_template('gemach/db_mode_restart.html',
+                           old_mode=current, new_mode=new_mode)
+
+
+# ============================================================
+# Full Customer History — read-only verbatim Access mirror view
+# ============================================================
+# This route is intentionally keyed by Haverim.card_no (the natural Access PK)
+# rather than the SQLAlchemy member_id, because the source it pulls from is the
+# Access mirror (instance/mirror/MttData.db + ztormdata.db). It does NOT touch
+# matat.db. Operator click-target: "היסטוריה מלאה" link from member_detail.
+@gemach_bp.route('/members/<int:card_no>/history')
+@gemach_required
+def member_history(card_no):
+    from . import customer_history as ch
+    data = ch.get_history(card_no)
+    if not data['header']:
+        flash(f'לא נמצא חבר עם מס׳ כרטיס {card_no}', 'error')
+        return redirect(url_for('gemach.members'))
+    return render_template(
+        'gemach/member_history.html',
+        card_no=card_no,
+        header=data['header'],
+        num_torem=data['num_torem'],
+        counts=data['counts'],
+        events=data['events'],
+    )
