@@ -265,6 +265,46 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (wedding tracker; user-allowlist nav scoping; print/export tooling)
+
+**New `Wedding` model + `/weddings` blueprint** — replaces an unstructured
+Word-doc list of upcoming weddings the org is helping fund (`Assisting the
+needy for their weddings` is one of the receipt fund categories):
+- Fields: hebrew_date (free-text — `א׳ סיון`, `כ"ה אדר א'`, etc.), optional
+  gregorian_date (sort key only — not displayed), groom_name, bride_name,
+  hall_name, phone, contact_name, notes, hidden flag, soft delete, audit
+  columns. Two migrations: `b1c4a8e2d9f7_add_weddings_table.py` and
+  `c7e2d4a9f1b3_weddings_hidden_flag.py`.
+- Blueprint at `/weddings`: list (oldest gregorian first; undated rows
+  fall to the bottom in entry order), add, edit, hide/unhide,
+  soft-delete. Hebrew-RTL templates throughout.
+- Toolbar: **Print/PDF**, **Word (.doc)**, **Excel (CSV with UTF-8 BOM)**,
+  + a "הצג מוסתרות" checkbox so the operator can revisit hidden rows.
+  Print page has a one-click landscape/portrait toggle. Default print
+  layout: portrait, 10.5pt body. Landscape: 13pt body — sized for
+  elderly-readable output without manual zoom.
+- Bulk-loaded the operator's existing list (24 weddings, sample seeded
+  via `bulk_weddings.py` — heuristically split contact name from phone).
+
+**User-allowlist nav scoping** (template + blueprint guard):
+- The `Weddings` nav-link is hidden — and the `/weddings/*` routes return
+  403 — for any user whose `username` isn't in
+  `{'admin', 'ggoldblum', 'matatmor@gmail.com'}`. The set is hardcoded in
+  both `templates/base.html` and `weddings/routes.py:_WEDDING_USERNAMES`
+  so a single source-of-truth update touches both. Easier than adding a
+  permission row for one screen used by 3 people.
+
+**User update**: salesperson `0527639985` renamed to
+`matatmor@gmail.com` (שרה גהרליץ) with a new password and
+`language_pref='he'`. `is_temp_password` cleared.
+
+**VS Code Remote Tunnel setup doc** (`tools/setup_vscode_tunnel.md`) —
+step-by-step instructions for the operator-side Claude to install the
+VS Code CLI as a Windows service so the dev (this side) can drive
+Claude Code on the operator's PC from any browser via
+`https://vscode.dev/tunnel/matat-operator` without disturbing the
+operator's Access workflow.
+
 ### 2026-04-27 (Reissue: choose YeshInvoice vs Matat email at click time)
 - **Reissue** now prompts the operator twice:
   1. "Reissue receipt for {email}?" — Cancel aborts.
