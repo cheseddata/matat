@@ -4,7 +4,10 @@
 .claude-widget {
     position: fixed !important;
     bottom: 20px !important;
-    right: 20px !important;
+    {# In RTL the orange feedback widget sits at bottom-right, so the purple
+       Claude launcher mirrors to bottom-left to avoid overlapping. In LTR
+       the orange is at bottom-left and the purple stays at bottom-right. #}
+    {% if is_rtl %}left: 20px !important; right: auto !important;{% else %}right: 20px !important; left: auto !important;{% endif %}
     z-index: 99999 !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
@@ -33,7 +36,7 @@
     display: none;
     position: fixed;
     bottom: 20px;
-    right: 20px;
+    {% if is_rtl %}left: 20px; right: auto;{% else %}right: 20px; left: auto;{% endif %}
     width: 380px;
     height: 500px;
     max-width: calc(100vw - 40px);
@@ -296,7 +299,7 @@
         width: calc(100vw - 20px);
         height: calc(100vh - 80px);
         bottom: 10px;
-        right: 10px;
+        {% if is_rtl %}left: 10px; right: auto;{% else %}right: 10px; left: auto;{% endif %}
     }
 }
 </style>

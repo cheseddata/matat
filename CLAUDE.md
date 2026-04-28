@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (Claude widget: mirror to bottom-left in RTL; resolves Sara's ticket #2)
+- **Bug** (Sara, ticket #2): in Hebrew the orange feedback button is anchored to bottom-right (matching reading direction), but the purple Claude help launcher was hardcoded to bottom-right too — so the purple button covered the orange one.
+- **Fix**: `claude_widget.html` now mirrors based on `is_rtl`. In RTL the launcher *and* the open chat box (including its small-screen `@media` override) anchor to `left: 20px`. In LTR the existing bottom-right anchor is unchanged. Two widgets now sit on opposite corners regardless of language.
+- The "Hebrew help" half of the same ticket was already addressed earlier today (the chat system prompt embeds `LANGUAGE: RESPOND IN HEBREW` for HE-pref users). Ticket #2 marked `resolved`.
+
 ### 2026-04-28 (feedback widget: viewport-only screenshot + 32 MB upload limit + 60 s timeout)
 - **Bug**: Sara (`matatmor@gmail.com`) submitted a ticket from `/salesperson/my-donations` and the widget hung on "Sending...". Server logs showed `werkzeug.exceptions.RequestEntityTooLarge: 413` from `formparser.py`. Root cause: html2canvas was capturing `document.documentElement.scrollWidth × scrollHeight` — i.e. the **entire scrollable document** — so on a long donations page the base64 image was many MB and exceeded Werkzeug 3.x's per-form-field memory cap (~500 KB default). The widget JS then tried `await res.json()` on Flask's HTML 413 page, threw a parse error, and hung from the user's POV.
 - **Fix 1 — capture only the visible viewport.** Pass `x: scrollX, y: scrollY, width: innerWidth, height: innerHeight, scale: 1` to html2canvas. Output as JPEG @ 0.8 quality (5–10× smaller than PNG). Captures exactly what the operator was looking at when they clicked the orange button — more useful for triage than a full-page render anyway.
