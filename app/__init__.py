@@ -59,6 +59,10 @@ def create_app(config_name='default'):
     from .blueprints.gemach import gemach_bp
     app.register_blueprint(gemach_bp)
 
+    # Wedding tracker (replaces Word-doc list of upcoming weddings).
+    from .blueprints.weddings import weddings_bp
+    app.register_blueprint(weddings_bp)
+
     # User loader for Flask-Login
     from .models.user import User
 

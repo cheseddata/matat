@@ -15,6 +15,7 @@ from .chat_archive import ChatArchive
 from .payment_processor import PaymentProcessor
 from .payment_routing_rule import PaymentRoutingRule
 from .donor_note import DonorNote
+from .wedding import Wedding
 
 from .agreement import Agreement
 from .payment import Payment
@@ -67,6 +68,7 @@ __all__ = [
     'PaymentProcessor',
     'PaymentRoutingRule',
     'DonorNote',
+    'Wedding',
     'Agreement',
     'Payment',
     'StandingOrder',

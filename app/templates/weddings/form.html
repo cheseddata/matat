@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}{{ 'עריכת חתונה' if wedding else 'חתונה חדשה' }} — Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-card { max-width: 720px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 6px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-weight: 600; color: #2c3e50; margin-bottom: 5px; }
+    .form-group input, .form-group textarea {
+        width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
+    }
+    .form-group .hint { color: #888; font-size: 12px; margin-top: 3px; }
+    .btn-row { display: flex; gap: 10px; margin-top: 18px; }
+    .btn { padding: 9px 18px; border-radius: 4px; text-decoration: none; font-size: 14px; border: none; cursor: pointer; }
+    .btn-primary { background: #27ae60; color: white; }
+    .btn-cancel { background: #95a5a6; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" dir="rtl">
+    <div class="form-card">
+        <h1>{{ 'עריכת חתונה' if wedding else 'הוספת חתונה' }}</h1>
+        <form method="POST" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>תאריך עברי *</label>
+                    <input type="text" name="hebrew_date"
+                           value="{{ wedding.hebrew_date if wedding else '' }}"
+                           placeholder="א' סיון תשפ&quot;ו" required>
+                    <div class="hint">איך שכתוב במסמך — למשל: כ"ה אדר א' תשפ"ו</div>
+                </div>
+                <div class="form-group">
+                    <label>תאריך לועזי (אופציונלי)</label>
+                    <input type="date" name="gregorian_date"
+                           value="{{ wedding.gregorian_date.isoformat() if wedding and wedding.gregorian_date else '' }}">
+                    <div class="hint">לסידור הרשימה לפי תאריך</div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>חתן *</label>
+                    <input type="text" name="groom_name"
+                           value="{{ wedding.groom_name if wedding else '' }}" required>
+                </div>
+                <div class="form-group">
+                    <label>כלה *</label>
+                    <input type="text" name="bride_name"
+                           value="{{ wedding.bride_name if wedding else '' }}" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>אולם</label>
+                <input type="text" name="hall_name"
+                       value="{{ wedding.hall_name or '' if wedding else '' }}">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>איש קשר</label>
+                    <input type="text" name="contact_name"
+                           value="{{ wedding.contact_name or '' if wedding else '' }}">
+                </div>
+                <div class="form-group">
+                    <label>טלפון</label>
+                    <input type="tel" name="phone" dir="ltr"
+                           value="{{ wedding.phone or '' if wedding else '' }}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>הערות</label>
+                <textarea name="notes" rows="3">{{ wedding.notes or '' if wedding else '' }}</textarea>
+            </div>
+
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary">{{ 'שמור' if wedding else 'הוסף' }}</button>
+                <a href="{{ url_for('weddings.index') }}" class="btn btn-cancel">ביטול</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
