@@ -18,29 +18,39 @@
         margin: 0; padding: 5mm;
         color: #000;
     }
-    h1 { text-align: center; margin: 0 0 2mm; color: #1e4a7b; font-size: 13pt; }
-    .meta { text-align: center; color: #555; font-size: 8pt; margin-bottom: 3mm; }
+    h1 { text-align: center; margin: 0 0 2mm; color: #1e4a7b; font-size: {{ '20pt' if landscape else '16pt' }}; }
+    .meta { text-align: center; color: #555; font-size: {{ '11pt' if landscape else '9pt' }}; margin-bottom: 4mm; }
 
-    /* Compact table — auto layout so each column hugs its content instead
-       of being stretched to span the full page. The whole table is then
-       centered. */
+    /* Full-width table, columns auto-sized to content but expanded to fill
+       the page. Larger font for elderly readability — no zooming needed. */
     table {
-        margin: 0 auto;
+        width: 100%;
         border-collapse: collapse;
-        font-size: {{ '9pt' if landscape else '8pt' }};
+        font-size: {{ '13pt' if landscape else '10.5pt' }};
         table-layout: auto;
-        max-width: 100%;
     }
     th, td {
-        padding: 1.5px 6px;
-        border-bottom: 1px solid #aaa;
-        vertical-align: top;
-        white-space: nowrap;          /* keep names on one line where possible */
-        line-height: 1.2;
+        padding: {{ '5px 10px' if landscape else '3px 7px' }};
+        border-bottom: 1px solid #888;
+        vertical-align: middle;
+        white-space: nowrap;
+        line-height: 1.3;
     }
-    th { background: #e8eef3; text-align: right; font-weight: 700; font-size: {{ '8.5pt' if landscape else '7.5pt' }}; }
+    th {
+        background: #e8eef3;
+        text-align: right;
+        font-weight: 700;
+        font-size: {{ '12pt' if landscape else '10pt' }};
+        border-bottom: 2px solid #1e4a7b;
+    }
     tr:nth-child(even) td { background: #fafbfc; }
-    .notes-row td { padding-top: 0; color: #555; font-size: {{ '8pt' if landscape else '7pt' }}; font-style: italic; white-space: normal; }
+    .notes-row td {
+        padding-top: 0;
+        color: #555;
+        font-size: {{ '10pt' if landscape else '9pt' }};
+        font-style: italic;
+        white-space: normal;
+    }
     /* phone column always LTR */
     .col-phone-cell { direction: ltr; text-align: right; }
 
