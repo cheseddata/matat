@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from .utils.db_mode import resolve_database_url
+
 
 class Config:
     """Base configuration."""
@@ -51,9 +53,8 @@ class Config:
 class DevelopmentConfig(Config):
     """Development configuration."""
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL',
-        'mysql+pymysql://root:password@localhost:3306/matat'
+    SQLALCHEMY_DATABASE_URI = resolve_database_url(
+        default='mysql+pymysql://root:password@localhost:3306/matat'
     )
 
 

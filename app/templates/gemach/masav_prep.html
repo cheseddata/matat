@@ -15,9 +15,57 @@
     {% endif %}
 
     <form method="post" style="padding: 14px;">
+        {# --- Charge parameters: matches Form_msv:prep in the Access app --- #}
+        <div style="background: #008080; color: white; padding: 12px; margin-bottom: 10px; border: 2px solid #004848;">
+            <table style="width: 100%; border-collapse: collapse; color: white;">
+                <tr>
+                    <td style="padding: 4px 8px;">
+                        <label style="cursor: pointer;">
+                            <input type="radio" name="opt" value="1" checked>
+                            חיוב מלא לתאריך:
+                        </label>
+                    </td>
+                    <td style="padding: 4px 8px;">
+                        <input type="date" name="charge_date" value="{{ default_charge_date }}" required
+                               style="padding: 4px; font-size: 14px; font-weight: bold; width: 150px;">
+                    </td>
+                    <td style="padding: 4px 8px; text-align: right;">
+                        <label>שער הדולר:</label>
+                        <input type="number" name="shaar" step="0.001" value="{{ default_shaar }}"
+                               style="padding: 4px; font-size: 14px; width: 80px; text-align: center;">
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 4px 8px;">
+                        <label style="cursor: pointer;">
+                            <input type="radio" name="opt" value="2">
+                            חיוב נוסף לתאריך:
+                        </label>
+                    </td>
+                    <td style="padding: 4px 8px; opacity: 0.7;">
+                        <span style="font-size: 13px;">
+                            {{ last_charge_date.strftime('%d/%m/%y') if last_charge_date else '—' }}
+                            <span style="font-size: 11px; opacity: 0.85;">(תאריך החיוב האחרון)</span>
+                        </span>
+                    </td>
+                    <td style="padding: 4px 8px; text-align: right; font-size: 12px;">
+                        <label style="cursor: pointer; margin-left: 14px;">
+                            <input type="checkbox" name="update_hok" value="1" checked>
+                            עדכן הו״ק וזיכויים
+                        </label>
+                        <label style="cursor: pointer;">
+                            <input type="checkbox" name="write_msv_file" value="1" checked>
+                            הכן קובץ מס״ב
+                        </label>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         <div style="background: var(--gmach-cyan); padding: 10px; border: 2px solid var(--gmach-green); margin-bottom: 10px;">
             <strong>{{ loans|length }} הו״ק פעילות</strong> מוצגות למטה. סמן את ההו״ק שברצונך לכלול באצווה,
             או השאר לא מסומן כדי לכלול את הכל.
+            המערכת תסנן אוטומטית לפי <em>יום חיוב = יום בתאריך הנבחר</em>.
             {% if loans %}
             <div style="margin-top: 6px;">
                 <a href="javascript:void(0)" onclick="document.querySelectorAll('input[name=loan_id]').forEach(e=>e.checked=true)" style="color: var(--gmach-navy); text-decoration: underline; font-size: 12px;">סמן הכל</a>

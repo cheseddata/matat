@@ -8,6 +8,44 @@
 
 This ensures all changes are documented for future sessions.
 
+## Porting from Access (Gmach / ZTorm) — IMPORTANT
+The operator runs a 30-year-old Access system (`C:\Gmach\mtt2003local.mdb`,
+`C:\ztorm\ztormdata.mdb`) that she trusts. The Flask app is gradually
+replacing it. When porting any flow:
+
+1. **Faithfully replicate the legacy system FIRST.** Dump the relevant VBA
+   (`access_mirror/gmach/docs/vba/` via SaveAsText), read the actual code,
+   and produce output that matches the legacy byte-for-byte. **No
+   "simplified approximations".** No skipping fields. No assuming a
+   formatting choice doesn't matter — the bank/operator notices everything.
+   The MASAV port (2026-04-27/28) burned cycles because the first pass
+   simplified the format; the real spec required per-institution K/1/5
+   blocks, GROUP-BY-(asmachta,bank,branch,account,name) summing, RTL
+   right-justified Hebrew names via `oldheb()`, and a 128-"9" terminator.
+
+2. **Keep table and column names IDENTICAL to Access.** SQLite/MySQL
+   columns should match Access verbatim — same casing, same Hebrew
+   transliterations: `Hork`, `Peulot`, `Tnuot`, `Mosadot`, `Haverim`,
+   `card_no`, `num_hork`, `t_z`, `kabala_eng`, `ofen`, `bank/snif/heshbon/mispar`,
+   `num_kabala_yadani`, etc. If a "Pythonic" alias is desired, add it as a
+   property on the model — never as the primary column. Renames during
+   port hide bugs.
+
+3. **Full comparison before "done".** Every ported flow needs a reproducer
+   test that runs the new code against the same inputs the legacy produced
+   output for and diffs byte-for-byte (or row-for-row). Pattern:
+   `access_mirror/export/test_masav_match.py` — regenerates the MASAV file
+   from sandbox SQLite with identical parameters, then asserts equality
+   with the bank-accepted `C:\Gmach\msv.001`. **No port is "done" until
+   the diff is empty.**
+
+4. **Phase order: replicate → cut over → automate.** Get the operator out
+   of legacy pain by producing equivalent behavior FIRST. Only after she
+   trusts the new system do we add automation (delta sync, scheduled jobs,
+   real-time hooks). Skipping step 1 ("replicate exactly") leads her to
+   reject the new flow even for small differences ("the Access is right,
+   the website is wrong").
+
 ## Tech Stack
 - **Backend:** Flask (Python 3.x)
 - **Database:** MySQL (using SQLAlchemy with Alembic migrations)
@@ -264,6 +302,53 @@ estimate_fee()        # Estimate processing fee
 ---
 
 ## Changelog
+
+### 2026-04-28 (Access menu fidelity pass + uncapped member history)
+- **Member detail uncapped**: removed the `.limit(200)` cap on `transactions` and `loan_payments` in `app/blueprints/gemach/routes.py:member_detail`. Card 3321 has 673 rows spanning 2014–2026; the cap was hiding everything before late 2024. Tab 4 (תנועות) now lists all transactions oldest-first per member; tab 5 (מעקב) loan_payments uncapped too. Sandbox SQLite already had the rows — only the route was trimming them.
+- **Gemach menus rewritten to match Access verbatim** (operator feedback: "you made your own menu… everything is not the same"). Each Flask menu now mirrors the corresponding Access form's VBA `OnClick` handlers (extracted via SaveAsText from `form_menu*.txt`), with original Access labels and exact ordering:
+  - `switchboard.html` → `menu: main` (8 buttons: חברים, חשבונות, סוגים, תוכניות, דוחות, תחזוקה, משתמשים, עזרה)
+  - `menu_progs.html` → `menu: progs` (5 buttons: מס״ב הכנה, סיומים, החזרות, בדיקת חשבון, ייצוא חשבונאי)
+  - `reports.html` → `menu: reports` (5 buttons: הוראות קבע, לווים, מס״ב סיכומים, דוחות גמ״ח, כל התנועות; sandbox-only extras moved into a `<details>` drawer)
+  - `menu_maint.html` → `menu: maint` (3 buttons: ביטול מס״ב אחרון, סגירת טפסים מוסתרים, הגדרות)
+  - `menu_types.html` (new) → popup mirroring Access `סוגים` 4-option dialog (סוגי תורם/תרומה/הו״ק/תנועה)
+  - `menu_masav.html` (new) → popup mirroring Access `מס״ב סיכומים` 4-option dialog (סיכום הו״ק / טוטל סיכום / טוטל פירוט / מס״ב הכנה)
+  - `gemach_base.html` toolbar realigned to match the same `menu: main` items (was inventing הו״ק / תנועות buttons that don't exist as Access pages).
+- **`_w2k_menu.html` macro extended** with a `'todo'` status. Buttons whose Access target lacks a Flask backend (heshbonot, sugei-* tables, check num heshbon, rptAll, undo_msv, close_hidden_forms, setup) render as greyed-out, labeled disabled buttons rather than mis-pointing to unrelated pages. Each VBA `OnClick` handler is preserved as a Jinja comment in the corresponding template so future edits stay aligned.
+- **Two new routes**: `gemach.types_menu` (`/gemach/types`) and `gemach.reports_masav_menu` (`/gemach/reports/masav-menu`) host the 4-option popup sub-menus.
+
+### 2026-04-28 (faithful mirror sync + customer history + reports + tunnel)
+- **Faithful Access → SQLite mirror sync**: new `sync_mirror.bat` + `sync/extract_gmach_all.ps1` (Jet OLEDB) + `sync/extract_ztorm_dao.ps1` (DAO+workgroup credentials, fixes the access_parser failures on memo fields) + `sync/extract_ztorm_all.py` (access_parser, used for sub-MDBs that don't have memo issues) + `sync/extract_via_access_com.ps1` (Access COM via front-end, for back-ends with table-level workgroup security like Mikud) + `sync/build_mirror_sqlite.py` (per-source SQLite files, drop+create+insert, no upsert) + `sync/compare_mirror.py` (counts + column lists + numeric SUMs + sample-row cell diff). Output: `instance/mirror/<source>.db`. Tables named **VERBATIM** Access (`Hork`, `Peulot`, `Haverim`, `Tashlumim`, `Mosadot`, ...). End-to-end PASS=170 FAIL=0 row-count match across all sources; field-level verification flagged 4 real coercion bugs in `build_mirror_sqlite.py` (currency ×10000 on `tash_ztormdata.Gvia.total`, booleans → NULL on several `pail`/`save`/`active`/`standard` cols, date-format drift, `MsvDetail.bank` SUM off by 1024) — bugs noted, not yet fixed.
+- **Customer history page** (port of "show all old receipts per customer"): new `app/blueprints/gemach/customer_history.py` + `app/templates/gemach/member_history.html` + route `/gemach/members/<int:card_no>/history`. Reads the verbatim mirror via SQLite `ATTACH` (read-only); joins `Haverim` ⨝ `Hork` ⨝ `Peulot` ⨝ `Tnuot` (gmach) with `Tormim` ⨝ `Trumot` ⨝ `Tashlumim` ⨝ `Kabalot` (ZTorm). **Cross-source link is `Haverim.num_torem` ↔ `Tormim.num_torem`** (NOT `t_z` — foreign donors have empty `t_z`). Verified for Khal Beis Aba (card_no=3978): 16 events totalling $5,500, every check# (e.g. mispar 13052) appears once on each side, `Trumot.shulam_d` matches the sum.
+- **First 5 Access reports ported to Flask** (`app/blueprints/gemach/access_reports.py` + tiles in `templates/gemach/reports.html`): `/gemach/reports/access/{halvaot,gmach_totals,trumot,tnuot0,single_hiuv}`. Each route reads the mirror via SQLite ATTACH (read-only, `?mode=ro`), uses **VERBATIM Access column names** (`num_hork`, `card_no`, `schum`, `ofen`, `sug`, etc.), and renders into the existing `gemach/reports/_base.html` Hebrew Access-grid template with PDF/Excel export. Mirror dates are stored as Access locale `MM/DD/YYYY HH:MM:SS` strings — added `_access_iso(col)` helper that converts inline (`substr(c,7,4)||'-'||substr(c,1,2)||'-'||substr(c,4,2)`); ISO date filters now match. Verified counts: Halvaot=124 active loans, Trumot 2024=354 donors / 919 txns / ₪3.8M+$1M, Tnuot0 2024=5,524 txns, Single Hiuv 2001-06-20=529 rows.
+- **Faithful-port rule added to CLAUDE.md** (this file): replicate Access semantics first (no simplifications), keep table/column names verbatim, full byte-for-byte comparison before "done", phase order replicate→cut over→automate. Plus auto-memory at `~/.claude/projects/C--matat/memory/feedback_faithful_port.md`. The MASAV port (2026-04-27) burned cycles because the first pass simplified the format; this rule prevents the next port from doing the same.
+- **MASAV port hardening**: fixed name-padding direction (RTL right-justify via `_rjust_truncate`, was incorrectly left-justified), added GROUP BY (asmachta, bank, branch, account, name) with amount summing (was emitting one row per loan instead of one row per group), and asmachta-fallback to `gmach_num_hork` when null. Verified `oldheb('מתת מרדכי')` → `'IKCXN ZZN'` and the full file is byte-for-byte identical to `C:\Gmach\msv.001` that the bank accepted on 2026-04-27. Verifier in `access_mirror/export/test_masav_match.py`.
+- **Two-office discovery (NOT YET ACTED ON)**: operator confirmed there are **two offices** running the same Gmach/ZTorm program but with **separate data**. The mirror so far covers only this PC's (Office 1's) data. Multi-tenant rework pending: `instance/mirror/<office>/` layout, composite PK `(office_id, card_no)`, per-office sync, repeat the Tashlumim ValidationRule fix on Office 2's `ztormdata.mdb`.
+- **VS Code Remote Tunnel installed** (`tools/setup_vscode_tunnel.md`): CLI at `C:\tools\vscode-cli\code.exe`, GitHub-linked to `cheseddata`, Windows service `code-tunnel-matat-operator` running. Browser URL: `https://vscode.dev/tunnel/matat-operator`. Lets the owner drive Claude Code from any browser (phone/laptop) without disturbing the operator's interactive Access session.
+- **Card-no-as-PK migration plan** drafted at `docs/card_no_pk_migration_plan.md` — column renames (`gmach_card_no→card_no`, `payments_made→buza`, etc.), Alembic migration steps, rollback path. Not applied; pending two-office decision because card_no's likely collide across offices, making the natural PK `(office_id, card_no)` instead of just `card_no`.
+
+### 2026-04-27 (Access → mirror + MASAV port to Flask)
+- **Access mirror under `C:\matat\access_mirror\gmach\`** for the operator's Access-based Gmach (`mtt2003local.mdb`). Front-end is editable in the mirror; linked tables still point at `C:\Gmach\MttData.mdb` so writes flow to the original system. Launcher (`gmach.vbs`) sets `wsh.CurrentDirectory = "C:\Gmach\"` so VBA `CurDir()` lookups find sibling files (counters, msv.* etc.) in the live folder. Taskbar pin redirected; original-fallback `.lnk` saved on operator's desktop. **Backups preserved**: pre-edit MDB at `mtt2003local.YYYYMMDD-HHMMSS.bak.mdb`.
+- **Two VBA fixes applied to mirror's front-end** (via Access COM `LoadFromText`, mirror only — original `C:\Gmach\` untouched):
+  - `Form_haverim sub tnuot.Form_BeforeUpdate`: skip the Israeli bank/branch/account requirement for foreign donors. New conditional: `Not Nz(DLookup("kabala_eng","haverim","card_no=" & Me.Parent![card_no]), False)` is added to the `ofen="check"` branch. Foreign donors (`kabala_eng=True`) save without bank info.
+  - `Form_msv: prep.go_Click`: hardcode `msvdir = "C:\Gmach\"` instead of deriving from `splitfilename curdb.name` — so the generated `msv.001` MASAV file lands in the original program's folder (where the bank-upload tool expects it), not in the mirror.
+- **Tashlumim ValidationRule relaxed in `C:\ztorm\ztormdata.mdb`**: added `or mispar Is Not Null` to the check-payment branch. Foreign donors paying by check (where Israeli bank/branch/account fields are unfillable) can now flow through `Gmach.TransferKabalot` without hitting error 3317. Original rule preserved at `C:\matat\access_mirror\tashlumim_rule_before.txt`; pre-edit `ztormdata.mdb` backed up to `C:\matat\access_mirror\ztormdata.YYYYMMDD-HHMMSS.bak.mdb`.
+- **Workflow recorder** for the operator: `C:\matat\access_mirror\gmach\logs\record.ps1` polls foreground window every 2s, logs title changes + writes to `MttData.mdb`, and screenshots Access window when title changes (JPEG q70). `start_recording.bat` / `stop_recording.bat` toggle. Output under `<YYYY-MM-DD>\events.csv` + `shots\`. PID-file kill ensures clean stop.
+- **Full Access → SQLite dump**: `C:\matat\access_mirror\export\everything.sqlite` (~31 MB, 190 tables, 442,873 rows) for website/external use. Built by `dump_mdbs.vbs` (DAO-based) + `dump_gmach.vbs` (Access-COM-based, used because Gmach's Mtorm.mdw security blocks DAO-only logins) + `build_sqlite.py` (sqlite3 stdlib). Each Access table appears as `<source>__<orig_table>`; `_meta_tables` index inside the SQLite maps every entry. Tnuot/Trumot were skipped — DAO row iteration over Hebrew memo fields was prohibitively slow in VBS; resume via TransferText planned if needed.
+- **MASAV file generation ported to Flask** (`/gemach/masav`):
+  - New `app/blueprints/gemach/masav.py` with `oldheb()` (matches the legacy VBA char remap + reversal: cp1255 codes >224 shift down by 160; aleph→`&`; result reversed for RTL→LTR byte order) and `write_masav_file()` that emits the Israeli bank fixed-width format byte-for-byte: per-institution `K`-record header / `1`-record details (bank/snif/heshbon/amount/asmachta/name) / `5`-record footer, terminated by 128 `9`s. File encoding: cp862 with CRLF line endings.
+  - `reports.py:masav_prep` updated to take charge date, exchange rate, and full/additional option from the form (matching `Form_msv: prep` in the Access app); filters loans by `charge_day = day(charge_date)`; converts USD→ILS via `shaar`; optionally stamps `last_charge_date`, `payments_made`, `total_expected`, `amount_paid` on each loan ("עדכן הו״ק וזיכויים" checkbox).
+  - `templates/gemach/masav_prep.html` got the date / exchange-rate / option / checkbox form rows so the operator sees the same controls she has in Access. Verified `oldheb('מתת מרדכי')` → `'IKCXN ZZN'` — byte-identical to the file the bank just accepted from the Access app.
+
+### 2026-04-22 (test server + Tailscale + auto-sync)
+- **New test server** at `/var/www/matat/test` on `178.128.83.220`, reachable **only via SSH tunnel** (no public Caddy entry):
+  - `ssh -L 8080:127.0.0.1:5051 root@matat-server` → `http://localhost:8080`
+  - Service: `matat-test.service` (Gunicorn on `127.0.0.1:5051`, 2 workers, SANDBOX_MODE=1)
+  - DB: SQLite at `/var/www/matat/test/instance/matat.db` (isolated from prod MySQL)
+  - Branch: `staging` (push here to deploy; test server auto-pulls every 60 s)
+  - Full setup doc: `tools/staging/README.md` on the `staging` branch.
+- **Tailscale mesh** between the operator PC (`matat-operator-pc`) and server (`matat-server`) under `tcmatat@`. Either machine addresses the other by name over a private mesh — no port forwarding, no reverse tunnel. `ssh root@matat-server` just works from here.
+- **Git-based deploy loop (staging branch):** `matat-test-deploy.timer` on the server runs `tools/deploy_staging.sh` every 60 s. On a new commit on `origin/staging` it fast-forwards, conditionally `pip install`s / `flask db upgrade`s, and restarts `matat-test`. Replaces the cherry-pick-on-operator-PC dance for testing changes.
+- **`sync_live_data.bat` auto-push:** after every Access → SQLite sync, `scp`s `instance/matat.db` to `root@matat-server:/var/www/matat/test/instance/` over Tailscale and restarts `matat-test` so SQLAlchemy reopens the file. No more CSV export/import round-trips to refresh sandbox data; a Windows Scheduled Task running the `.bat` would make fresh data land on the test server automatically. Fails gracefully if Tailscale/SSH isn't available — local SQLite is still updated.
 
 ### 2026-04-22 (ticket 4 — interactive members search)
 - **Ticket 4 fix on `/gemach/members`** (operator feedback: "I put in 3321 but it did not show up anything I want the search to be interactive"): all three חיפוש-dialog fields (מס׳ כרטיס / שם פרטי / שם משפחה) now filter the grid live as the operator types — no Enter, no reload. Debounced 180 ms, last-request-wins, URL reflects current filters via `history.replaceState` so refresh / bookmark still works.

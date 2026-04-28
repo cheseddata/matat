@@ -1,0 +1,24 @@
+{% extends "gemach_base.html" %}
+{% from 'gemach/_w2k_menu.html' import w2k_menu %}
+{% block title %}מס״ב — סיכומים — גמ״ח{% endblock %}
+
+{# Faithful port of the popup that opens from `מס"ב סיכומים` on Access
+   `menu: reports`. VBA `button3_Click` (form_menu_reports.txt):
+     a(1) = "סיכום הו"ק"        → DoCmd.OpenForm "reports: sach hiuvim"
+     a(2) = "טוטל מס"ב: סיכום"   → DoCmd.OpenReport "msv totals"  A_PREVIEW
+     a(3) = "טוטל מס"ב: פירוט"   → DoCmd.OpenReport "single hiuv" A_PREVIEW
+     a(4) = "מס"ב"               → DoCmd.OpenForm "MsvExport"
+#}
+{% block content %}
+  {{ w2k_menu(
+       title='מס״ב — סיכומים',
+       banner='מס״ב — סיכומים',
+       items=[
+         ('סיכום הו״ק',         '#', 'todo'),
+         ('טוטל מס״ב — סיכום',  url_for('gemach.report_msv_totals')),
+         ('טוטל מס״ב — פירוט',  url_for('gemach.report_access_single_hiuv')),
+         ('מס״ב — הכנה',        url_for('gemach.masav_prep')),
+       ],
+       back_url=url_for('gemach.reports')
+  ) }}
+{% endblock %}

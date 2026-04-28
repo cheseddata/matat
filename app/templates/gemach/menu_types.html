@@ -1,0 +1,25 @@
+{% extends "gemach_base.html" %}
+{% from 'gemach/_w2k_menu.html' import w2k_menu %}
+{% block title %}סוגים — גמ״ח{% endblock %}
+
+{# Faithful port of the popup that opens from `סוגים` on Access `menu: main`.
+   The VBA shows an A_DIALOG `menu` with 4 buttons (form_menu_main.txt):
+     a(1) = "סוגי תורם"  → DoCmd.OpenTable "sugei torem"
+     a(2) = "סוגי תרומה" → DoCmd.OpenTable "sugei truma"
+     a(3) = "סוגי הו"ק"  → DoCmd.OpenTable "sugei hork"
+     a(4) = "סוגי תנועה" → DoCmd.OpenTable "sugei tnua"
+   The Flask sandbox does not yet expose those lookup tables.
+#}
+{% block content %}
+  {{ w2k_menu(
+       title='סוגים',
+       banner='סוגים',
+       items=[
+         ('סוגי תורם',  '#', 'todo'),
+         ('סוגי תרומה', '#', 'todo'),
+         ('סוגי הו״ק',  '#', 'todo'),
+         ('סוגי תנועה', '#', 'todo'),
+       ],
+       back_url=url_for('gemach.switchboard')
+  ) }}
+{% endblock %}

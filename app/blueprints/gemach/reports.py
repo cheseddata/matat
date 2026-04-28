@@ -73,7 +73,10 @@ def report_loans():
         q = q.filter(GemachLoan.status == status)
     if institution_id:
         q = q.filter(GemachLoan.institution_id == institution_id)
-    q = q.order_by(GemachLoan.start_date.desc().nullslast())
+    q = q.order_by(
+        GemachLoan.start_date.is_(None).asc(),
+        GemachLoan.start_date.desc(),
+    )
     loans = q.all()
 
     status_label = {'p': 'פעיל', 's': 'הושלם', 'b': 'בוטל', '': 'הכל'}.get(status, status)
@@ -129,22 +132,22 @@ def report_loans():
 def report_summaries():
     year = request.args.get('year', type=int) or datetime.utcnow().year
 
-    # Aggregate general transactions by (category, month).
-    # SQLite: strftime('%Y-%m', transaction_date)
-    results = db.session.execute(db.text(
-        """
-        SELECT
-            strftime('%Y-%m', transaction_date) AS ym,
-            category,
-            COUNT(*) AS n,
-            SUM(COALESCE(amount_ils, 0)) AS sum_ils,
-            SUM(COALESCE(amount_usd, 0)) AS sum_usd
-        FROM gemach_transactions
-        WHERE strftime('%Y', transaction_date) = :y
-        GROUP BY ym, category
-        ORDER BY ym, category
-        """
-    ), {'y': str(year)}).fetchall()
+    # Aggregate general transactions by (category, month). Portable across
+    # SQLite and MySQL by using EXTRACT + composing the month label in Python.
+    y_expr = func.extract('year', GemachTransaction.transaction_date)
+    m_expr = func.extract('month', GemachTransaction.transaction_date)
+    results = db.session.query(
+        y_expr.label('y'),
+        m_expr.label('m'),
+        GemachTransaction.category.label('category'),
+        func.count().label('n'),
+        func.sum(func.coalesce(GemachTransaction.amount_ils, 0)).label('sum_ils'),
+        func.sum(func.coalesce(GemachTransaction.amount_usd, 0)).label('sum_usd'),
+    ).filter(
+        y_expr == year
+    ).group_by(y_expr, m_expr, GemachTransaction.category).order_by(
+        y_expr, m_expr, GemachTransaction.category,
+    ).all()
 
     cat_label = {
         'הלו': 'הלוואות', 'פקד': 'פקדונות', 'תרו': 'תרומות',
@@ -156,7 +159,7 @@ def report_summaries():
     tot_usd = Decimal('0')
     for r in results:
         rows.append({
-            'month':    r.ym,
+            'month':    f'{int(r.y):04d}-{int(r.m):02d}',
             'category': cat_label.get(r.category, r.category) if r.category else '',
             'n':        r.n,
             'sum_ils':  r.sum_ils or 0,
@@ -504,69 +507,142 @@ def report_msv_totals():
 @gemach_bp.route('/masav', methods=['GET', 'POST'])
 @gemach_required
 def masav_prep():
-    """Prepare a Masav batch: select due loans, preview, generate file.
+    """Prepare a Masav batch — same flow as the Access `Form_msv: prep`:
 
-    In SANDBOX_MODE the file is written to instance/masav_batches/ but NEVER
-    transmitted to the bank. The operator sees the exact file she would have
-    sent.
+    Operator picks the charge date, exchange rate, and mode (full /
+    additional). System filters active loans where ``charge_day`` matches
+    the day-of-month of the charge date, then writes a MASAV fixed-width
+    file to ``instance/masav_batches/`` in the exact byte format the Israeli
+    banks accept (per-institution K/1/5 blocks + 128-"9" terminator).
+
+    In SANDBOX_MODE the file is written but NEVER submitted to the bank.
     """
-    # Pick active loans whose charge_day falls in the next 30 days.
-    due_loans = GemachLoan.query.filter_by(status='p').order_by(
-        GemachLoan.charge_day.nullslast()).limit(500).all()
+    from .masav import write_masav_file
+
+    today = date.today()
 
     if request.method == 'POST':
-        # Build the batch
-        selected_ids = request.form.getlist('loan_id', type=int)
-        loans = [l for l in due_loans if l.id in selected_ids] if selected_ids else due_loans
-        import uuid
-        batch_id = f'MSV-{datetime.utcnow():%Y%m%d%H%M%S}'
-        total_amount = sum((Decimal(str(l.amount or 0)) for l in loans), Decimal('0'))
+        charge_date_str = request.form.get('charge_date', '')
+        try:
+            charge_date = datetime.strptime(charge_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            flash('תאריך חיוב לא תקין', 'error')
+            return redirect(url_for('gemach.masav_prep'))
 
+        try:
+            shaar = Decimal(request.form.get('shaar') or '0')
+        except Exception:
+            shaar = Decimal('0')
+        opt = request.form.get('opt', '1')             # 1=full, 2=additional
+        update_hok    = bool(request.form.get('update_hok'))
+        write_msv_file = bool(request.form.get('write_msv_file', '1'))
+        selected_ids = request.form.getlist('loan_id', type=int)
+
+        # Filter: active loans with charge_day == day-of-month of charge_date,
+        # start_date <= charge_date, amount > 0. (Mirrors the Access SQL.)
+        hday = charge_date.day
+        q = GemachLoan.query.filter(
+            GemachLoan.status == 'p',
+            GemachLoan.charge_day == hday,
+            GemachLoan.start_date.isnot(None),
+            GemachLoan.start_date <= charge_date,
+            GemachLoan.amount > 0,
+        )
+        if selected_ids:
+            q = q.filter(GemachLoan.id.in_(selected_ids))
+        loans = q.all()
+
+        # Convert USD loans to ILS using the exchange rate
+        if shaar and shaar > 0:
+            for l in loans:
+                if l.currency == 'USD':
+                    l.amount = (Decimal(str(l.amount or 0)) * shaar).quantize(Decimal('0.01'))
+
+        # Resolve mosadot + members for the file generator
+        mosadot = {m.id: m for m in GemachInstitution.query.all()}
+        members = {m.id: m for m in GemachMember.query.filter(
+            GemachMember.id.in_({l.member_id for l in loans})
+        ).all()} if loans else {}
+
+        batch_id = f'MSV-{datetime.utcnow():%Y%m%d%H%M%S}'
         batches_dir = os.path.join(current_app.instance_path, 'masav_batches')
         os.makedirs(batches_dir, exist_ok=True)
+        msv_path = os.path.join(batches_dir, f'{batch_id}.msv')
 
-        # Write the Masav fixed-width file (standard Israeli bank format:
-        # 70-char lines). This is a simplified approximation of the real
-        # spec — the operator can still verify the structure is right.
-        txt_path = os.path.join(batches_dir, f'{batch_id}.msv')
-        with open(txt_path, 'w', encoding='ascii', errors='replace') as f:
-            # Header line (type code '1' for header)
-            f.write(f'1{batch_id:<20}{datetime.utcnow():%Y%m%d}'
-                    f'{len(loans):08d}{int(total_amount * 100):012d}\n')
-            # Detail lines
+        record_count = 0
+        total_agorot = 0
+        if write_msv_file and loans:
+            record_count, total_agorot = write_masav_file(
+                msv_path, charge_date=charge_date, today=today,
+                loans=loans, mosadot=mosadot, members=members,
+            )
+
+        # Optional HOK update — mirrors the Access "update HOK and credits"
+        # checkbox: stamp the charge date, increment buza/sach_buza, accumulate
+        # paid amount (in ILS).
+        if update_hok and not is_sandbox() and loans:
             for l in loans:
-                bank = str(l.bank_code or 0).zfill(2)
-                branch = str(l.branch_code or 0).zfill(3)
-                account = str(l.account_number or 0).zfill(9)
-                amount = int(Decimal(str(l.amount or 0)) * 100)
-                f.write(f'2{bank}{branch}{account}{amount:012d}'
-                        f'{l.gmach_num_hork or 0:08d}\n')
-            # Trailer
-            f.write(f'9{len(loans):08d}{int(total_amount * 100):012d}\n')
+                l.last_charge_date = charge_date
+                l.payments_made = (l.payments_made or 0) + 1
+                l.total_expected = (l.total_expected or 0) + 1
+                ils = Decimal(str(l.amount or 0)) if l.currency == 'ILS' else (
+                    Decimal(str(l.amount or 0)) / shaar if shaar else Decimal('0')
+                )
+                l.amount_paid = (l.amount_paid or Decimal('0')) + ils
+            db.session.commit()
 
-        # Write metadata sidecar (picked up by report_msv_totals)
+        # Metadata sidecar
+        total_ils = Decimal(total_agorot) / 100 if total_agorot else Decimal('0')
         meta = {
-            'batch_id':     batch_id,
-            'created_at':   datetime.utcnow().isoformat(),
-            'loan_count':   len(loans),
-            'total_amount': str(total_amount),
-            'status':       'generated-sandbox' if is_sandbox() else 'generated',
-            'file_name':    f'{batch_id}.msv',
-            'submitted':    False,
-            'loan_ids':     [l.id for l in loans],
+            'batch_id':       batch_id,
+            'created_at':     datetime.utcnow().isoformat(),
+            'charge_date':    charge_date.isoformat(),
+            'shaar':          str(shaar),
+            'opt':            opt,
+            'update_hok':     update_hok,
+            'write_msv_file': write_msv_file,
+            'loan_count':     len(loans),
+            'record_count':   record_count,
+            'total_amount':   str(total_ils),
+            'total_agorot':   total_agorot,
+            'status':         'generated-sandbox' if is_sandbox() else 'generated',
+            'file_name':      f'{batch_id}.msv' if write_msv_file else None,
+            'submitted':      False,
+            'loan_ids':       [l.id for l in loans],
         }
         with open(os.path.join(batches_dir, f'{batch_id}.json'), 'w', encoding='utf-8') as f:
             json.dump(meta, f, ensure_ascii=False, indent=2)
 
-        if is_sandbox():
-            flash(f'[SANDBOX] אצווה {batch_id} נוצרה בהצלחה — {len(loans)} הו״ק, סה״כ ₪{total_amount:,.2f}. '
-                  f'לא נשלחה לבנק (מצב הדגמה).', 'success')
+        sandbox_tag = '[SANDBOX] ' if is_sandbox() else ''
+        if write_msv_file and loans:
+            flash(f'{sandbox_tag}אצווה {batch_id} נוצרה — '
+                  f'{record_count} שורות, סה״כ ₪{total_ils:,.2f}. '
+                  f'הקובץ: {msv_path}', 'success')
+        elif loans:
+            flash(f'{sandbox_tag}עודכנו {len(loans)} הו״ק (לא נוצר קובץ מס״ב).', 'success')
         else:
-            flash(f'אצווה {batch_id} נוצרה בהצלחה — {len(loans)} הו״ק, סה״כ ₪{total_amount:,.2f}.', 'success')
+            flash('לא נמצאו הו״ק לחיוב בתאריך זה.', 'warning')
         return redirect(url_for('gemach.report_msv_totals'))
 
-    return render_template('gemach/masav_prep.html',
-                           loans=due_loans, sandbox=is_sandbox())
+    # GET — show form. Default charge_date = next plausible cycle day
+    # (today + a few days), default rate = last from shearim if we have it.
+    last_loan_charge = db.session.query(func.max(GemachLoan.last_charge_date)).scalar()
+    default_charge_date = (last_loan_charge or today) + timedelta(days=1)
+
+    # Active loans, sorted by charge_day for the picker
+    due_loans = GemachLoan.query.filter_by(status='p').order_by(
+        GemachLoan.charge_day.is_(None).asc(),
+        GemachLoan.charge_day.asc(),
+    ).limit(500).all()
+
+    return render_template(
+        'gemach/masav_prep.html',
+        loans=due_loans,
+        sandbox=is_sandbox(),
+        default_charge_date=default_charge_date.isoformat(),
+        last_charge_date=last_loan_charge,
+        default_shaar='3.700',
+    )
 
 
 # ---------------------------------------------------------------------------
