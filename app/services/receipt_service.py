@@ -9,24 +9,35 @@ from ..models.config_settings import ConfigSettings
 logger = logging.getLogger(__name__)
 
 
-def _amount_to_words(amount):
-    """Render a dollar amount like 'One Hundred Twenty-Three Dollars and 45/100'.
-    Used on the printed receipt's 'In Words' line.
+_CURRENCY_UNIT = {
+    'USD': ('Dollar', 'Dollars'),
+    'ILS': ('Shekel', 'Shekels'),
+    'EUR': ('Euro', 'Euros'),
+    'GBP': ('Pound', 'Pounds'),
+}
+CURRENCY_SYMBOL = {'USD': '$', 'ILS': '₪', 'EUR': '€', 'GBP': '£'}
+
+
+def _amount_to_words(amount, currency='USD'):
+    """Render an amount like 'One Hundred Twenty-Three Dollars and 45/100'.
+    Used on the printed receipt's 'In Words' line. Supports USD/ILS/EUR/GBP.
     """
+    cu = (currency or 'USD').upper()
+    singular, plural = _CURRENCY_UNIT.get(cu, ('Dollar', 'Dollars'))
+
     try:
         from num2words import num2words
     except ImportError:
-        # Fallback — no num2words installed; just show numeric string.
-        return f"{amount:.2f} Dollars"
+        return f"{amount:.2f} {plural}"
 
     try:
         whole = int(amount)
         cents = int(round((float(amount) - whole) * 100))
         words = num2words(whole, lang='en').title()
-        unit = "Dollar" if whole == 1 else "Dollars"
+        unit = singular if whole == 1 else plural
         return f"{words} {unit} and {cents:02d}/100"
     except Exception:
-        return f"{amount:.2f} Dollars"
+        return f"{amount:.2f} {plural}"
 
 
 def generate_receipt_number_atomic():
@@ -106,8 +117,11 @@ def generate_receipt_pdf(donation, donor, language='en'):
     else:
         date_str = receipt_date.strftime('%B %d, %Y')  # Month DD, YYYY
 
-    # Amount in words (English only — Hebrew receipts also use English numerals here).
-    amount_in_words = _amount_to_words(donation.amount_dollars)
+    # Currency symbol + amount-in-words pick up the donation currency, so
+    # an ILS donation renders ₪ and "Shekels" instead of $ and "Dollars".
+    currency_code = (getattr(donation, 'currency', None) or 'usd').upper()
+    currency_symbol = CURRENCY_SYMBOL.get(currency_code, '$')
+    amount_in_words = _amount_to_words(donation.amount_dollars, currency=currency_code)
 
     # Pull check / card details out of processor_metadata so the
     # template can render a dedicated transaction-details box and the
@@ -155,6 +169,8 @@ def generate_receipt_pdf(donation, donor, language='en'):
             date=date_str,
             amount=donation.amount_dollars,
             amount_in_words=amount_in_words,
+            currency_code=currency_code,
+            currency_symbol=currency_symbol,
             payment_processor=payment_processor,
             is_card_payment=is_card,
             tx_date=pay_label_date,
@@ -200,29 +216,34 @@ def get_receipt_language(donor, donation=None):
     """
     Determine receipt language for the PDF.
 
-    Currency is the strongest signal: USD donations MUST always be in
-    English (for tax purposes), regardless of any other field. The donor's
-    `country` is operator-typed and unreliable (we have seen 'USD',
-    'United States of America', etc. saved into it).
+    Currency is the strongest signal:
+      * USD always English (IRS 501(c)(3) acknowledgement rule).
+      * ILS always Hebrew, *unless the donor is explicitly in the US* —
+        an American donating in shekels still wants an English receipt.
+        We don't trust `donor.language_pref` here because the Nedarim
+        import set it to 'en' by default for everyone; many genuine
+        Israeli donors carry that stale value.
 
-    For non-USD donations we look at country first, then `language_pref`,
-    then default to English.
+    `donor.country` is operator-typed and unreliable on its own (we have
+    seen 'USD', 'United States of America', etc.) — that's why we treat
+    currency as the lead.
     """
-    # Currency override — USD is always English.
+    is_us_donor = (donor.country or '').strip().upper() in (
+        'US', 'USA', 'UNITED STATES', 'UNITED STATES OF AMERICA',
+    )
+
     if donation is not None:
         currency = (getattr(donation, 'currency', None) or '').upper()
         if currency == 'USD':
             return 'en'
+        if currency == 'ILS':
+            return 'en' if is_us_donor else 'he'
 
-    # US donations must always be in English
-    if donor.country in ('US', 'USA', 'United States'):
+    # Other currencies / no-donation contexts: country first, then language_pref.
+    if is_us_donor:
         return 'en'
-
-    # For other countries, use donor's language preference
     if donor.language_pref in ('en', 'he'):
         return donor.language_pref
-
-    # Default to English
     return 'en'
 
 

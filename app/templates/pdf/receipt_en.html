@@ -126,7 +126,7 @@
         {# Donor model field is `zip` (not `zip_code`); keep the alias check
            in case some donor record uses zip_code via a property somewhere. #}
         <div class="fld" id="f_city">{{ donor.city or '' }}{% if donor.state %}, {{ donor.state }}{% endif %}{% set _zip = donor.zip or donor.zip_code %}{% if _zip %} {{ _zip }}{% endif %}{% if donor.country %}, {{ donor.country }}{% endif %}</div>
-        <div class="fld" id="f_amount">${{ "%.2f"|format(amount) }}</div>
+        <div class="fld" id="f_amount">{{ currency_symbol or '$' }}{{ "%.2f"|format(amount) }}</div>
         <div class="fld wrap" id="f_words">{{ amount_in_words or '' }}</div>
 
         {# Transaction details + image — for checks, Zelle, and manual
@@ -146,7 +146,7 @@
                 <tbody><tr>
                     <td>{{ tx_date or '—' }}</td>
                     <td>{{ tx_ref_number or '—' }}</td>
-                    <td>${{ "%.2f"|format(amount) }}</td>
+                    <td>{{ currency_symbol or '$' }}{{ "%.2f"|format(amount) }}</td>
                 </tr></tbody>
             </table>
         </div>

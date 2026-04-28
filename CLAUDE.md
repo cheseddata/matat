@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (ILS receipt: Hebrew template + ₪ symbol + 'Shekels' wording)
+- **Bug 1**: `get_receipt_language()` only routed to Hebrew when `donor.language_pref == 'he'`. The Nedarim CSV import set `language_pref='en'` by default, so Israeli donors with `country='IL'` were still getting English PDFs. Mirroring the existing USD-always-English rule, **ILS now always renders Hebrew unless the donor is explicitly in the US** (an American donating in shekels still wants an English receipt for IRS purposes).
+- **Bug 2**: receipt PDFs hardcoded `$` in three places (`f_amount`, transaction-box amount cell, Hebrew amount-value) and "Dollars" in the in-words line. Now `generate_receipt_pdf` passes `currency_symbol` and `currency_code` to the template, and `_amount_to_words` accepts a currency arg. Map: USD=$/Dollars, ILS=₪/Shekels, EUR=€/Euros, GBP=£/Pounds.
+- Bulk-regenerated all 38 stored ILS PDFs so cached receipt files reflect the new language and symbol.
+
 ### 2026-04-28 (my_donations honors the can_view_all_donations flag)
 - Sara still saw only her one credited donation after the flag-flip because the salesperson dashboard's "View →" tile (and any direct visit to `/salesperson/my-donations`) hit the strictly-scoped salesperson route.
 - `salesperson.my_donations`: at the top of the handler, if `current_user.can_view_all_donations` is True (or the user is an admin) we now redirect to `/admin/donations`. Same convention the nav link already uses, so every entry path lands in the right place.
