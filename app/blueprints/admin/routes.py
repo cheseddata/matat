@@ -1175,11 +1175,14 @@ def donations():
         page=page, per_page=per_page, error_out=False
     )
 
-    # Get salespersons for dropdown
+    # Salesperson dropdown: include admins too — some donations are entered
+    # or attributed to admin users (e.g. Sara), so the dropdown needs to
+    # show every active human, not just role='salesperson'.
     salespersons = User.query.filter(
-        User.role == 'salesperson',
-        User.deleted_at.is_(None)
-    ).order_by(User.first_name).all()
+        User.role.in_(['salesperson', 'admin']),
+        User.deleted_at.is_(None),
+        User.active.is_(True),
+    ).order_by(User.role.desc(), User.first_name).all()
 
     return render_template(
         'admin/donations.html',
@@ -1224,11 +1227,13 @@ def edit_donation(id):
     """Edit donation details."""
     donation = Donation.query.get_or_404(id)
 
-    # Get lists for dropdowns
+    # Get lists for dropdowns — include admins (e.g. Sara) since they can
+    # also be the attributed user on a donation.
     salespersons = User.query.filter(
-        User.role == 'salesperson',
-        User.deleted_at.is_(None)
-    ).order_by(User.first_name).all()
+        User.role.in_(['salesperson', 'admin']),
+        User.deleted_at.is_(None),
+        User.active.is_(True),
+    ).order_by(User.role.desc(), User.first_name).all()
 
     campaigns = Campaign.query.filter(
         Campaign.is_active == True
