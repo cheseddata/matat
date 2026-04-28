@@ -23,9 +23,12 @@ def index():
     """List all upcoming weddings, soonest-Gregorian first.
     Rows without a Gregorian date sink to the bottom."""
     _admin_or_salesperson_required()
+    # MySQL doesn't support `NULLS LAST` — we emulate it by sorting on
+    # `is_null` first (False sorts before True), then the date itself.
     rows = (Wedding.query_active()
             .order_by(
-                Wedding.gregorian_date.asc().nullslast(),
+                Wedding.gregorian_date.is_(None).asc(),
+                Wedding.gregorian_date.asc(),
                 Wedding.id.desc(),
             )
             .all())
