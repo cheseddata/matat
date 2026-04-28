@@ -152,6 +152,7 @@
                 <div class="dropdown-menu">
                     <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
                     <a href="{{ url_for('admin.payment_processors') }}">Payment Processors</a>
+                    <a href="{{ url_for('admin.donation_permissions') }}">Donation Permissions</a>
                     <a href="{{ url_for('admin.email_templates') }}">Email Templates</a>
                     <div class="menu-divider"></div>
                     <a href="{{ url_for('admin.screenshots') }}">Screenshots</a>
@@ -161,7 +162,14 @@
         </div>
         {% else %}
         <div class="nav-menu">
+            {# Salespersons with the can_view_all_donations flag get sent to the
+               full /admin/donations list (with all the processor tabs and
+               filters), not just their own row scope. #}
+            {% if current_user.can_view_all_donations %}
+            <a href="{{ url_for('admin.donations') }}" class="nav-direct">{{ t('nav.donations') }}</a>
+            {% else %}
             <a href="{{ url_for('salesperson.my_donations') }}" class="nav-direct">{{ t('nav.donations') }}</a>
+            {% endif %}
             <a href="{{ url_for('salesperson.send_link') }}" class="nav-direct">{{ t('nav.send_link') }}</a>
             <a href="{{ url_for('salesperson.phone_entry') }}" class="nav-direct">{{ t('nav.phone_entry') }}</a>
             <a href="{{ url_for('admin.new_check_donation') }}" class="nav-direct">{{ t('nav.manual_donation') }}</a>

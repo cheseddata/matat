@@ -1134,9 +1134,16 @@ def new_check_donation():
 
 
 @admin_bp.route('/donations')
-@admin_required
+@login_required
 def donations():
-    """List all donations with filters."""
+    """List all donations with filters.
+
+    Visible to admins, plus any user with `can_view_all_donations=True`
+    (set per-user in Admin → Donation Permissions). Anyone else gets
+    redirected to their own /salesperson/my-donations page.
+    """
+    if current_user.role != 'admin' and not getattr(current_user, 'can_view_all_donations', False):
+        return redirect(url_for('salesperson.my_donations'))
     from ...models.payment_processor import PaymentProcessor
 
     status = request.args.get('status', 'all')
@@ -1729,6 +1736,44 @@ def set_external_id(id):
 # =============================================================================
 # SETTINGS
 # =============================================================================
+
+@admin_bp.route('/donation-permissions', methods=['GET', 'POST'])
+@admin_required
+def donation_permissions():
+    """Per-user donation-visibility table.
+
+    Lets an admin tick which non-admin users can see the full
+    `/admin/donations` list (`can_view_all_donations`) and, when a row
+    has any `allowed_processors` checked, scope what processor tabs
+    they see. Admins are listed for transparency but their flag is
+    forced True regardless of the database value.
+    """
+    from ...models.payment_processor import PaymentProcessor
+
+    processors = PaymentProcessor.get_enabled()
+    users = (User.query
+             .filter(User.deleted_at.is_(None), User.active.is_(True))
+             .order_by(User.role.desc(), User.username)
+             .all())
+
+    if request.method == 'POST':
+        view_all_ids = set(int(x) for x in request.form.getlist('view_all_user_id') if x.isdigit())
+        for u in users:
+            if u.role == 'admin':
+                continue  # admin always sees everything
+            u.can_view_all_donations = (u.id in view_all_ids)
+            allowed = request.form.getlist(f'processors_{u.id}')
+            u.allowed_processors = allowed or None
+        db.session.commit()
+        flash('Donation permissions updated.', 'success')
+        return redirect(url_for('admin.donation_permissions'))
+
+    return render_template(
+        'admin/donation_permissions.html',
+        users=users,
+        processors=processors,
+    )
+
 
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_required

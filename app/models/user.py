@@ -25,6 +25,9 @@ class User(UserMixin, db.Model):
     active = db.Column(db.Boolean, default=True)
     # Processor permission: null/empty = all processors allowed; else list of processor codes
     allowed_processors = db.Column(MutableList.as_mutable(db.JSON), nullable=True)
+    # When True a salesperson sees the full /admin/donations list (not just their own).
+    # Admins are always treated as True regardless of this flag.
+    can_view_all_donations = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     claude_notes = db.Column(db.Text, nullable=True)  # Context for Claude about this user

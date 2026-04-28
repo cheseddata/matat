@@ -265,6 +265,13 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (per-user "view all donations" flag + admin permission table)
+- New column `User.can_view_all_donations` (Boolean, default False, NOT NULL with `server_default='0'`). Migration `0fc24eb63f94_add_can_view_all_donations_to_users`. Admins are always treated as True regardless of the column value.
+- `/admin/donations` decorator switched from `@admin_required` to `@login_required` + an inline gate: admins and any user with `can_view_all_donations=True` see the full list; everyone else is redirected to `/salesperson/my-donations`.
+- Salesperson nav: `Donations` link points to `/admin/donations` when the user has the flag, else to the legacy `/salesperson/my-donations`.
+- New admin page `/admin/donation-permissions` (admin-only): table of all active users with a `View all donations` checkbox per row plus per-user `Processor tabs visible` checkboxes (reuses existing `allowed_processors`). Save updates both at once. Linked from the admin Settings dropdown.
+- Sara (`matatmor@gmail.com`) flagged True for now; the page is in the admin Settings menu so future scoping changes don't need a developer.
+
 ### 2026-04-28 (Weddings nav link: localized to חתונות)
 - Added `nav.weddings` translation key (`Weddings` / `חתונות`) to both `en.json` and `he.json`. Both nav-link occurrences in `base.html` (admin and salesperson menus) now use `{{ t('nav.weddings') }}` so Hebrew users see "💍 חתונות" instead of the hardcoded English.
 

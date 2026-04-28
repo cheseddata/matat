@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Donation Permissions - Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .perms-card { max-width: 1100px; margin: 0 auto; }
+    .perms-table { width: 100%; border-collapse: collapse; background: white;
+                   border-radius: 8px; overflow: hidden;
+                   box-shadow: 0 2px 4px rgba(0,0,0,0.08); }
+    .perms-table th, .perms-table td { padding: 10px 12px; text-align: left;
+                                       border-bottom: 1px solid #eee; vertical-align: middle; }
+    .perms-table th { background: #f8f9fa; font-size: 13px; color: #444; font-weight: 600; }
+    .perms-table tbody tr:hover { background: #fafbfc; }
+    .role-badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
+                  font-size: 11px; font-weight: 600; text-transform: uppercase;
+                  letter-spacing: 0.4px; }
+    .role-admin { background: #34495e; color: white; }
+    .role-salesperson { background: #ecf0f1; color: #2c3e50; }
+    .perms-table input[type=checkbox] { width: auto; margin: 0; }
+    .proc-grid { display: flex; flex-wrap: wrap; gap: 4px 14px; max-width: 380px; }
+    .proc-grid label { display: inline-flex; align-items: center; gap: 4px;
+                       font-size: 12px; color: #555; }
+    .proc-grid input[type=checkbox] { transform: scale(0.95); }
+    .perm-note { color: #888; font-size: 12px; margin-top: 14px; }
+    .save-row { margin-top: 22px; display: flex; gap: 12px; align-items: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="perms-card">
+        <h1 style="margin-bottom: 6px;">Donation Permissions</h1>
+        <p style="color:#666; font-size: 13px; margin: 0 0 16px;">
+            Tick "View all" to let a salesperson see the entire
+            <code>/admin/donations</code> list (not just their own donations).
+            Optionally restrict which processor tabs they see by ticking specific
+            processors — leaving every box unchecked means "all processors".
+        </p>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <table class="perms-table">
+                <thead>
+                    <tr>
+                        <th style="width: 24%;">User</th>
+                        <th style="width: 9%;">Role</th>
+                        <th style="width: 11%; text-align: center;">View<br>all donations</th>
+                        <th>Processor tabs visible<br>
+                            <span style="font-weight: 400; color:#888; font-size: 11px;">(none ticked = all)</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for u in users %}
+                    {% set is_admin = u.role == 'admin' %}
+                    {% set view_all = is_admin or u.can_view_all_donations %}
+                    {% set allowed = u.allowed_processors or [] %}
+                    <tr>
+                        <td>
+                            <strong>{{ u.full_name }}</strong>
+                            <div style="color:#888; font-size: 11px;">{{ u.username }}</div>
+                        </td>
+                        <td><span class="role-badge role-{{ u.role }}">{{ u.role }}</span></td>
+                        <td style="text-align: center;">
+                            {% if is_admin %}
+                                <input type="checkbox" checked disabled title="Admins always see all donations.">
+                            {% else %}
+                                <input type="checkbox" name="view_all_user_id" value="{{ u.id }}"
+                                       {{ 'checked' if view_all else '' }}>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="proc-grid">
+                                {% for p in processors %}
+                                <label>
+                                    <input type="checkbox" name="processors_{{ u.id }}" value="{{ p.code }}"
+                                           {{ 'checked' if p.code in allowed else '' }}>
+                                    {{ p.name }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="save-row">
+                <button type="submit" class="btn">Save permissions</button>
+                <a href="{{ url_for('admin.donations') }}" class="btn" style="background:#95a5a6;">Back to Donations</a>
+            </div>
+
+            <p class="perm-note">
+                Admins always have full access — their row is shown for transparency only.
+                Per-user changes take effect immediately on the user's next page load
+                (no need for them to log out).
+            </p>
+        </form>
+    </div>
+</div>
+{% endblock %}
