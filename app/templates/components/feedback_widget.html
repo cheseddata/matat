@@ -204,16 +204,27 @@
             // Render with modal hidden so the screenshot is the operator's actual view
             const backdrop = document.getElementById('fbBackdrop');
             backdrop.style.visibility = 'hidden';
+            // Capture *only the visible viewport* — not the full scrollable
+            // document. On a long page (e.g. Donations list with hundreds of
+            // rows) capturing scrollHeight produces a multi-MB image that
+            // ends up base64-encoded in a form field. Same view the operator
+            // sees on screen is more useful for triage anyway.
             const canvas = await html2canvas(document.body, {
                 useCORS: true,
                 logging: false,
-                windowWidth: document.documentElement.scrollWidth,
-                windowHeight: document.documentElement.scrollHeight,
-                scale: Math.min(window.devicePixelRatio || 1, 1.5)
+                x: window.scrollX,
+                y: window.scrollY,
+                width: window.innerWidth,
+                height: window.innerHeight,
+                windowWidth: document.documentElement.clientWidth,
+                windowHeight: document.documentElement.clientHeight,
+                scale: 1,
             });
             backdrop.style.visibility = '';
-            capturedBlob = await new Promise(r => canvas.toBlob(r, 'image/png'));
-            preview.src = canvas.toDataURL('image/png');
+            // JPEG @ 0.8 quality — typically 5-10x smaller than PNG for
+            // a screenshot and still legible.
+            capturedBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.8));
+            preview.src = canvas.toDataURL('image/jpeg', 0.8);
             preview.style.display = 'block';
         } catch (e) {
             document.getElementById('fbBackdrop').style.visibility = '';
@@ -257,22 +268,43 @@
             const b64 = await blobToBase64(capturedBlob);
             form.append('image', b64);
         }
+        // Hard cap so the spinner never sits forever — abort after 60s.
+        const ctrl = new AbortController();
+        const tHandle = setTimeout(() => ctrl.abort('timeout'), 60000);
         try {
-            const res = await fetch('/claude/feedback/submit', { method: 'POST', body: form });
-            const data = await res.json();
-            if (data.success) {
+            const res = await fetch('/claude/feedback/submit',
+                { method: 'POST', body: form, signal: ctrl.signal });
+            clearTimeout(tHandle);
+
+            // 413 (and other server-side limits) come back as HTML, not JSON.
+            // Read the body once as text and *try* to parse — fall back to the
+            // raw text so the user sees something instead of a hanging spinner.
+            const raw = await res.text();
+            let data = null;
+            try { data = JSON.parse(raw); } catch (_) { /* not JSON */ }
+
+            if (res.ok && data && data.success) {
                 status.textContent = '{% if lang == "he" %}נשלח ✓ כרטיס #{% else %}Sent ✓ ticket #{% endif %}' + data.id;
                 status.className = 'fb-status ok';
                 fbErrorBuf.length = 0;
                 document.getElementById('fbOpenBtn').classList.remove('has-errors');
                 setTimeout(fbClose, 1500);
+            } else if (res.status === 413) {
+                status.textContent = '{% if lang == "he" %}הצילום גדול מדי. נסי לצלם רק חלק מהמסך.{% else %}Screenshot too large. Try capturing just a portion of the screen.{% endif %}';
+                status.className = 'fb-status err';
+                btn.disabled = false;
             } else {
-                status.textContent = 'Error: ' + (data.error || 'unknown');
+                const err = (data && data.error) || `HTTP ${res.status}`;
+                status.textContent = 'Error: ' + err;
                 status.className = 'fb-status err';
                 btn.disabled = false;
             }
         } catch (e) {
-            status.textContent = 'Network error: ' + e.message;
+            clearTimeout(tHandle);
+            const msg = (e.name === 'AbortError')
+                ? '{% if lang == "he" %}פג זמן. נסי שוב.{% else %}Timed out — please try again.{% endif %}'
+                : 'Network error: ' + (e.message || e);
+            status.textContent = msg;
             status.className = 'fb-status err';
             btn.disabled = false;
         }

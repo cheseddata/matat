@@ -265,6 +265,12 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (feedback widget: viewport-only screenshot + 32 MB upload limit + 60 s timeout)
+- **Bug**: Sara (`matatmor@gmail.com`) submitted a ticket from `/salesperson/my-donations` and the widget hung on "Sending...". Server logs showed `werkzeug.exceptions.RequestEntityTooLarge: 413` from `formparser.py`. Root cause: html2canvas was capturing `document.documentElement.scrollWidth × scrollHeight` — i.e. the **entire scrollable document** — so on a long donations page the base64 image was many MB and exceeded Werkzeug 3.x's per-form-field memory cap (~500 KB default). The widget JS then tried `await res.json()` on Flask's HTML 413 page, threw a parse error, and hung from the user's POV.
+- **Fix 1 — capture only the visible viewport.** Pass `x: scrollX, y: scrollY, width: innerWidth, height: innerHeight, scale: 1` to html2canvas. Output as JPEG @ 0.8 quality (5–10× smaller than PNG). Captures exactly what the operator was looking at when they clicked the orange button — more useful for triage than a full-page render anyway.
+- **Fix 2 — raise the server limits.** `app/config.py`: `MAX_CONTENT_LENGTH = 32 MB`, `MAX_FORM_MEMORY_SIZE = 32 MB` so a base64 image inside a form field doesn't get rejected mid-parse.
+- **Fix 3 — JS hardening.** Read the response as text then attempt JSON.parse so a non-JSON 413/500 response is reported instead of throwing. Specific Hebrew/English message for HTTP 413 ("Screenshot too large"). 60 s `AbortController` timeout so the spinner can't sit forever even if the network drops.
+
 ### 2026-04-28 (per-user "view all donations" flag + admin permission table)
 - New column `User.can_view_all_donations` (Boolean, default False, NOT NULL with `server_default='0'`). Migration `0fc24eb63f94_add_can_view_all_donations_to_users`. Admins are always treated as True regardless of the column value.
 - `/admin/donations` decorator switched from `@admin_required` to `@login_required` + an inline gate: admins and any user with `can_view_all_donations=True` see the full list; everyone else is redirected to `/salesperson/my-donations`.

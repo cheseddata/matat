@@ -34,6 +34,14 @@ class Config:
     # App
     APP_DOMAIN = os.environ.get('APP_DOMAIN', 'http://localhost:5000')
     ORG_NAME = os.environ.get('ORG_NAME', 'Matat Mordechai')
+
+    # Upload size limits — generous because the help-widget feedback flow
+    # ships full-page screenshots as base64-encoded form fields, and our
+    # check-image / Zelle-screenshot upload also lands here. Werkzeug 3.x
+    # added a per-form-field memory cap that defaults to ~500 KB; high-DPI
+    # screenshots easily exceed it, so the widget would 413 and hang.
+    MAX_CONTENT_LENGTH = 32 * 1024 * 1024        # 32 MB total request
+    MAX_FORM_MEMORY_SIZE = 32 * 1024 * 1024      # 32 MB per text field
     
     @property
     def stripe_secret_key(self):
