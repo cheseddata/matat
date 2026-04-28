@@ -21,29 +21,28 @@
     h1 { text-align: center; margin: 0 0 2mm; color: #1e4a7b; font-size: 13pt; }
     .meta { text-align: center; color: #555; font-size: 8pt; margin-bottom: 3mm; }
 
-    /* Compact table — fixed layout + tiny padding + small font so the full
-       list fits on a single page in either orientation. */
-    table { width: 100%; border-collapse: collapse; font-size: {{ '9pt' if landscape else '8pt' }}; table-layout: fixed; }
+    /* Compact table — auto layout so each column hugs its content instead
+       of being stretched to span the full page. The whole table is then
+       centered. */
+    table {
+        margin: 0 auto;
+        border-collapse: collapse;
+        font-size: {{ '9pt' if landscape else '8pt' }};
+        table-layout: auto;
+        max-width: 100%;
+    }
     th, td {
-        padding: 1.5px 3px;
+        padding: 1.5px 6px;
         border-bottom: 1px solid #aaa;
         vertical-align: top;
-        word-wrap: break-word;
-        overflow-wrap: anywhere;
+        white-space: nowrap;          /* keep names on one line where possible */
         line-height: 1.2;
     }
     th { background: #e8eef3; text-align: right; font-weight: 700; font-size: {{ '8.5pt' if landscape else '7.5pt' }}; }
     tr:nth-child(even) td { background: #fafbfc; }
-    .notes-row td { padding-top: 0; color: #555; font-size: {{ '8pt' if landscape else '7pt' }}; font-style: italic; }
-
-    /* Column widths — same proportions both orientations; only the absolute
-       width changes with the page width. */
-    .col-date    { width: 11%; }
-    .col-groom   { width: 19%; }
-    .col-bride   { width: 19%; }
-    .col-hall    { width: 20%; }
-    .col-contact { width: 17%; }
-    .col-phone   { width: 14%; }
+    .notes-row td { padding-top: 0; color: #555; font-size: {{ '8pt' if landscape else '7pt' }}; font-style: italic; white-space: normal; }
+    /* phone column always LTR */
+    .col-phone-cell { direction: ltr; text-align: right; }
 
     .toolbar { text-align: center; margin-bottom: 4mm; }
     .toolbar button {
@@ -75,12 +74,12 @@
 
     <table>
         <thead><tr>
-            <th class="col-date">תאריך עברי</th>
-            <th class="col-groom">חתן</th>
-            <th class="col-bride">כלה</th>
-            <th class="col-hall">אולם</th>
-            <th class="col-contact">איש קשר</th>
-            <th class="col-phone">טלפון</th>
+            <th>תאריך עברי</th>
+            <th>חתן</th>
+            <th>כלה</th>
+            <th>אולם</th>
+            <th>איש קשר</th>
+            <th>טלפון</th>
         </tr></thead>
         <tbody>
         {% for w in weddings %}
@@ -90,7 +89,7 @@
                 <td>{{ w.bride_name }}</td>
                 <td>{{ w.hall_name or '' }}</td>
                 <td>{{ w.contact_name or '' }}</td>
-                <td dir="ltr" style="text-align: right;">{{ w.phone or '' }}</td>
+                <td class="col-phone-cell">{{ w.phone or '' }}</td>
             </tr>
             {% if w.notes %}
             <tr class="notes-row"><td colspan="6">{{ w.notes }}</td></tr>
