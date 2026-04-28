@@ -1,0 +1,57 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40" lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>חתונות — Matat Mordechai</title>
+<!--[if gte mso 9]>
+<xml>
+<w:WordDocument>
+  <w:View>Print</w:View>
+  <w:Zoom>100</w:Zoom>
+  <w:DoNotOptimizeForBrowser/>
+</w:WordDocument>
+</xml>
+<![endif]-->
+<style>
+@page WordSection1 { size: A4 landscape; mso-page-orientation: landscape; margin: 1cm; }
+div.WordSection1 { page: WordSection1; }
+body { font-family: 'David', 'Arial', sans-serif; direction: rtl; }
+h1 { text-align: center; color: #1e4a7b; font-size: 18pt; }
+table { border-collapse: collapse; width: 100%; font-size: 11pt; }
+th { background: #e8eef3; padding: 4px 6px; border: 1px solid #999; text-align: right; }
+td { padding: 4px 6px; border: 1px solid #ccc; vertical-align: top; }
+.notes { color: #555; font-style: italic; font-size: 10pt; }
+</style>
+</head>
+<body>
+<div class="WordSection1">
+    <h1>רשימת חתונות — Matat Mordechai</h1>
+    <table>
+        <thead><tr>
+            <th>תאריך עברי</th>
+            <th>חתן</th>
+            <th>כלה</th>
+            <th>אולם</th>
+            <th>איש קשר</th>
+            <th>טלפון</th>
+        </tr></thead>
+        <tbody>
+        {% for w in weddings %}
+            <tr>
+                <td>{{ w.hebrew_date }}</td>
+                <td>{{ w.groom_name }}</td>
+                <td>{{ w.bride_name }}</td>
+                <td>{{ w.hall_name or '' }}</td>
+                <td>{{ w.contact_name or '' }}</td>
+                <td dir="ltr" style="text-align: right;">{{ w.phone or '' }}</td>
+            </tr>
+            {% if w.notes %}
+            <tr><td colspan="6" class="notes">{{ w.notes }}</td></tr>
+            {% endif %}
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

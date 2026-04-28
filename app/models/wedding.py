@@ -36,6 +36,11 @@ class Wedding(db.Model):
     # situation, who referred them, dietary notes, etc.
     notes = db.Column(db.Text, nullable=True)
 
+    # Operator-driven "hide from default view". Soft-delete (deleted_at)
+    # is for actual data removal; `hidden` is for "this wedding already
+    # happened / I don't want it in the active list, but keep the record".
+    hidden = db.Column(db.Boolean, nullable=False, default=False, server_default='0')
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = db.Column(db.DateTime, nullable=True)  # soft delete

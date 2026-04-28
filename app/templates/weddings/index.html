@@ -1,77 +1,130 @@
 {% extends "base.html" %}
-{% block title %}Weddings — Matat Mordechai{% endblock %}
+{% block title %}חתונות — Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
-    .wd-table { width: 100%; border-collapse: collapse; background: #fff; }
-    .wd-table th, .wd-table td { padding: 9px 12px; border-bottom: 1px solid #ececec; vertical-align: top; font-size: 14px; }
+    .wd-wrap { max-width: 1200px; margin: 0 auto; }
+    .wd-toolbar {
+        display: flex; flex-wrap: wrap; justify-content: space-between;
+        align-items: center; gap: 12px; margin-bottom: 14px;
+    }
+    .wd-toolbar h1 { margin: 0; }
+    .wd-actions-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .wd-btn {
+        background: #ecf0f1; color: #2c3e50; padding: 7px 12px;
+        border-radius: 4px; text-decoration: none; font-size: 13px;
+        border: 1px solid #d5dcdf; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .wd-btn:hover { background: #d6dde2; }
+    .wd-btn.add { background: #27ae60; color: white; border-color: #229954; }
+    .wd-btn.add:hover { background: #229954; }
+
+    .wd-filter { font-size: 13px; color: #555; }
+    .wd-filter input { margin-right: 4px; }
+
+    .wd-table { width: 100%; border-collapse: collapse; background: #fff; table-layout: fixed; }
+    .wd-table th, .wd-table td { padding: 8px 10px; border-bottom: 1px solid #ececec; vertical-align: top; font-size: 13px; word-wrap: break-word; }
     .wd-table th { background: #f5f7f9; text-align: right; color: #2c3e50; font-weight: 600; }
     .wd-table tr:hover td { background: #f9fbff; }
+    .wd-table tr.is-hidden td { background: #f3f3f3; color: #888; font-style: italic; }
+    .wd-table .col-date    { width: 12%; }
+    .wd-table .col-groom   { width: 17%; }
+    .wd-table .col-bride   { width: 17%; }
+    .wd-table .col-hall    { width: 17%; }
+    .wd-table .col-contact { width: 14%; }
+    .wd-table .col-phone   { width: 13%; }
+    .wd-table .col-act     { width: 10%; white-space: nowrap; }
+
     .wd-empty { padding: 48px 24px; text-align: center; color: #888; background: #fff; border-radius: 6px; }
-    .wd-actions a { margin-left: 6px; font-size: 12px; color: #2c3e50; text-decoration: none; }
-    .wd-actions a.del { color: #c0392b; }
-    .wd-actions form { display: inline; }
-    .wd-actions button {
-        background: none; border: none; color: #c0392b; font-size: 12px;
-        cursor: pointer; padding: 0; text-decoration: underline;
+    .wd-row-actions a, .wd-row-actions button {
+        font-size: 11px; color: #2c3e50; text-decoration: none;
+        background: none; border: none; padding: 0; cursor: pointer; margin-left: 5px;
     }
-    .wd-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-    .wd-add { background: #27ae60; color: white; padding: 8px 14px; border-radius: 4px; text-decoration: none; font-size: 14px; }
-    .wd-add:hover { background: #229954; }
-    .wd-notes { color: #888; font-size: 12px; max-width: 300px; }
+    .wd-row-actions a:hover, .wd-row-actions button:hover { text-decoration: underline; }
+    .wd-row-actions .del { color: #c0392b; }
+    .wd-row-actions form { display: inline; }
+    .wd-notes-row td { padding-top: 0; padding-right: 10px; color: #888; font-size: 12px; background: #fbfbfb; }
+
+    /* Print: drop the chrome, expand to full width. The dedicated /print
+       view is fancier — this is the "quick browser print" fallback. */
+    @media print {
+        nav, .wd-toolbar, .wd-row-actions, footer, .flash, header { display: none !important; }
+        .wd-wrap { max-width: none; margin: 0; padding: 0; }
+        .wd-table { font-size: 11pt; }
+        .wd-table tr.is-hidden { display: none; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container" dir="rtl">
-    <div class="wd-toolbar">
-        <h1>חתונות</h1>
-        <a href="{{ url_for('weddings.new') }}" class="wd-add">+ הוסף חתונה</a>
-    </div>
+    <div class="wd-wrap">
+        <div class="wd-toolbar">
+            <h1>חתונות</h1>
+            <div class="wd-actions-bar">
+                <a href="{{ url_for('weddings.new') }}" class="wd-btn add">+ הוסף חתונה</a>
+                <a href="{{ url_for('weddings.print_view', show_hidden=1 if show_hidden else 0) }}"
+                   target="_blank" class="wd-btn">🖨 הדפס / PDF</a>
+                <a href="{{ url_for('weddings.export_doc', show_hidden=1 if show_hidden else 0) }}"
+                   class="wd-btn">📄 Word</a>
+                <a href="{{ url_for('weddings.export_csv', show_hidden=1 if show_hidden else 0) }}"
+                   class="wd-btn">📊 Excel</a>
+                <label class="wd-filter">
+                    <input type="checkbox" id="show_hidden_box"
+                           {% if show_hidden %}checked{% endif %}
+                           onchange="window.location='{{ url_for('weddings.index') }}' + (this.checked ? '?show_hidden=1' : '');">
+                    הצג מוסתרות
+                </label>
+            </div>
+        </div>
 
-    {% if weddings %}
-    <table class="wd-table">
-        <thead><tr>
-            <th>תאריך עברי</th>
-            <th>חתן</th>
-            <th>כלה</th>
-            <th>אולם</th>
-            <th>איש קשר</th>
-            <th>טלפון</th>
-            <th style="width: 1%;"></th>
-        </tr></thead>
-        <tbody>
-        {% for w in weddings %}
-            <tr>
-                <td>
-                    {{ w.hebrew_date }}
-                    {% if w.gregorian_date %}<div style="color:#888; font-size:11px;">{{ w.gregorian_date.strftime('%d/%m/%Y') }}</div>{% endif %}
-                </td>
-                <td>{{ w.groom_name }}</td>
-                <td>{{ w.bride_name }}</td>
-                <td>{{ w.hall_name or '' }}</td>
-                <td>{{ w.contact_name or '' }}</td>
-                <td>{{ w.phone or '' }}</td>
-                <td class="wd-actions" style="white-space: nowrap;">
-                    <a href="{{ url_for('weddings.edit', id=w.id) }}">ערוך</a>
-                    <form method="POST" action="{{ url_for('weddings.delete', id=w.id) }}"
-                          onsubmit="return confirm('למחוק רשומה זו?');">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="del">מחק</button>
-                    </form>
-                </td>
-            </tr>
-            {% if w.notes %}
-            <tr><td colspan="7" class="wd-notes">{{ w.notes }}</td></tr>
-            {% endif %}
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="wd-empty">
-        עדיין אין חתונות ברשימה.
-        <a href="{{ url_for('weddings.new') }}">הוסף את הראשונה</a>.
+        {% if weddings %}
+        <table class="wd-table">
+            <thead><tr>
+                <th class="col-date">תאריך עברי</th>
+                <th class="col-groom">חתן</th>
+                <th class="col-bride">כלה</th>
+                <th class="col-hall">אולם</th>
+                <th class="col-contact">איש קשר</th>
+                <th class="col-phone">טלפון</th>
+                <th class="col-act"></th>
+            </tr></thead>
+            <tbody>
+            {% for w in weddings %}
+                <tr class="{% if w.hidden %}is-hidden{% endif %}">
+                    <td>{{ w.hebrew_date }}</td>
+                    <td>{{ w.groom_name }}</td>
+                    <td>{{ w.bride_name }}</td>
+                    <td>{{ w.hall_name or '' }}</td>
+                    <td>{{ w.contact_name or '' }}</td>
+                    <td dir="ltr" style="text-align: right;">{{ w.phone or '' }}</td>
+                    <td class="col-act wd-row-actions">
+                        <a href="{{ url_for('weddings.edit', id=w.id) }}">ערוך</a>
+                        <form method="POST" action="{{ url_for('weddings.toggle_hidden', id=w.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit">{{ 'הצג' if w.hidden else 'הסתר' }}</button>
+                        </form>
+                        <form method="POST" action="{{ url_for('weddings.delete', id=w.id) }}"
+                              onsubmit="return confirm('למחוק רשומה זו?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="del">מחק</button>
+                        </form>
+                    </td>
+                </tr>
+                {% if w.notes %}
+                <tr class="wd-notes-row {% if w.hidden %}is-hidden{% endif %}">
+                    <td colspan="7">{{ w.notes }}</td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="wd-empty">
+            עדיין אין חתונות ברשימה.
+            <a href="{{ url_for('weddings.new') }}">הוסף את הראשונה</a>.
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 {% endblock %}
