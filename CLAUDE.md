@@ -265,6 +265,9 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-28 (Weddings nav link: localized to חתונות)
+- Added `nav.weddings` translation key (`Weddings` / `חתונות`) to both `en.json` and `he.json`. Both nav-link occurrences in `base.html` (admin and salesperson menus) now use `{{ t('nav.weddings') }}` so Hebrew users see "💍 חתונות" instead of the hardcoded English.
+
 ### 2026-04-28 (login: apply user.language_pref as cookie; help widget answers in Hebrew)
 - **Bug**: the lang resolver in `app/utils/i18n.py` checks `?lang= → cookie → user.language_pref → 'en'` in that order. So a stale `lang=en` cookie from a prior browser session beat the user's stored `language_pref='he'`, and Hebrew-speaking operators (Sara Gehrlitz `matatmor@gmail.com`) kept landing on the English UI.
 - **Fix**: `auth.login` now writes `resp.set_cookie('lang', user.language_pref, max_age=1y, samesite=Lax)` on every successful login. The cookie is overwritten on each fresh login so each user's first page after sign-in matches their profile preference. The user can still flip via the lang-toggle without losing the override.
