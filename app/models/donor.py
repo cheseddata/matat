@@ -10,7 +10,6 @@ class Donor(db.Model):
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
-    company_name = db.Column(db.String(200), nullable=True)  # e.g. 'ABC Corporation' — shown on receipt
     email = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(50), nullable=True)
     phone_country_code = db.Column(db.String(10), nullable=True)
@@ -47,7 +46,17 @@ class Donor(db.Model):
     external_id = db.Column(db.String(100), nullable=True, index=True)  # ID from external system
     external_source = db.Column(db.String(50), nullable=True)  # e.g., 'salesforce', 'bloomerang', 'csv_import'
 
-    
+    # Multi-office segregation: each donor is "owned" by one user account.
+    # Admin/salesperson views filter by this field so each office sees only
+    # their own donors. NULL = unassigned (legacy / migrating). Existing
+    # donors at rollout were backfilled to user_id=4 (Gittle Goldblum).
+    owner_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+
     # === ZTORM FIELDS ===
     ztorm_donor_id = db.Column(db.Integer, nullable=True, index=True)
     title = db.Column(db.String(50), nullable=True)
@@ -112,23 +121,7 @@ class Donor(db.Model):
 
     @property
     def full_name(self):
-        return f"{self.first_name or ''} {self.last_name or ''}".strip()
-
-    @property
-    def receipt_primary_name(self):
-        """Name to render on the receipt's primary 'made out to' line.
-
-        If the donor has no personal name (company-only donations), use the
-        company name as the primary line; otherwise use the person's full name.
-        """
-        name = self.full_name
-        if name:
-            return name
-        return self.company_name or ''
-
-    @property
-    def has_personal_name(self):
-        return bool(self.full_name)
+        return f"{self.first_name} {self.last_name}"
 
     @property
     def full_address(self):
@@ -203,3 +196,47 @@ class Donor(db.Model):
 
     def __repr__(self):
         return f'<Donor {self.email}>'
+
+
+# ----------------------------------------------------------------------
+# Auto-assign owner_user_id on insert (multi-office segregation)
+# ----------------------------------------------------------------------
+# Every new Donor gets `owner_user_id` set automatically:
+#   1. If the caller already set it, leave it alone.
+#   2. Else use the current logged-in user (web request context).
+#   3. Else fall back to DEFAULT_OWNER_USER_ID (env / Flask config / hardcoded 4).
+#
+# The fallback exists so background jobs (Stripe webhook, Nedarim sync, CSV
+# import) that have no `current_user` still produce ownership-attributed
+# donors instead of orphaned NULLs. The default starts as Gittle Goldblum
+# (user_id=4) per the 2026-04-29 multi-office rollout; change it via the
+# `MATAT_DEFAULT_OWNER_USER_ID` env var or Flask config when the office
+# routing matrix matures.
+from sqlalchemy import event
+from flask import has_app_context, current_app
+
+
+_DEFAULT_OWNER_FALLBACK = 4  # Gittle Goldblum at rollout (2026-04-29)
+
+
+@event.listens_for(Donor, 'before_insert')
+def _set_donor_owner(mapper, connection, target):
+    if target.owner_user_id is not None:
+        return
+    # Try logged-in user (web request)
+    try:
+        from flask_login import current_user
+        if current_user and getattr(current_user, 'is_authenticated', False):
+            uid = getattr(current_user, 'id', None)
+            if uid:
+                target.owner_user_id = uid
+                return
+    except Exception:
+        pass
+    # Fall back to configured default
+    default = _DEFAULT_OWNER_FALLBACK
+    if has_app_context():
+        default = current_app.config.get('DEFAULT_OWNER_USER_ID', default)
+    import os
+    default = int(os.environ.get('MATAT_DEFAULT_OWNER_USER_ID', default))
+    target.owner_user_id = default

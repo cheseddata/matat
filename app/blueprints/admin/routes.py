@@ -1,6 +1,6 @@
 import logging
 from flask import render_template, request, redirect, url_for, flash, jsonify
-from flask_login import current_user, login_required
+from flask_login import current_user
 from sqlalchemy import func, extract
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -726,100 +726,6 @@ def download_receipt(id):
     return redirect(url_for('admin.receipts'))
 
 
-@admin_bp.route('/donations/<int:id>/reissue-receipt', methods=['POST'])
-@login_required
-def reissue_donation_receipt(id):
-    """Force-regenerate / re-issue a receipt.
-
-    Query string ``via`` selects the channel:
-      * ``via=yesh``   — issue an Israeli kabala via YeshInvoice
-                         (`yeshinvoice_service.create_receipt`).
-      * ``via=matat``  — regenerate our local PDF from the current template
-                         and email it via Mailtrap. Bypasses the Israel-resident
-                         country gate so an IL donor who never received their
-                         Israeli kabala can still get a Matat-branded receipt.
-
-    Default is ``matat`` (matches the original Reissue behaviour for
-    non-IL donors).
-    """
-    from ...services.receipt_service import (
-        create_receipt_atomic, regenerate_receipt_pdf,
-    )
-    from ...services.email_service import send_receipt_email
-    import os, traceback
-
-    via = (request.args.get('via') or 'matat').lower()
-    if via not in ('matat', 'yesh'):
-        via = 'matat'
-
-    try:
-        donation = Donation.query.get_or_404(id)
-        donor = Donor.query.get(donation.donor_id)
-
-        if not donor:
-            return jsonify({'error': 'Donor not found'}), 400
-        if donation.status != 'succeeded':
-            return jsonify({'error': 'Can only reissue receipts for successful donations.'}), 400
-
-        # ---- YeshInvoice path ----
-        if via == 'yesh':
-            from ...services.yeshinvoice_service import (
-                create_receipt as yesh_create_receipt,
-                get_yeshinvoice_config,
-            )
-            cfg = get_yeshinvoice_config()
-            if not cfg:
-                return jsonify({'error': 'YeshInvoice is not enabled or credentials are missing. Set them in Admin → Settings.'}), 400
-            result = yesh_create_receipt(donation, donor, config=cfg)
-            if result.get('success'):
-                return jsonify({
-                    'success': True,
-                    'message': (
-                        f'YeshInvoice receipt {result.get("doc_number") or result.get("doc_id") or ""} '
-                        f'created for {donor.full_name or donor.email}.'
-                    ),
-                    'doc_id': result.get('doc_id'),
-                    'doc_number': result.get('doc_number'),
-                    'pdf_url': result.get('pdf_url'),
-                })
-            return jsonify({
-                'error': f'YeshInvoice rejected the request: {result.get("error", "unknown error")}'
-            }), 502
-
-        # ---- Matat email path ----
-        if not donor.email or 'no-email-' in (donor.email or ''):
-            return jsonify({'error': 'Donor has no email on file — cannot send Matat receipt.'}), 400
-
-        # Receipt may not exist for older donations from the previous platform.
-        receipt = donation.receipt
-        if not receipt:
-            receipt = create_receipt_atomic(donation, donor)
-            db.session.commit()
-
-        # Always regenerate so the donor gets the latest template.
-        try:
-            regenerate_receipt_pdf(receipt)
-        except Exception as e:
-            traceback.print_exc()
-            return jsonify({'error': f'PDF regeneration failed: {e}'}), 500
-
-        if not (receipt.pdf_path and os.path.exists(receipt.pdf_path)):
-            return jsonify({'error': 'Regeneration produced no PDF.'}), 500
-
-        success = send_receipt_email(donor, donation, receipt, override_country_gate=True)
-        if not success:
-            return jsonify({'error': 'Email send failed — check provider config.'}), 500
-
-        return jsonify({
-            'success': True,
-            'message': f'Receipt {receipt.receipt_number} regenerated and emailed to {donor.email}.',
-            'receipt_number': receipt.receipt_number,
-        })
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
-
-
 @admin_bp.route('/donations/<int:id>/send-receipt', methods=['POST'])
 @admin_required
 def send_donation_receipt(id):
@@ -865,285 +771,10 @@ def send_donation_receipt(id):
 # DONATIONS MANAGEMENT
 # =============================================================================
 
-@admin_bp.route('/api/donors/search')
-@login_required
-def api_search_donors():
-    """Autocomplete lookup for existing donors by name / email / phone."""
-    from sqlalchemy import or_, func
-    q = (request.args.get('q') or '').strip()
-    if len(q) < 2:
-        return jsonify([])
-    like = f'%{q}%'
-    donors = Donor.query.filter(
-        Donor.deleted_at.is_(None),
-        or_(
-            func.concat(Donor.first_name, ' ', Donor.last_name).ilike(like),
-            Donor.email.ilike(like),
-            Donor.phone.ilike(like),
-        )
-    ).order_by(Donor.last_name, Donor.first_name).limit(15).all()
-    return jsonify([{
-        'id': d.id,
-        'first_name': d.first_name or '',
-        'last_name': d.last_name or '',
-        'company_name': d.company_name or '',
-        'email': d.email if d.email and 'no-email-' not in d.email else '',
-        'phone': d.phone or '',
-        'address_line1': d.address_line1 or '',
-        'address_line2': d.address_line2 or '',
-        'city': d.city or '',
-        'state': d.state or '',
-        'zip': d.zip or '',
-        'country': d.country or 'US',
-    } for d in donors])
-
-
-@admin_bp.route('/donations/new-check', methods=['GET', 'POST'])
-@login_required
-def new_check_donation():
-    """Record a manual (check or Zelle) donation and optionally email the receipt."""
-    from ...services.receipt_service import create_receipt_atomic
-    from ...services.email_service import send_receipt_email
-    from datetime import datetime as _dt
-    from werkzeug.utils import secure_filename
-    import os, uuid
-
-    ALLOWED_IMAGE_EXT = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'heic'}
-
-    if request.method == 'POST':
-        donor_id_str = (request.form.get('donor_id') or '').strip()
-        first_name = (request.form.get('first_name') or '').strip()
-        last_name = (request.form.get('last_name') or '').strip()
-        company_name = (request.form.get('company_name') or '').strip()
-        email = (request.form.get('email') or '').strip()
-        phone = (request.form.get('phone') or '').strip()
-        address_line1 = (request.form.get('address_line1') or '').strip()
-        address_line2 = (request.form.get('address_line2') or '').strip()
-        city = (request.form.get('city') or '').strip()
-        state = (request.form.get('state') or '').strip()
-        zip_code = (request.form.get('zip') or '').strip()
-        country = (request.form.get('country') or 'US').strip() or 'US'
-        amount_str = (request.form.get('amount') or '').strip()
-        payment_method = (request.form.get('payment_method') or 'check').strip().lower()
-        if payment_method not in ('check', 'zelle', 'credit_card'):
-            payment_method = 'check'
-        reference = (request.form.get('reference') or '').strip()
-        # Currency: USD by default, ILS for Israeli donors. The receipt-
-        # routing logic in send_receipt_email reads donor.country (NOT
-        # currency) — but the donation's currency still has to match the
-        # actual charge so the receipt shows the right symbol.
-        currency = (request.form.get('currency') or 'USD').strip().lower()
-        if currency not in ('usd', 'ils'):
-            currency = 'usd'
-        payment_date_str = (request.form.get('payment_date') or '').strip()
-        memo = (request.form.get('memo') or '').strip()
-        # Credit-card-specific fields (manual entry, no live charge)
-        card_brand = (request.form.get('card_brand') or '').strip().lower()
-        card_last4 = (request.form.get('card_last4') or '').strip()
-        # Keep only digits, max 4
-        card_last4 = ''.join(ch for ch in card_last4 if ch.isdigit())[:4]
-        receipt_override = (request.form.get('receipt_number') or '').strip()
-        send_email = request.form.get('send_email') == 'on'
-
-        bcc_raw = (request.form.get('bcc') or '').strip()
-        bcc_list = []
-        for item in bcc_raw.replace(';', ',').split(','):
-            addr = item.strip()
-            if addr and '@' in addr and '.' in addr.split('@')[-1] and addr not in bcc_list:
-                bcc_list.append(addr)
-
-        if not (first_name and last_name) and not company_name:
-            flash('Enter a donor name (first + last) or a company name.', 'error')
-            return redirect(url_for('admin.new_check_donation'))
-        try:
-            amount_dollars = float(amount_str)
-        except ValueError:
-            amount_dollars = 0
-        if amount_dollars <= 0:
-            flash('Amount must be greater than zero.', 'error')
-            return redirect(url_for('admin.new_check_donation'))
-
-        # Prefer explicit donor_id from the lookup picker; else match by email or name.
-        donor = None
-        if donor_id_str.isdigit():
-            donor = Donor.query.filter(
-                Donor.id == int(donor_id_str),
-                Donor.deleted_at.is_(None),
-            ).first()
-        if not donor and email:
-            donor = Donor.query.filter(
-                Donor.email == email,
-                Donor.deleted_at.is_(None),
-            ).first()
-        if not donor:
-            donor = Donor.query.filter(
-                Donor.first_name == first_name,
-                Donor.last_name == last_name,
-                Donor.deleted_at.is_(None),
-            ).first()
-
-        def _fill(attr, new_val, overwrite=False):
-            """Set attr only if a non-empty value was supplied (and either it's empty or overwrite=True)."""
-            if new_val and (overwrite or not getattr(donor, attr, None)):
-                setattr(donor, attr, new_val)
-
-        if donor:
-            # Name and address: if the operator typed something different from what's on file, update it.
-            _fill('first_name', first_name, overwrite=True)
-            _fill('last_name', last_name, overwrite=True)
-            _fill('company_name', company_name, overwrite=True)
-            _fill('email', email)  # never overwrite an existing real email
-            _fill('phone', phone)
-            _fill('address_line1', address_line1, overwrite=True)
-            _fill('address_line2', address_line2, overwrite=True)
-            _fill('city', city, overwrite=True)
-            _fill('state', state, overwrite=True)
-            _fill('zip', zip_code, overwrite=True)
-            _fill('country', country, overwrite=True)
-        else:
-            # Use empty strings (not NULL) for person-name columns when only a
-            # company is supplied — schema is NOT NULL.
-            email_slug = (first_name or last_name or company_name or 'unnamed').lower().replace(' ', '.')
-            donor = Donor(
-                first_name=first_name or '',
-                last_name=last_name or '',
-                company_name=company_name or None,
-                email=email or f'no-email-{email_slug}@matatmordechai.org',
-                phone=phone or None,
-                address_line1=address_line1 or None,
-                address_line2=address_line2 or None,
-                city=city or None,
-                state=state or None,
-                zip=zip_code or None,
-                country=country,
-            )
-            db.session.add(donor)
-            db.session.flush()
-
-        payment_date_iso = None
-        if payment_date_str:
-            try:
-                payment_date_iso = _dt.strptime(payment_date_str, '%Y-%m-%d').date().isoformat()
-            except ValueError:
-                payment_date_iso = payment_date_str
-
-        # Optional image upload (check photo / Zelle screenshot)
-        saved_image_path = None
-        image_file = request.files.get('check_image')
-        if image_file and image_file.filename:
-            ext = image_file.filename.rsplit('.', 1)[-1].lower() if '.' in image_file.filename else ''
-            if ext not in ALLOWED_IMAGE_EXT:
-                flash(f'Unsupported image type: .{ext}. Allowed: {", ".join(sorted(ALLOWED_IMAGE_EXT))}.', 'error')
-                return redirect(url_for('admin.new_check_donation'))
-            upload_dir = '/var/www/matat/uploads/check_images'
-            os.makedirs(upload_dir, exist_ok=True)
-            safe_base = secure_filename(f'{payment_method}_{donor.id}_{uuid.uuid4().hex[:8]}')
-            saved_image_path = os.path.join(upload_dir, f'{safe_base}.{ext}')
-            image_file.save(saved_image_path)
-
-        # Optional additional email attachments (any number, any file type)
-        email_attachment_paths = []
-        attach_dir = '/var/www/matat/uploads/email_attachments'
-        for f in request.files.getlist('email_attachments'):
-            if not f or not f.filename:
-                continue
-            os.makedirs(attach_dir, exist_ok=True)
-            safe_name = secure_filename(f.filename) or 'attachment'
-            dest = os.path.join(attach_dir, f'{donor.id}_{uuid.uuid4().hex[:8]}_{safe_name}')
-            f.save(dest)
-            email_attachment_paths.append(dest)
-
-        # If a salesperson is filling this in, credit them; admins enter
-        # for nobody by default and can re-assign on the donations list.
-        sp_id = current_user.id if getattr(current_user, 'role', None) == 'salesperson' else None
-        amount_cents = int(round(amount_dollars * 100))
-
-        # Map the form's "credit_card" choice to the manual_card processor;
-        # check/zelle map directly. Card metadata flows into the existing
-        # payment_method_* columns the receipt templates already render.
-        processor_code = 'manual_card' if payment_method == 'credit_card' else payment_method
-        donation_kwargs = dict(
-            donor_id=donor.id,
-            salesperson_id=sp_id,
-            payment_processor=processor_code,
-            processor_confirmation=reference or None,
-            processor_metadata={
-                'payment_method': payment_method,
-                'reference': reference or None,
-                'payment_date': payment_date_iso,
-                'memo': memo or None,
-                'image_path': saved_image_path,
-                'email_attachments': email_attachment_paths or None,
-                'entered_by_user_id': current_user.id,
-            },
-            amount=amount_cents,
-            currency=currency,
-            status='succeeded',
-            donation_type='one_time',
-            source=processor_code,
-        )
-        if payment_method == 'credit_card':
-            donation_kwargs['payment_method_type'] = 'card'
-            if card_brand:
-                donation_kwargs['payment_method_brand'] = card_brand
-            if card_last4:
-                donation_kwargs['payment_method_last4'] = card_last4
-        donation = Donation(**donation_kwargs)
-        db.session.add(donation)
-        db.session.flush()
-
-        try:
-            receipt = create_receipt_atomic(donation, donor, override_number=receipt_override or None)
-        except ValueError as e:
-            db.session.rollback()
-            flash(str(e), 'error')
-            return redirect(url_for('admin.new_check_donation'))
-        db.session.commit()
-
-        label = {'check': 'Check', 'zelle': 'Zelle', 'credit_card': 'Credit Card'}.get(payment_method, payment_method.title())
-        if send_email:
-            if not donor.email or 'no-email-' in donor.email:
-                flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but donor has no email — skipped sending.', 'warning')
-            else:
-                ok = send_receipt_email(
-                    donor, donation, receipt,
-                    extra_attachments=email_attachment_paths or None,
-                    extra_bcc=bcc_list or None,
-                )
-                if ok:
-                    donation.receipt_sent = True
-                    donation.receipt_sent_at = datetime.utcnow()
-                    db.session.commit()
-                    notes = []
-                    if email_attachment_paths:
-                        notes.append(f'{len(email_attachment_paths)} attachment(s)')
-                    if bcc_list:
-                        notes.append(f'BCC: {", ".join(bcc_list)}')
-                    extra_note = f' ({"; ".join(notes)})' if notes else ''
-                    flash(f'{label} donation saved and receipt {receipt.receipt_number} emailed to {donor.email}{extra_note}.', 'success')
-                else:
-                    flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but email sending failed.', 'warning')
-        else:
-            flash(f'{label} donation saved. Receipt {receipt.receipt_number} generated.', 'success')
-
-        if getattr(current_user, 'role', None) == 'admin':
-            return redirect(url_for('admin.donations', processor=processor_code))
-        return redirect(url_for('salesperson.my_donations'))
-
-    return render_template('admin/new_check_donation.html')
-
-
 @admin_bp.route('/donations')
-@login_required
+@admin_required
 def donations():
-    """List all donations with filters.
-
-    Visible to admins, plus any user with `can_view_all_donations=True`
-    (set per-user in Admin → Donation Permissions). Anyone else gets
-    redirected to their own /salesperson/my-donations page.
-    """
-    if current_user.role != 'admin' and not getattr(current_user, 'can_view_all_donations', False):
-        return redirect(url_for('salesperson.my_donations'))
+    """List all donations with filters."""
     from ...models.payment_processor import PaymentProcessor
 
     status = request.args.get('status', 'all')
@@ -1175,14 +806,11 @@ def donations():
         page=page, per_page=per_page, error_out=False
     )
 
-    # Salesperson dropdown: include admins too — some donations are entered
-    # or attributed to admin users (e.g. Sara), so the dropdown needs to
-    # show every active human, not just role='salesperson'.
+    # Get salespersons for dropdown
     salespersons = User.query.filter(
-        User.role.in_(['salesperson', 'admin']),
-        User.deleted_at.is_(None),
-        User.active.is_(True),
-    ).order_by(User.role.desc(), User.first_name).all()
+        User.role == 'salesperson',
+        User.deleted_at.is_(None)
+    ).order_by(User.first_name).all()
 
     return render_template(
         'admin/donations.html',
@@ -1227,13 +855,11 @@ def edit_donation(id):
     """Edit donation details."""
     donation = Donation.query.get_or_404(id)
 
-    # Get lists for dropdowns — include admins (e.g. Sara) since they can
-    # also be the attributed user on a donation.
+    # Get lists for dropdowns
     salespersons = User.query.filter(
-        User.role.in_(['salesperson', 'admin']),
-        User.deleted_at.is_(None),
-        User.active.is_(True),
-    ).order_by(User.role.desc(), User.first_name).all()
+        User.role == 'salesperson',
+        User.deleted_at.is_(None)
+    ).order_by(User.first_name).all()
 
     campaigns = Campaign.query.filter(
         Campaign.is_active == True
@@ -1473,9 +1099,21 @@ def edit_campaign(id):
 @admin_bp.route('/donors')
 @admin_required
 def donors():
-    """List and search donors."""
+    """List and search donors. Multi-office segregation: filter by owner.
+
+    `office` query param values:
+      - 'mine'   → only donors owned by the current user (default for non-admin
+                   when set; admins see 'all' by default)
+      - 'all'    → admins only; lift the office filter
+      - <user_id>→ admins only; show donors owned by that user
+
+    The office filter is applied AFTER the test/real and search filters.
+    """
+    from ...models import User
+
     search = request.args.get('q', '').strip()
     filter_type = request.args.get('type', 'all')  # all, test, real
+    office = request.args.get('office', '').strip()
     page = int(request.args.get('page', 1))
     per_page = 50
 
@@ -1497,9 +1135,64 @@ def donors():
     elif filter_type == 'real':
         query = query.filter(Donor.test == False)
 
+    # ---- Office (owner) filter ----
+    is_admin = (getattr(current_user, 'role', None) == 'admin')
+    selected_owner_id = None
+    if not office:
+        # Default: admins see 'all', non-admins are scoped to their own.
+        office = 'all' if is_admin else 'mine'
+
+    if office == 'mine':
+        selected_owner_id = current_user.id
+        query = query.filter(Donor.owner_user_id == current_user.id)
+    elif office == 'all':
+        if not is_admin:
+            # Non-admins are not allowed to lift the filter.
+            selected_owner_id = current_user.id
+            query = query.filter(Donor.owner_user_id == current_user.id)
+            office = 'mine'
+        # else: admin sees everything
+    else:
+        # office is a user id string
+        try:
+            uid = int(office)
+        except (TypeError, ValueError):
+            uid = None
+        if uid is not None and is_admin:
+            selected_owner_id = uid
+            query = query.filter(Donor.owner_user_id == uid)
+        else:
+            # Non-admin trying to view another office, or bad value -> scope to mine
+            selected_owner_id = current_user.id
+            query = query.filter(Donor.owner_user_id == current_user.id)
+            office = 'mine'
+
     donors_list = query.order_by(Donor.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
+
+    # Office tab counts (admins only — non-admins don't switch offices).
+    office_options = []
+    if is_admin:
+        rows = (
+            db.session.query(Donor.owner_user_id, db.func.count(Donor.id))
+            .filter(Donor.deleted_at.is_(None))
+            .group_by(Donor.owner_user_id)
+            .all()
+        )
+        counts_by_owner = {oid: c for oid, c in rows}
+        active_users = User.query.filter(User.deleted_at.is_(None)).order_by(User.username).all()
+        for u in active_users:
+            office_options.append({
+                'user_id':   u.id,
+                'username':  u.username,
+                'name':      f'{u.first_name or ""} {u.last_name or ""}'.strip() or u.username,
+                'count':     counts_by_owner.get(u.id, 0),
+            })
+        # Also surface unassigned donors if any
+        unassigned = counts_by_owner.get(None, 0)
+        if unassigned:
+            office_options.append({'user_id': None, 'username': '—', 'name': '(לא משויך)', 'count': unassigned})
 
     # Get counts
     total_donors = Donor.query.filter(Donor.deleted_at.is_(None)).count()
@@ -1513,7 +1206,11 @@ def donors():
         filter_type=filter_type,
         total_donors=total_donors,
         test_donors=test_donors,
-        real_donors=real_donors
+        real_donors=real_donors,
+        office=office,
+        selected_owner_id=selected_owner_id,
+        office_options=office_options,
+        is_admin=is_admin,
     )
 
 
@@ -1741,44 +1438,6 @@ def set_external_id(id):
 # =============================================================================
 # SETTINGS
 # =============================================================================
-
-@admin_bp.route('/donation-permissions', methods=['GET', 'POST'])
-@admin_required
-def donation_permissions():
-    """Per-user donation-visibility table.
-
-    Lets an admin tick which non-admin users can see the full
-    `/admin/donations` list (`can_view_all_donations`) and, when a row
-    has any `allowed_processors` checked, scope what processor tabs
-    they see. Admins are listed for transparency but their flag is
-    forced True regardless of the database value.
-    """
-    from ...models.payment_processor import PaymentProcessor
-
-    processors = PaymentProcessor.get_enabled()
-    users = (User.query
-             .filter(User.deleted_at.is_(None), User.active.is_(True))
-             .order_by(User.role.desc(), User.username)
-             .all())
-
-    if request.method == 'POST':
-        view_all_ids = set(int(x) for x in request.form.getlist('view_all_user_id') if x.isdigit())
-        for u in users:
-            if u.role == 'admin':
-                continue  # admin always sees everything
-            u.can_view_all_donations = (u.id in view_all_ids)
-            allowed = request.form.getlist(f'processors_{u.id}')
-            u.allowed_processors = allowed or None
-        db.session.commit()
-        flash('Donation permissions updated.', 'success')
-        return redirect(url_for('admin.donation_permissions'))
-
-    return render_template(
-        'admin/donation_permissions.html',
-        users=users,
-        processors=processors,
-    )
-
 
 @admin_bp.route('/settings', methods=['GET', 'POST'])
 @admin_required

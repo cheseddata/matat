@@ -265,6 +265,13 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-29 (multi-office segregation: donor ownership)
+- **`donors.owner_user_id` column** (Alembic `a8d501f9c5b3`, FK to `users.id` ON DELETE SET NULL, indexed). Each donor is owned by one user account; admin/salesperson views filter by this so each office sees only its own contacts.
+- **Auto-assign on insert** via SQLAlchemy `before_insert` event in `app/models/donor.py`. Order: caller-set value → `current_user` (web context) → `MATAT_DEFAULT_OWNER_USER_ID` env / Flask config / hardcoded `4` (Gittle Goldblum). Covers all 14 `Donor()` call sites (webhooks, donate flows, salesperson pages, ZTorm) without touching each one.
+- **Backfill CLI**: `flask backfill-donor-owner --user-id N` (`app/cli.py`). Skips soft-deleted donors by default; `--dry-run` previews counts. Used at rollout: **2,488 active production donors → user_id=4**.
+- **Admin filter**: `/admin/donors?office=mine|all|<user_id>`. Admins default to "all" with a tab strip showing each user's donor count; non-admins are scoped to their own owner_user_id and can't lift the filter.
+- **Backups**: `mysqldump` of `donors` saved at `/var/www/matat/backups/donors-pre-owner-20260429-073737.sql` (~948 KB) before the migration.
+
 ### 2026-04-29 (Wedding print: bigger font with auto-fit-to-one-page guarantee)
 - Operator wanted larger fonts but the list **must** stay on a single A4 page.
 - Bumped sizes: portrait body `10.5pt → 12pt`, header `16pt → 18pt`; landscape body `13pt → 15pt`, header `20pt → 22pt`. Cell padding +1px.
