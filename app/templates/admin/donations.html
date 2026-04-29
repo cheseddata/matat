@@ -236,7 +236,7 @@
             <a href="{{ url_for('salesperson.phone_entry') }}" class="btn btn-success" style="font-size: 14px;">
                 + {{ t('admin.process_donation') }}
             </a>
-            {# admin.new_check_donation endpoint missing -- href stub #} <a href="#" class="btn" style="font-size: 14px; background:#8e44ad; color:white;">
+            <a href="{{ url_for('admin.new_check_donation') }}" class="btn" style="font-size: 14px; background:#8e44ad; color:white;">
                 {{ t('nav.manual_donation') }}
             </a>
             <a href="{{ url_for('salesperson.send_link') }}" class="btn btn-primary" style="font-size: 14px;">

@@ -272,6 +272,12 @@ estimate_fee()        # Estimate processing fee
 - **Admin filter**: `/admin/donors?office=mine|all|<user_id>`. Admins default to "all" with a tab strip showing each user's donor count; non-admins are scoped to their own owner_user_id and can't lift the filter.
 - **Backups**: `mysqldump` of `donors` saved at `/var/www/matat/backups/donors-pre-owner-20260429-073737.sql` (~948 KB) before the migration.
 
+### 2026-04-29 (restore four admin routes lost in the multi-office refactor — resolves Gittle ticket #8)
+- Gittle reported "check/zelle not working" (ticket #8). Investigation: commit `5f0ce15` (Multi-office: add donors.owner_user_id) trimmed `app/blueprints/admin/routes.py` from 2,997 to ~2,488 lines and removed four endpoint functions wholesale: `reissue_donation_receipt`, `api_search_donors`, `new_check_donation`, `donation_permissions`. The "+ Check / Zelle" button on `/admin/donations` had been stubbed to `href="#"` because the endpoint was gone.
+- Restored all four functions verbatim from `5f0ce15^` and spliced them back into `routes.py`. Re-added `login_required` to the `flask_login` import line. Restored the button's `href` to `url_for('admin.new_check_donation')` in `templates/admin/donations.html`.
+- Independent of that, widened **Gittle's `allowed_processors` from `['stripe']` to `None`** so she sees Nedarim Plus / Shva / Stripe / Manual Card / Check / Zelle tabs instead of just All / Stripe.
+- Ticket #8 marked `resolved`.
+
 ### 2026-04-29 (Wedding print: bigger font with auto-fit-to-one-page guarantee)
 - Operator wanted larger fonts but the list **must** stay on a single A4 page.
 - Bumped sizes: portrait body `10.5pt → 12pt`, header `16pt → 18pt`; landscape body `13pt → 15pt`, header `20pt → 22pt`. Cell padding +1px.
