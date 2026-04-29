@@ -1,0 +1,5 @@
+{
+  "Content-Type": "application/json",
+  "Accept": "application/json",
+  "Authorization": "{\"secret\":\"2ace27da-a67c-4927-9e76-380f639f176f\",\"userkey\":\"9PCeHYDzp6f84kwFxqLc\"}"
+}

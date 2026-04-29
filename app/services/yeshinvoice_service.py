@@ -39,20 +39,45 @@ def get_yeshinvoice_config():
 
 
 def _api_request(endpoint, data, config):
-    """Make authenticated API request to YeshInvoice."""
-    data['UserKey'] = config['user_key']
-    data['SecretKey'] = config['secret_key']
+    """Make authenticated API request to YeshInvoice.
+
+    Empirically the public API uses *both* auth channels at the same time:
+    - **Body**: `UserKey` + `SecretKey` (capitalized). `createInvoice`
+      enforces this; without these in the body it returns
+      "חסר מפתח SECRET KEY" (missing SECRET KEY).
+    - **Authorization header**: a JSON-encoded blob with lowercase
+      `userkey` / `secret` keys. Their published doc panel shows this
+      scheme — we send it too in case a future endpoint requires it.
+
+    Sending both keeps every endpoint happy. Response shape:
+      `{"Success": true,  "ReturnValue": ..., "ErrorMessage": null}`  → ok
+      `{"Success": false, "ErrorMessage": "<hebrew>", ...}`           → app err
+    """
+    import json as _json
+    body = dict(data or {})
+    body['UserKey'] = config['user_key']
+    body['SecretKey'] = config['secret_key']
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': _json.dumps({
+            'secret':  config['secret_key'],
+            'userkey': config['user_key'],
+        }, separators=(',', ':')),
+    }
 
     url = f"{API_BASE_URL}/{endpoint}"
     try:
-        response = requests.post(url, json=data, timeout=30)
+        response = requests.post(url, json=body, headers=headers, timeout=30)
         logger.info(f'YeshInvoice API {endpoint}: status={response.status_code}')
         if response.status_code == 200:
             result = response.json()
-            # YeshInvoice returns success/error in the response body
-            if result.get('Error'):
-                logger.error(f'YeshInvoice API error: {result}')
-                return {'success': False, 'error': result.get('ErrorMessage', str(result))}
+            # YeshInvoice always returns 200 + Success boolean + ErrorMessage
+            if isinstance(result, dict) and result.get('Success') is False:
+                err = result.get('ErrorMessage') or str(result)
+                logger.error(f'YeshInvoice API error: {err}')
+                return {'success': False, 'error': err}
             return {'success': True, 'data': result}
         else:
             logger.error(f'YeshInvoice API error: {response.status_code} {response.text}')
@@ -69,68 +94,88 @@ def _api_request(endpoint, data, config):
 
 
 def create_receipt(donation, donor, config=None):
-    """Create a receipt/document in YeshInvoice for a donation.
+    """Create a receipt/kabala in YeshInvoice for a donation.
 
-    Args:
-        donation: Donation model instance
-        donor: Donor model instance
-        config: Optional config dict (fetched from DB if not provided)
+    Payload schema confirmed from the YeshInvoice docs panel
+    (sample provided 2026-04-29). The structure has top-level
+    metadata + a nested `Customer` object + a lowercase `items`
+    array. Currency / language / source / status / docType are
+    numeric IDs, not strings.
 
-    Returns:
-        dict with success, doc_id, doc_number, pdf_url or error
+    Returns dict with success, doc_id, doc_number, pdf_url, or error.
     """
+    from datetime import datetime as _dt
+
     if config is None:
         config = get_yeshinvoice_config()
     if not config:
         return {'success': False, 'error': 'YeshInvoice not configured or not enabled'}
 
-    # Map document type
-    doc_type_key = config.get('default_doc_type', 'receipt')
-    doc_type = DOC_TYPES.get(doc_type_key, 1)
+    # Numeric IDs from the YeshInvoice schema example. ILS default since
+    # this entire flow only fires for ILS donations.
+    DOC_TYPE_RECEIPT = 3       # קבלה לתרומה
+    CURRENCY_ID_ILS  = 2       # ILS in YeshInvoice's currency table
+    LANG_ID_HE       = 359     # Hebrew
+    SOURCE_TYPE_API  = 1       # API-issued
+    STATUS_ID_ACTIVE = 2       # Active / issued
+    VAT_TYPE_EXEMPT  = 2       # Donations are VAT-exempt
 
-    # Currency
-    currency = CURRENCY_MAP.get((donation.currency or 'usd').lower(), 'USD')
+    amount = (donation.amount or 0) / 100  # cents → currency units
+    now_str = _dt.utcnow().strftime('%Y-%m-%d %H:%M')
 
-    # Amount in dollars/shekels (convert from cents)
-    amount = donation.amount / 100 if donation.amount else 0
-
-    # Build customer name
+    # Customer name fallback chain
     customer_name = f"{donor.first_name or ''} {donor.last_name or ''}".strip()
+    name_invoice = getattr(donor, 'company_name', None) or customer_name
     if not customer_name:
-        customer_name = donor.email or 'Anonymous Donor'
+        customer_name = name_invoice or donor.email or 'תורם אנונימי'
 
-    # Build payload
+    # Compose a single address string (YeshInvoice wants one Address field).
+    addr_parts = [donor.address_line1, donor.address_line2,
+                  donor.city, donor.state, donor.zip, donor.country]
+    address = ', '.join(p for p in addr_parts if p)
+
+    # Receipt line item — the donation itself.
+    item_name = 'תרומה'
+    if donation.receipt_number:
+        item_name = f'תרומה (קבלה {donation.receipt_number})'
+
     payload = {
-        'DocumentType': doc_type,
-        'CustomerName': customer_name,
-        'EmailAddress': donor.email or '',
-        'SendEmail': True,
-        'IncludePDF': True,
-        'CurrencyID': currency,
-        'CustomKey': str(donor.id),
-        'Items': [
+        'Title': f'תרומה — {customer_name}',
+        'DocumentType': DOC_TYPE_RECEIPT,
+        'CurrencyId':  CURRENCY_ID_ILS,
+        'LangId':      LANG_ID_HE,
+        'sourceType':  SOURCE_TYPE_API,
+        'statusID':    STATUS_ID_ACTIVE,
+        'DateCreated': now_str,
+        'MaxDate':     now_str,
+        'hideMaxDate': True,
+        'SendEmail':   False,   # we send our own donor email
+        'SendSMS':     False,
+        'Customer': {
+            'Name':        customer_name,
+            'NameInvoice': name_invoice,
+            'Address':     address,
+            'Phone':       donor.phone or '',
+        },
+        'items': [
             {
                 'Quantity': 1,
-                'UnitPrice': amount,
-                'Name': 'Donation to Matat Mordechai',
+                'Price':    f'{amount:.2f}',
+                'Name':     item_name,
+                'vatType':  VAT_TYPE_EXEMPT,
             }
         ],
     }
 
-    # Add optional fields
-    if hasattr(donor, 'teudat_zehut') and donor.teudat_zehut:
-        payload['NumberID'] = donor.teudat_zehut
-
-    if hasattr(donor, 'phone') and donor.phone:
-        payload['Phone'] = donor.phone
-
+    # Optional account scoping for multi-account customers
     if config.get('account_id'):
-        payload['AccountID'] = config['account_id']
+        payload['companeNameID'] = config['account_id']
 
-    # Add donation reference in remarks
-    payload['Remarks'] = f"Donation #{donation.id}"
-    if donation.receipt_number:
-        payload['Remarks'] += f" (Receipt {donation.receipt_number})"
+    # Optional teudat-zehut for the donor (Israeli ID), kept under Customer
+    # if present — matches how YeshInvoice expects "מזהה לקוח".
+    tz = getattr(donor, 'teudat_zehut', None)
+    if tz:
+        payload['Customer']['NumberID'] = tz
 
     result = _api_request('createInvoice', payload, config)
 

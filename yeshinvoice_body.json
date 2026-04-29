@@ -1,0 +1,27 @@
+{
+  "UserKey": "9PCeHYDzp6f84kwFxqLc",
+  "SecretKey": "2ace27da-a67c-4927-9e76-380f639f176f",
+
+  "DocumentType": 1,
+
+  "CustomerName": "ישראל ישראלי",
+  "EmailAddress": "donor@example.com",
+  "Phone": "0501234567",
+  "NumberID": "123456789",
+
+  "CurrencyID": "ILS",
+
+  "Items": [
+    {
+      "Quantity": 1,
+      "UnitPrice": 360.00,
+      "Name": "תרומה למתת מרדכי"
+    }
+  ],
+
+  "Remarks": "Donation #982 (Receipt MM-2026-00388)",
+  "CustomKey": "donor-id-2",
+
+  "SendEmail": false,
+  "IncludePDF": true
+}
