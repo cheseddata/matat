@@ -27,26 +27,28 @@ Confirmed by YeshInvoice support, 2026-04-29:
   confirmation.
 - **No "delete" endpoint exists**, public or otherwise.
 
-## Probe-generated documents needing manual void
+## Confirmed via live test (2026-04-29)
 
-These were created by automated testing while we were chasing the
-schema; they are real documents in the live account:
+Voiding works exactly as YeshInvoice support described. The two probe
+docs were successfully offset by issuing credit documents:
 
-- `id 8320455`, `docNumber 30001` — yeshbe.co/CQWU9NE
-- `id 8320456`, `docNumber 30001` — yeshbe.co/zDL2pN7
+| Original | Void doc |
+|---|---|
+| id 8320455, docNumber 30001, ₪18.00 | **id 8322897, docNumber 40001, ₪-18.00** |
+| id 8320456, docNumber 30001, ₪18.00 | **id 8322899, docNumber 40001, ₪-18.00** |
 
-Either void them via the YeshInvoice portal UI (Documents screen), or
-once `create_credit_note` is verified working, issue a credit doc for
-each one.
+### Confirmed answers
 
-## Open questions for YeshInvoice support
+| Question | Answer |
+|---|---|
+| Correct `DocumentType` for credit | **4** (verified — created `Success: true` voids) |
+| `DocumentType=11` with negative Price | **Rejected** — returns `"אנא הזן רשימת תקבולים"` (requires a payments list). Receipts can't go negative; you must use a separate credit-doc type. |
+| Schema differences vs. issuing path | None — same `CurrencyId=2 / LangId=359 / vatType=2 / sourceType=1 / statusID=2`, same nested `Customer`, same lowercase `items`. Only `DocumentType` (4 instead of 11) and `Price` sign (`"-18.00"`) change. |
+| Link-back field name | Sent both `RelatedDocumentId` and `OriginalDocumentID`. Server didn't reject either. The credit doc will reference the original via portal Documents screen regardless. |
 
-1. What is the correct `DocumentType` numeric code for
-   **credit document / negative receipt**? (We guessed 4 from the docs
-   panel's range, but needs confirmation.)
-2. Does the credit-document payload need a `RelatedDocumentId` field
-   (or similar) pointing at the original `id` being offset, or is
-   matching done purely by donor + amount?
-3. Are there special required fields on a negative-amount document
-   that aren't required on a positive one (e.g., reason/note,
-   reference to original docNumber)?
+### Numbering observation
+
+Credit docs get their own sequence: both voids came back as `docNumber 40001`
+(both my first credit doc, separate counter). Receipt-type docs use the
+30000-range, credit docs use 40000-range. So credit numbering is
+independent of receipt numbering.
