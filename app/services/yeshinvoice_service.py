@@ -216,43 +216,79 @@ def create_receipt(donation, donor, config=None):
 
 
 def create_credit_note(donation, config=None):
-    """Create a credit note (refund receipt) referencing the original document.
+    """Issue a negative-receipt / credit document to void an original.
 
-    Args:
-        donation: Donation model instance (must have yeshinvoice_doc_id)
-        config: Optional config dict
+    Per YeshInvoice support (2026-04-29): "issued documents cannot be
+    deleted, as deleting official documents is not allowed. If you need
+    to cancel a specific receipt or invoice, you can issue a negative
+    receipt (or credit document) to offset and cancel the original."
 
-    Returns:
-        dict with success, doc_id, doc_number, pdf_url or error
+    So this function POSTs `createDocument` again with the *same* schema
+    as `create_receipt`, but with a **negative** Price and a credit
+    DocumentType. The donation's `yeshinvoice_doc_id` / `_doc_number`
+    are referenced in the Title and items so the link to the original
+    is visible on the credit doc.
+
+    The DocumentType code (currently `4`) and any required reference
+    field name (e.g. `RelatedDocumentId`) are unverified — needs a
+    confirmation from YeshInvoice support before this is fully reliable.
+    See `yeshinvoice_void_policy.md` in the repo root.
     """
+    from datetime import datetime as _dt
+
     if config is None:
         config = get_yeshinvoice_config()
     if not config:
         return {'success': False, 'error': 'YeshInvoice not configured or not enabled'}
-
     if not donation.yeshinvoice_doc_id:
         return {'success': False, 'error': 'No original YeshInvoice document to reference'}
 
-    # Refund amount in dollars/shekels
-    refund_amount = (donation.refund_amount or donation.amount) / 100
+    # Same numeric IDs as the issuing path, only DocumentType + Price differ.
+    DOC_TYPE_CREDIT  = 4       # credit document (TBC with YeshInvoice)
+    CURRENCY_ID_ILS  = 2
+    LANG_ID_HE       = 359
+    SOURCE_TYPE_API  = 1
+    STATUS_ID_ACTIVE = 2
+    VAT_TYPE_EXEMPT  = 2
+
+    refund_amount = (donation.refund_amount or donation.amount or 0) / 100
+    now_str = _dt.utcnow().strftime('%Y-%m-%d %H:%M')
+    orig_num = donation.yeshinvoice_doc_number or donation.yeshinvoice_doc_id
 
     payload = {
-        'DocumentType': 4,  # Credit note
-        'OriginalDocumentID': donation.yeshinvoice_doc_id,
-        'Items': [
+        'Title': f'ביטול קבלה {orig_num}',
+        'DocumentType': DOC_TYPE_CREDIT,
+        'CurrencyId':  CURRENCY_ID_ILS,
+        'LangId':      LANG_ID_HE,
+        'sourceType':  SOURCE_TYPE_API,
+        'statusID':    STATUS_ID_ACTIVE,
+        'DateCreated': now_str,
+        'MaxDate':     now_str,
+        'hideMaxDate': True,
+        'SendEmail':   False,
+        'SendSMS':     False,
+        # Best-guess link-back field name; YeshInvoice may use a different one.
+        'RelatedDocumentId': donation.yeshinvoice_doc_id,
+        'OriginalDocumentID': donation.yeshinvoice_doc_id,  # belt-and-suspenders
+        'Customer': {
+            # We don't always have the donor here; minimal payload.
+            'Name':        f'ביטול {orig_num}',
+            'NameInvoice': f'ביטול {orig_num}',
+            'Address':     '',
+            'Phone':       '',
+        },
+        'items': [
             {
                 'Quantity': 1,
-                'UnitPrice': refund_amount,
-                'Name': 'Refund - Donation to Matat Mordechai',
+                'Price':    f'-{refund_amount:.2f}',  # negative to offset
+                'Name':     f'ביטול קבלה {orig_num} (תרומה #{donation.id})',
+                'vatType':  VAT_TYPE_EXEMPT,
             }
         ],
-        'SendEmail': True,
-        'IncludePDF': True,
-        'Remarks': f"Credit note for donation #{donation.id}",
     }
 
     if config.get('account_id'):
-        payload['AccountID'] = config['account_id']
+        payload['companeNameID'] = config['account_id']
 
     result = _api_request('createDocument', payload, config)
 
