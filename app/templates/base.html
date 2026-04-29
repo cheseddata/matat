@@ -152,7 +152,7 @@
                 <div class="dropdown-menu">
                     <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
                     <a href="{{ url_for('admin.payment_processors') }}">Payment Processors</a>
-                    <a href="{{ url_for('admin.donation_permissions') }}">Donation Permissions</a>
+                    {# <a href="#">Donation Permissions</a> -- endpoint admin.donation_permissions not yet defined #}
                     <a href="{{ url_for('admin.email_templates') }}">Email Templates</a>
                     <div class="menu-divider"></div>
                     <a href="{{ url_for('admin.screenshots') }}">Screenshots</a>
@@ -172,7 +172,7 @@
             {% endif %}
             <a href="{{ url_for('salesperson.send_link') }}" class="nav-direct">{{ t('nav.send_link') }}</a>
             <a href="{{ url_for('salesperson.phone_entry') }}" class="nav-direct">{{ t('nav.phone_entry') }}</a>
-            <a href="{{ url_for('admin.new_check_donation') }}" class="nav-direct">{{ t('nav.manual_donation') }}</a>
+            {# admin.new_check_donation endpoint missing -- href stub #} <a href="#" class="nav-direct">{{ t('nav.manual_donation') }}</a>
             {% if current_user.username in ['admin', 'ggoldblum', 'matatmor@gmail.com'] %}
             <a href="{{ url_for('weddings.index') }}" class="nav-direct">💍 {{ t('nav.weddings') }}</a>
             {% endif %}
