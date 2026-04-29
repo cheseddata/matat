@@ -196,3 +196,47 @@ class Donor(db.Model):
 
     def __repr__(self):
         return f'<Donor {self.email}>'
+
+
+# ----------------------------------------------------------------------
+# Auto-assign owner_user_id on insert (multi-office segregation)
+# ----------------------------------------------------------------------
+# Every new Donor gets `owner_user_id` set automatically:
+#   1. If the caller already set it, leave it alone.
+#   2. Else use the current logged-in user (web request context).
+#   3. Else fall back to DEFAULT_OWNER_USER_ID (env / Flask config / hardcoded 4).
+#
+# The fallback exists so background jobs (Stripe webhook, Nedarim sync, CSV
+# import) that have no `current_user` still produce ownership-attributed
+# donors instead of orphaned NULLs. The default starts as Gittle Goldblum
+# (user_id=4) per the 2026-04-29 multi-office rollout; change it via the
+# `MATAT_DEFAULT_OWNER_USER_ID` env var or Flask config when the office
+# routing matrix matures.
+from sqlalchemy import event
+from flask import has_app_context, current_app
+
+
+_DEFAULT_OWNER_FALLBACK = 4  # Gittle Goldblum at rollout (2026-04-29)
+
+
+@event.listens_for(Donor, 'before_insert')
+def _set_donor_owner(mapper, connection, target):
+    if target.owner_user_id is not None:
+        return
+    # Try logged-in user (web request)
+    try:
+        from flask_login import current_user
+        if current_user and getattr(current_user, 'is_authenticated', False):
+            uid = getattr(current_user, 'id', None)
+            if uid:
+                target.owner_user_id = uid
+                return
+    except Exception:
+        pass
+    # Fall back to configured default
+    default = _DEFAULT_OWNER_FALLBACK
+    if has_app_context():
+        default = current_app.config.get('DEFAULT_OWNER_USER_ID', default)
+    import os
+    default = int(os.environ.get('MATAT_DEFAULT_OWNER_USER_ID', default))
+    target.owner_user_id = default

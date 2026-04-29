@@ -1099,9 +1099,21 @@ def edit_campaign(id):
 @admin_bp.route('/donors')
 @admin_required
 def donors():
-    """List and search donors."""
+    """List and search donors. Multi-office segregation: filter by owner.
+
+    `office` query param values:
+      - 'mine'   → only donors owned by the current user (default for non-admin
+                   when set; admins see 'all' by default)
+      - 'all'    → admins only; lift the office filter
+      - <user_id>→ admins only; show donors owned by that user
+
+    The office filter is applied AFTER the test/real and search filters.
+    """
+    from ...models import User
+
     search = request.args.get('q', '').strip()
     filter_type = request.args.get('type', 'all')  # all, test, real
+    office = request.args.get('office', '').strip()
     page = int(request.args.get('page', 1))
     per_page = 50
 
@@ -1123,9 +1135,64 @@ def donors():
     elif filter_type == 'real':
         query = query.filter(Donor.test == False)
 
+    # ---- Office (owner) filter ----
+    is_admin = (getattr(current_user, 'role', None) == 'admin')
+    selected_owner_id = None
+    if not office:
+        # Default: admins see 'all', non-admins are scoped to their own.
+        office = 'all' if is_admin else 'mine'
+
+    if office == 'mine':
+        selected_owner_id = current_user.id
+        query = query.filter(Donor.owner_user_id == current_user.id)
+    elif office == 'all':
+        if not is_admin:
+            # Non-admins are not allowed to lift the filter.
+            selected_owner_id = current_user.id
+            query = query.filter(Donor.owner_user_id == current_user.id)
+            office = 'mine'
+        # else: admin sees everything
+    else:
+        # office is a user id string
+        try:
+            uid = int(office)
+        except (TypeError, ValueError):
+            uid = None
+        if uid is not None and is_admin:
+            selected_owner_id = uid
+            query = query.filter(Donor.owner_user_id == uid)
+        else:
+            # Non-admin trying to view another office, or bad value -> scope to mine
+            selected_owner_id = current_user.id
+            query = query.filter(Donor.owner_user_id == current_user.id)
+            office = 'mine'
+
     donors_list = query.order_by(Donor.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
+
+    # Office tab counts (admins only — non-admins don't switch offices).
+    office_options = []
+    if is_admin:
+        rows = (
+            db.session.query(Donor.owner_user_id, db.func.count(Donor.id))
+            .filter(Donor.deleted_at.is_(None))
+            .group_by(Donor.owner_user_id)
+            .all()
+        )
+        counts_by_owner = {oid: c for oid, c in rows}
+        active_users = User.query.filter(User.deleted_at.is_(None)).order_by(User.username).all()
+        for u in active_users:
+            office_options.append({
+                'user_id':   u.id,
+                'username':  u.username,
+                'name':      f'{u.first_name or ""} {u.last_name or ""}'.strip() or u.username,
+                'count':     counts_by_owner.get(u.id, 0),
+            })
+        # Also surface unassigned donors if any
+        unassigned = counts_by_owner.get(None, 0)
+        if unassigned:
+            office_options.append({'user_id': None, 'username': '—', 'name': '(לא משויך)', 'count': unassigned})
 
     # Get counts
     total_donors = Donor.query.filter(Donor.deleted_at.is_(None)).count()
@@ -1139,7 +1206,11 @@ def donors():
         filter_type=filter_type,
         total_donors=total_donors,
         test_donors=test_donors,
-        real_donors=real_donors
+        real_donors=real_donors,
+        office=office,
+        selected_owner_id=selected_owner_id,
+        office_options=office_options,
+        is_admin=is_admin,
     )
 
 

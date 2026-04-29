@@ -236,10 +236,26 @@
     </div>
 
     <div class="filter-tabs">
-        <a href="{{ url_for('admin.donors', q=search, type='all') }}" class="{{ 'active' if filter_type == 'all' else '' }}">{{ t('common.all') }} ({{ total_donors }})</a>
-        <a href="{{ url_for('admin.donors', q=search, type='real') }}" class="{{ 'active' if filter_type == 'real' else '' }}">{{ t('common.real') }} ({{ real_donors }})</a>
-        <a href="{{ url_for('admin.donors', q=search, type='test') }}" class="{{ 'active' if filter_type == 'test' else '' }}">{{ t('common.test') }} ({{ test_donors }})</a>
+        <a href="{{ url_for('admin.donors', q=search, type='all', office=office) }}" class="{{ 'active' if filter_type == 'all' else '' }}">{{ t('common.all') }} ({{ total_donors }})</a>
+        <a href="{{ url_for('admin.donors', q=search, type='real', office=office) }}" class="{{ 'active' if filter_type == 'real' else '' }}">{{ t('common.real') }} ({{ real_donors }})</a>
+        <a href="{{ url_for('admin.donors', q=search, type='test', office=office) }}" class="{{ 'active' if filter_type == 'test' else '' }}">{{ t('common.test') }} ({{ test_donors }})</a>
     </div>
+
+    {% if is_admin and office_options %}
+    <div class="filter-tabs" style="margin-top:6px; border-top:1px dashed #ccc; padding-top:6px;">
+        <span style="font-size:12px; color:#666; padding:4px 8px;">משרד / Office:</span>
+        <a href="{{ url_for('admin.donors', q=search, type=filter_type, office='all') }}"
+           class="{{ 'active' if office == 'all' else '' }}">All ({{ total_donors }})</a>
+        {% for opt in office_options %}
+            {% if opt.user_id %}
+                <a href="{{ url_for('admin.donors', q=search, type=filter_type, office=opt.user_id) }}"
+                   class="{{ 'active' if (office|string) == (opt.user_id|string) else '' }}">
+                    {{ opt.name }} ({{ opt.count }})
+                </a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
 
     {% if donors.items %}
     <table class="data-table">
