@@ -26,6 +26,7 @@ All Access column names are kept verbatim:
 """
 from __future__ import annotations
 
+import json
 import os
 import sqlite3
 from datetime import datetime
@@ -38,6 +39,22 @@ _INSTANCE_DIR = os.path.join(
 )
 MTT_DATA_PATH = os.path.join(_INSTANCE_DIR, 'MttData.db')
 ZTORM_DATA_PATH = os.path.join(_INSTANCE_DIR, 'ztormdata.db')
+
+# Sandbox-side index of website-generated PDF receipts attached to ZTorm Kabalot.
+# Keyed by num_kabala (string). Built by sync/add_website_donation.ps1 +
+# instance/website_receipts_index.json. Empty/absent file = no PDFs available.
+_RECEIPTS_INDEX_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+    'instance', 'website_receipts_index.json',
+)
+
+
+def _load_receipts_index() -> dict:
+    try:
+        with open(_RECEIPTS_INDEX_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
 
 
 def _open_mirror() -> sqlite3.Connection:
@@ -287,6 +304,7 @@ def get_history(card_no: int) -> dict:
                 SELECT * FROM ztorm.Kabalot WHERE num_torem = ?
             """, (num_torem_num,)).fetchall()
             ztorm_counts['kabalot'] = len(kab_rows)
+            receipts_index = _load_receipts_index()
             for r in kab_rows:
                 d = dict(r)
                 dt = _parse_date(d.get('date'))
@@ -294,6 +312,8 @@ def get_history(card_no: int) -> dict:
                 currency = 'USD' if matbea == 'usd' else ('ILS' if matbea in ('nis', 'ils', '') else matbea.upper())
                 canceled = (str(d.get('canceled') or '')).lower() == 'true'
                 kind_he = 'קבלה (מבוטלת)' if canceled else 'קבלה'
+                # Match this kabala to a website-generated PDF if one exists.
+                idx_entry = receipts_index.get(str(int(d['num_kabala']))) if d.get('num_kabala') else None
                 events.append({
                     'sort_dt': dt,
                     'date': _fmt_date(dt),
@@ -311,6 +331,7 @@ def get_history(card_no: int) -> dict:
                     'link': '',
                     'canceled': canceled,
                     'ezcount_doc_num': d.get('ezcount_doc_num'),
+                    'website_receipt': idx_entry,
                     'raw': d,
                 })
 

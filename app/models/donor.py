@@ -46,7 +46,17 @@ class Donor(db.Model):
     external_id = db.Column(db.String(100), nullable=True, index=True)  # ID from external system
     external_source = db.Column(db.String(50), nullable=True)  # e.g., 'salesforce', 'bloomerang', 'csv_import'
 
-    
+    # Multi-office segregation: each donor is "owned" by one user account.
+    # Admin/salesperson views filter by this field so each office sees only
+    # their own donors. NULL = unassigned (legacy / migrating). Existing
+    # donors at rollout were backfilled to user_id=4 (Gittle Goldblum).
+    owner_user_id = db.Column(
+        db.Integer,
+        db.ForeignKey('users.id', ondelete='SET NULL'),
+        nullable=True,
+        index=True,
+    )
+
     # === ZTORM FIELDS ===
     ztorm_donor_id = db.Column(db.Integer, nullable=True, index=True)
     title = db.Column(db.String(50), nullable=True)

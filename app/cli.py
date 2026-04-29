@@ -392,8 +392,49 @@ def sync_nedarim_cmd(with_receipts):
     click.echo(f'Sync complete: {imported} imported, {skipped} skipped. Last ID: {max_id}')
 
 
+@click.command('backfill-donor-owner')
+@click.option('--user-id', required=True, type=int,
+              help='users.id to assign as owner_user_id on every unassigned donor.')
+@click.option('--include-deleted/--no-include-deleted', default=False,
+              help='Also assign owners to soft-deleted donors. Default: skip deleted.')
+@click.option('--dry-run/--no-dry-run', default=False,
+              help='Print row counts without writing.')
+@with_appcontext
+def backfill_donor_owner_cmd(user_id, include_deleted, dry_run):
+    """Backfill donors.owner_user_id for the multi-office migration.
+
+    Sets `owner_user_id = <user_id>` on every donor that currently has it as
+    NULL. Use this once at rollout to assign all existing contacts to the
+    starting office (e.g. user_id=4 for Gittle Goldblum).
+    """
+    from .models.user import User
+
+    user = User.query.get(user_id)
+    if not user:
+        click.echo(f'[X] No user with id={user_id}')
+        return
+
+    q = Donor.query.filter(Donor.owner_user_id.is_(None))
+    if not include_deleted:
+        q = q.filter(Donor.deleted_at.is_(None))
+    n = q.count()
+    click.echo(
+        f'Found {n} donors with NULL owner_user_id'
+        f' (include_deleted={include_deleted}). Target: id={user.id} '
+        f'({user.username} / {user.first_name} {user.last_name}).'
+    )
+    if dry_run:
+        click.echo('[dry-run] No writes performed.')
+        return
+
+    updated = q.update({Donor.owner_user_id: user_id}, synchronize_session=False)
+    db.session.commit()
+    click.echo(f'[OK] {updated} donors now owned by user_id={user_id}.')
+
+
 def init_app(app):
     """Register CLI commands with the app."""
     app.cli.add_command(import_donors_cmd)
     app.cli.add_command(import_donations_cmd)
     app.cli.add_command(sync_nedarim_cmd)
+    app.cli.add_command(backfill_donor_owner_cmd)

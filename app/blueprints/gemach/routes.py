@@ -2,6 +2,7 @@
 
 All routes require the user to have role 'admin' or 'gemach_user'.
 """
+import os
 from flask import render_template, request, jsonify, redirect, url_for, flash
 from flask_login import current_user
 from sqlalchemy import or_, func
@@ -364,3 +365,35 @@ def member_history(card_no):
         counts=data['counts'],
         events=data['events'],
     )
+
+
+# ============================================================
+# Website-generated PDF receipt viewer
+# ============================================================
+# Serves PDFs from C:\matat\website_receipts\ — the local cache that
+# sync/add_website_donation.ps1 populates when a Stripe website donation is
+# imported into ZTorm Access. The (num_kabala -> file) mapping lives in
+# instance/website_receipts_index.json. Read-only; sandbox/operator side.
+@gemach_bp.route('/receipts/website/<int:num_kabala>')
+@gemach_required
+def website_receipt(num_kabala):
+    import json
+    from flask import send_file, abort, current_app
+
+    idx_path = os.path.join(current_app.instance_path, 'website_receipts_index.json') \
+        if hasattr(current_app, 'instance_path') else 'instance/website_receipts_index.json'
+    try:
+        with open(idx_path, 'r', encoding='utf-8') as f:
+            idx = json.load(f)
+    except (OSError, ValueError):
+        abort(404)
+
+    entry = idx.get(str(num_kabala))
+    if not entry:
+        abort(404)
+    pdf_path = entry.get('pdf_path')
+    if not pdf_path or not os.path.exists(pdf_path):
+        abort(404)
+    return send_file(pdf_path, mimetype='application/pdf',
+                     as_attachment=False,
+                     download_name=f"{entry.get('receipt_ref','receipt')}.pdf")

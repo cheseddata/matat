@@ -166,7 +166,17 @@
                         </td>
                         <td class="num">{{ e.asmachta or '' }}</td>
                         <td class="num">{{ e.ref or '' }}</td>
-                        <td>{{ e.description or '' }}</td>
+                        <td>
+                            {{ e.description or '' }}
+                            {% if e.website_receipt %}
+                              <a href="{{ url_for('gemach.website_receipt', num_kabala=e.raw.num_kabala|int) }}"
+                                 target="_blank"
+                                 title="פתח קבלה PDF — {{ e.website_receipt.receipt_ref }}"
+                                 style="margin-{{ 'right' if is_rtl else 'left' }}:6px; color:#C62828; text-decoration:none;">
+                                📄 {{ e.website_receipt.receipt_ref }}
+                              </a>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr class="empty"><td colspan="8">אין רשומות היסטוריות לחבר זה</td></tr>
