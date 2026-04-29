@@ -1,210 +1,495 @@
-# YeshInvoice Integration - Implementation Guide
+# YeshInvoice Integration — Operator Reference
 
-## Overview
-YeshInvoice (yeshinvoice.co.il) is an Israeli digital invoicing platform for generating
-tax-compliant receipts, invoices, and donation receipts. Fixed-price unlimited documents.
-40-day free trial. Integrates with Israeli payment gateways.
+**Goal of this document:** every Claude (and human) working on Matat's
+YeshInvoice integration should read this **first**, before touching any
+code that calls the YeshInvoice API. The previous integration was built
+against the wrong endpoint with the wrong auth scheme and wrong document
+type — every receipt came out as a `תעודת משלוח` (shipment) instead of
+`קבלה לפי סעיף 46` (Section 46 donation receipt). All the code in
+`app/services/yeshinvoice_service.py` was broken. This file is the
+ground truth.
 
-## API Reference
+Source: <https://user.yeshinvoice.co.il/api/doc?an=createdoc> — the
+public, current API documentation. Always verify against that page if
+something here looks stale.
 
-### Base URL
-https://api.yeshinvoice.co.il/api/v1/
+---
 
-### Authentication
-Every request requires UserKey + SecretKey in the JSON body:
-- UserKey: from Account > API Keys in dashboard
-- SecretKey: from Account > API Keys in dashboard
-- Account ID: from Account > Overview (top-right)
+## 1. Endpoints we actually use
 
-Method: POST
+| What we want to do | Method | URL |
+|---|---|---|
+| Issue a Section-46 donation receipt | `POST` | `https://api.yeshinvoice.co.il/api/v1.1/createDocument` |
+| Cancel / reverse a receipt (e.g. a test) | `POST` | `https://api.yeshinvoice.co.il/api/v1.1/cancelDocument` |
+
+There is also `https://api.yeshinvoice.co.il/api/user/createInvoice` —
+that's an old v1 endpoint. **Do not use it.** It's still up but it
+predates `DocumentType` selection and produces unreliable results.
+
+The previous code in `yeshinvoice_service.py` pointed at
+`https://api.yeshinvoice.co.il/api/v1/createDocument`, which returns
+404. It also had `getAccountInfo`, `createOrUpdateCustomer`, and
+`getDocument` — none of those exist in the public API. Stub them or
+delete them.
+
+---
+
+## 2. Authentication — read this carefully, the format is unusual
+
+YeshInvoice does NOT take credentials in the JSON body or in the
+`Authorization: Bearer <token>` slot. It uses a **JSON value inside
+the Authorization header**:
+
+```
+POST /api/v1.1/createDocument HTTP/1.1
+Host: api.yeshinvoice.co.il
 Content-Type: application/json
+Authorization: {"secret":"3c341b0f-310f-4770-b5c1-12655554b3","userkey":"QssW7776655KqJ"}
+```
 
-### Full API Docs (requires login)
-https://user.yeshinvoice.co.il/api/doc
+That's a literal JSON object, not Base64, not URL-encoded. The keys
+inside it are **lowercase**: `secret` and `userkey`. The values come
+from the operator's YeshInvoice account → Settings → API.
 
----
+### Common mistakes
 
-## PHASE 1: Database and Config
+- Using `UserKey`/`SecretKey` (capital first letters) → the API
+  returns `מפתח SECRET KEY לא חוקי` ("Secret Key is invalid"). The
+  field names are case-sensitive and **must be lowercase**.
+- Putting the keys in the JSON body instead of the header → same
+  "invalid Secret Key" error.
+- Sending `Authorization: Bearer <secret>` → same error.
+- Hitting `/api/v1/...` instead of `/api/v1.1/...` → 404 with the
+  message `No HTTP resource was found...`
 
-### ConfigSettings model
-- yeshinvoice_user_key = db.Column(db.String(255), nullable=True)
-- yeshinvoice_secret_key = db.Column(db.String(255), nullable=True)
-- yeshinvoice_account_id = db.Column(db.String(100), nullable=True)
-- yeshinvoice_enabled = db.Column(db.Boolean, default=False)
-- yeshinvoice_default_doc_type = db.Column(db.String(50), default='receipt')
+### Storage in our system
 
-### Donation model additions
-- yeshinvoice_doc_id = db.Column(db.String(255), nullable=True)
-- yeshinvoice_doc_number = db.Column(db.String(100), nullable=True)
-- yeshinvoice_pdf_url = db.Column(db.String(500), nullable=True)
-
----
-
-## PHASE 2: Document Types Supported
-
-1. Tax Invoice (hashbonit mas)
-2. Receipt (kabala)
-3. Tax Invoice + Receipt (hashbonit mas kabala)
-4. Credit Note (hashbonit zikuy)
-5. Digital Invoice (hashbonit digitalit)
-6. House Committee Receipts
-
-For Matat Mordechai (nonprofit): Use Receipt (kabala) or check if
-Section 46 donation receipt type is available in the authenticated docs.
+The keys live in `ConfigSettings.yeshinvoice_user_key` and
+`ConfigSettings.yeshinvoice_secret_key` (encrypted at rest via Fernet
+in `app/utils/crypto.py`). When you read them, decrypt first; when
+you build the header, JSON-dump them with **lowercase** keys.
 
 ---
 
-## PHASE 3: API Operations
+## 3. createDocument — full request reference
 
-### Create Invoice / Receipt
-POST https://api.yeshinvoice.co.il/api/v1/createInvoice (exact endpoint in auth docs)
+### Required headers
 
-Required fields:
-- UserKey, SecretKey (auth)
-- DocumentType (document type code)
-- CurrencyID (ILS, USD, etc.)
-- LangID (language)
-- DateCreated (document date)
-- MaxDate (due date)
-- statusID (document status)
-- Customer Name
-- Quantity (line item)
-- DueDate (payment due date)
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` |
+| `Authorization` | `{"secret":"…","userkey":"…"}` (literal JSON; see §2) |
 
-Optional fields:
-- Title, Notes, NotesBottom
-- vatPercentage, ExchangeRate
-- roundPrice, RoundPriceAuto
-- OrderNumber (external reference)
-- isDraft
-- sendSign (request digital signature)
-- DontCreateIsraelTaxNumber
-- fromDocID (for credit notes referencing original)
+### Body — all attributes
 
-Customer fields:
-- Customer Name (required)
-- NameInvoice, FullName
-- NumberID (Israeli Teudat Zehut / company number)
-- EmailAddress, Address, City, Phone, Phone2
-- CustomKey (external reference -- use donor_id)
-- ZipCode, CountryCode
+Required fields are marked *. Defaults shown are what YeshInvoice
+uses if you omit the field; for required fields you must supply a value
+even if it matches the default.
 
-Line items:
-- Quantity (required)
-- Price (unit price)
-- Item Name (description, e.g. "Donation to Matat Mordechai")
-- Sku, vatType, SkuID
+| Field | Type | Notes / Default |
+|---|---|---|
+| `Title` | string | Free-text title shown at top of receipt. |
+| `Notes` | string | Mid-document notes. |
+| `NotesBottom` | string | Bottom-of-document notes. |
+| `HideNotes` | string | Internal-only note (operator sees, donor doesn't). |
+| `CurrencyID` * | number | See §4 currency table. Default `2` (ILS). |
+| `LangID` * | number | `359` = HEB, `139` = ENG. Default `359`. |
+| `SendSMS` | bool | Have YeshInvoice SMS the donor a link to the receipt. Default `false`. |
+| `SendEmail` | bool | Have YeshInvoice email the donor the receipt. Default `false`. We typically keep this `false` and email from our own system. |
+| `IncludePDF` | bool | If `SendEmail=true`, attach the PDF inline. Default `false`. |
+| `DocumentType` * | number | **The big one — see §5.** For Section 46 donation receipts use `9`. Default `1` is a shipment, **NOT** what you want. |
+| `ExchangeRate` | number | Required when `CurrencyID ≠ 2` (non-ILS). Default `1`. |
+| `vatPercentage` | number | Israeli VAT %. Default `17`. For donation receipts (which are VAT-exempt as a tax-deductible gift) we send `0`. |
+| `roundPrice` | number | Round amount. Default `0`. |
+| `RoundPriceAuto` | bool | Auto-round to nearest 0.5. Default `false`. |
+| `OrderNumber` | string | Free-text order ref (we use the Matat donation ID). |
+| `DateCreated` * | string | `yyyy-MM-dd HH:mm` — when the donation actually occurred. |
+| `MaxDate` * | string | `yyyy-MM-dd HH:mm` — usually same as `DateCreated` for a receipt. |
+| `hideMaxDate` | bool | Hide the "valid until" line. Default `false`. We send `true` for receipts. |
+| `refdocNumber` | number | Reference doc number from outside YeshInvoice. |
+| `refurl` | string | Reference URL from outside YeshInvoice. |
+| `statusID` * | number | `1` = issued, `2` = draft. Default `1`. |
+| `isDraft` | bool | Same intent as `statusID=2`. Default `false`. |
+| `sendSign` | bool | Returns a sign-URL the donor clicks to e-sign. Default `false`. |
+| `DontCreateIsraelTaxNumber` | bool | If `true`, skip generating an Israeli tax-authority allocation number. Default `false`. **For Section 46 receipts leave this `false`** — the org needs the allocation number for tax filing. |
+| `fromDocID` | number | If converting from a quote/proforma, the source doc ID. |
+| `incomeID` | number | Income-category ID (configured per business in YeshInvoice — defines which fund the donation lands in). |
+| `payCreditPluginID` | number | Credit-card processor plugin ID (only for paymentRequest docs). |
+| `DocumentUniqueKey` | string | **Use this for idempotency.** If we send the same key twice, YeshInvoice rejects the duplicate. Max 20 chars. We use the Matat donation ID (e.g. `"matat-921"`). |
+| `files` | array of strings | URLs of files to attach to the receipt PDF. |
+| `Customer` | object | See §6. |
+| `items` | array of objects | See §7. For a single donation, one item with the donation amount. |
+| `payments` | array of objects | See §8. |
+| `discount` | object | `{amount: number, typeid: number}`. Skip for donations. |
 
-Email/SMS delivery (built-in):
-- SendEmail: true (auto-emails receipt to donor)
-- SendSMS: true (sends via SMS)
-- IncludePDF: true (attaches PDF to email)
+### Minimum body for a Section 46 donation receipt
 
-### Customer Management
-- Add Customer (Name, Email, Address, City, Zipcode, Phone)
-- Update Customer (by Customer ID)
-- Delete Customer (by Customer ID)
-
-### Search / Query
-- Find Customers (search/filter)
-- Find Invoices (by Customer ID)
-- Find Open Invoices
-- Find Closed Invoices
-- Find Products
-- Find VAT Types
-- Find Language Types
-
-### Credit Note (Refund Receipt)
-Create with DocumentType = credit note code
-Set fromDocID = original document ID
-
----
-
-## PHASE 4: Integration with Payment Processors
-
-YeshInvoice can replace or complement the built-in receipt system.
-
-Flow:
-1. Donation processed via payment processor (CardCom, Grow, Stripe, etc.)
-2. On success, call YeshInvoice API to create receipt
-3. YeshInvoice generates Israeli tax-compliant document
-4. YeshInvoice auto-emails PDF receipt to donor
-5. Store yeshinvoice_doc_id and yeshinvoice_doc_number on donation record
-
-This is especially useful because:
-- Israeli tax compliance built-in (automatic tax allocation numbers)
-- Professional Hebrew/English receipts
-- PDF generation handled by YeshInvoice
-- Email delivery handled by YeshInvoice
-- Replaces need for WeasyPrint receipt generation for Israeli donors
+```json
+{
+  "DocumentType": 9,
+  "CurrencyID": 1,
+  "LangID": 359,
+  "DateCreated": "2026-04-29 10:00",
+  "MaxDate": "2026-04-29 10:00",
+  "statusID": 1,
+  "vatPercentage": 0,
+  "DontCreateIsraelTaxNumber": false,
+  "DocumentUniqueKey": "matat-921",
+  "Customer": { "...": "see §6" },
+  "items":    [ { "...": "see §7" } ],
+  "payments": [ { "...": "see §8" } ]
+}
+```
 
 ---
 
-## PHASE 5: Payment Gateway Integrations (Built-in)
+## 4. CurrencyID table
 
-YeshInvoice natively integrates with these Israeli gateways:
-- Tranzila
-- CardCom
-- PeleCard
-- Meshulam (Grow)
-- PayPal
-- YaadPay
-- Max Business
+| ID | Currency |
+|---|---|
+| `1` | USD ($) |
+| `2` | ILS (₪) — default |
+| `3` | EUR (€) |
+| `4` | GBP (£) |
 
-This means YeshInvoice can ALSO process payments directly (not just receipts).
-
----
-
-## PHASE 6: Webhook / Callback
-
-Confirmed callback support:
-- Callback receives: UniqueID, transaction_id, PelecardStatusCode, payment metadata
-- Your server receives POST with payment confirmation
-- Use this to trigger receipt generation + donation record creation
+Other minor currencies exist (CAD, AUD, etc.) — query
+<https://user.yeshinvoice.co.il/api/doc?an=currencies> if you need them.
 
 ---
 
-## Important Notes
+## 5. DocumentType — the values you actually need
 
-1. FULL DOCS BEHIND LOGIN: Complete API at https://user.yeshinvoice.co.il/api/doc
-   Sign up for 40-day free trial to access.
+| ID | Hebrew | English | When to use |
+|---|---|---|---|
+| `1` | תעודת משלוח | Delivery note | **NEVER for receipts** (this is the bug we keep hitting — it was the old default). |
+| `3` | חשבון עסקה | Proforma invoice | When asking for payment but not yet recording it. |
+| `4` | חשבונית מס | Tax invoice | Standard for-profit invoice. **Wrong for nonprofit donations.** |
+| `5` | חשבונית מס/קבלה | Tax invoice + receipt | Combined invoice and receipt. |
+| `6` | קבלה | Plain receipt | A regular receipt for goods/services rendered. **Doesn't trigger Section-46 tax credit.** |
+| `9` | קבלה לפי סעיף 46 / קבלת תרומה | **Section 46 donation receipt** | **THIS is what Matat uses for every Israeli donor.** |
+| `11` | חשבונית זיכוי | Credit note | Generated automatically by `cancelDocument` — don't issue directly. |
 
-2. FIXED PRICING: Unlimited documents at fixed price. No per-document fees.
+**Default for Matat: `DocumentType = 9`.**
 
-3. ISRAELI TAX COMPLIANCE: Automatic tax allocation numbers, VAT handling,
-   digital signature support.
-
-4. DUAL USE: Can serve as BOTH receipt generator AND payment processor.
-
-5. MAKE.COM + ZAPIER: Official integrations exist for no-code automation.
-
----
-
-## Contact
-
-- Support: support@yeshinvoice.co.il
-- Developer: ori@yeshinvoice.co.il
-- WhatsApp: +972-058-493-7247
-- Address: HaHaroshet 25, Raanana, Israel
+The above is the working subset based on the API doc example and
+YeshInvoice's `cancelDocument` description ("works only with the
+following document types: Receipt, Donation Receipt, Tax Invoice, and
+Tax Invoice/Receipt"). If your operator's account uses other types
+(e.g. a הזמנה / order workflow), check the dashboard for additional
+codes.
 
 ---
 
-## File Changes Summary
+## 6. `Customer` object
 
-- app/models/config_settings.py - Add yeshinvoice fields
-- app/models/donation.py - Add yeshinvoice fields
-- app/services/yeshinvoice_service.py - NEW - API client
-- app/blueprints/webhook/routes.py - Add yeshinvoice callback
-- app/blueprints/admin/routes.py - Add yeshinvoice settings
-- app/templates/admin/settings.html - Add yeshinvoice config
-- migrations/ - New migration
+The donor. YeshInvoice keeps a customers table per business; if you
+pass a name/email that doesn't exist, it creates a new customer row
+automatically. To update an existing customer, pass their `ID`.
 
-## Testing Checklist
-- [ ] YeshInvoice credentials configured in admin
-- [ ] Receipt created via API after donation
-- [ ] PDF generated and emailed to donor
-- [ ] Document number stored on donation record
-- [ ] Credit note works for refunds
-- [ ] Customer created/linked in YeshInvoice
-- [ ] Hebrew and English receipts work
-- [ ] ILS and USD currencies work
+```jsonc
+{
+  "Name":         "ישראל כהן",                  // primary display name
+  "NameInvoice":  "ישראל כהן",                  // name as it appears on the receipt
+  "FullName":     "ישראל בן יוסף כהן",          // full legal name (for the tax allocation)
+  "NumberID":     "012345678",                  // teudat zehut (9 digits)
+  "EmailAddress": "donor@example.com",
+  "Address":      "רחוב הרצל 5",
+  "City":         "Jerusalem",
+  "Phone":        "0501234567",
+  "Phone2":       "",
+  "ZipCode":      "9100000",
+  "CountryCode":  "IL",                         // ISO-3166-1 alpha-2
+  "CustomKey":    "matat-donor-751",            // our donor ID, for our own lookups
+  "ID":           -1                            // -1 = create new; positive int = update existing
+}
+```
+
+For Matat: `Customer.NumberID` should be `donor.teudat_zehut` if we
+have it; otherwise leave empty (a Section-46 receipt is still legally
+valid without a teudat zehut, but the donor can't claim the tax credit
+without it).
+
+---
+
+## 7. `items` array
+
+For a donation, send a single item:
+
+```json
+[
+  {
+    "Quantity": 1,
+    "Price":    720,
+    "Name":     "תרומה לעמותה — מתת מרדכי",
+    "Sku":      "DONATION",
+    "vatType":  4,
+    "SkuID":    -1
+  }
+]
+```
+
+`vatType: 4` = פטור ממע"מ (VAT-exempt) — required for donation
+receipts because the donation isn't a taxable purchase.
+
+---
+
+## 8. `payments` array
+
+How the donor paid. `TypeID` selects the payment type:
+
+| TypeID | Payment type |
+|---|---|
+| `1` | Cash |
+| `2` | Check |
+| `3` | Bank transfer |
+| `4` | Credit card |
+| `5` | Other / payment app (Bit, PayPal, …) |
+
+For a credit-card donation through Nedarim Plus:
+
+```json
+[
+  {
+    "TypeID":           4,
+    "Price":            720,
+    "CardLastDigits":   "1234",
+    "CardType":         -1,
+    "TransactionType":  -1,
+    "NumberofPayments": 1,
+    "Reference":        "nedarim-tx-id-from-webhook"
+  }
+]
+```
+
+For a check:
+
+```json
+[
+  {
+    "TypeID":       2,
+    "Price":        720,
+    "BankNumber":   "12",
+    "BranchNumber": "456",
+    "AccountNumber": "789012",
+    "CheckNumber":  "0001234"
+  }
+]
+```
+
+---
+
+## 9. Response format
+
+Every endpoint returns the same envelope:
+
+```json
+{
+  "Success":      true,
+  "ErrorMessage": "",
+  "ReturnValue":  {
+    "url":         "https://yeshbe.co/xNcd2e",
+    "pdfurl":      "https://api.yeshinvoice.co.il/download/...",
+    "copypdfurl":  "https://api.yeshinvoice.co.il/download/...",
+    "loyalpdfurl": "https://api.yeshinvoice.co.il/download/...",
+    "pdf80mm":     "https://api.yeshinvoice.co.il/download/...",
+    "paymenturl":  "https://api.yeshinvoice.co.il/pay/...",
+    "docNumber":   23544,
+    "id":          2435456
+  }
+}
+```
+
+PDF URL meanings:
+- `pdfurl` — original (מקור)
+- `copypdfurl` — duplicate copy (העתק)
+- `loyalpdfurl` — certified copy (נאמן למקור)
+- `pdf80mm` — narrow receipt-printer format
+- `paymenturl` — self-pay link (only meaningful for proforma docs)
+
+On failure:
+
+```json
+{
+  "Success":      false,
+  "ErrorMessage": "אנא הזן שם הלקוח/בית העסק",
+  "ReturnValue":  null
+}
+```
+
+**Persist `ReturnValue.id` and `ReturnValue.docNumber` on the
+`Donation` row** — `Donation.yeshinvoice_doc_id` and
+`Donation.yeshinvoice_doc_number` (already exist in the model). The
+`id` is what `cancelDocument` needs.
+
+---
+
+## 10. cancelDocument — reversing a test or mistaken receipt
+
+Receipts are tax records and **can't be deleted** outright — Israeli
+law requires that issued numbers stay in the sequence. Cancellation
+issues a credit note (חשבונית זיכוי) that nets out the original.
+
+```
+POST https://api.yeshinvoice.co.il/api/v1.1/cancelDocument
+Content-Type: application/json
+Authorization: {"secret":"…","userkey":"…"}
+
+{ "id": 2435456 }
+```
+
+`id` is the `ReturnValue.id` from the original `createDocument`
+response. Returns the same envelope shape with the credit-note's
+`docNumber` and `id`.
+
+**Only these document types can be cancelled:** Receipt, Donation
+Receipt, Tax Invoice, Tax Invoice/Receipt. Quotes, orders, and
+delivery notes are not cancellable through this endpoint — those just
+expire.
+
+For Matat: when we issue a test Section-46 receipt against a real
+account, immediately call `cancelDocument` afterward so the test
+doesn't pollute year-end reports. (Better: use the **Sandbox account**
+— see §11.)
+
+---
+
+## 11. Sandbox vs Production
+
+YeshInvoice has a sandbox environment that uses the **same base URL**
+(`https://api.yeshinvoice.co.il/api/v1.1/`) but a **different account's
+keys**. To get sandbox keys, click "Create Sandbox Account" at
+<https://user.yeshinvoice.co.il/api/doc>. Sandbox doesn't require a
+real teudat zehut or company ID and is the right place to do all
+development testing. **Don't issue test receipts against the
+production account** — those numbers go into the org's real receipt
+sequence.
+
+---
+
+## 12. Idempotency — must use `DocumentUniqueKey`
+
+If the Stripe / Nedarim webhook fires twice (it can — webhooks
+re-deliver on retries) and we naively call `createDocument` both times,
+we issue two receipts and break the receipt sequence. Always pass
+`DocumentUniqueKey` set to a stable identifier — e.g. the Matat
+donation ID like `"matat-921"`. YeshInvoice will reject the duplicate
+with a recognisable error message and we can match the existing
+document by querying via the Matat-side `Donation.yeshinvoice_doc_id`.
+
+---
+
+## 13. Common error messages
+
+| Returned `ErrorMessage` | What's wrong | Fix |
+|---|---|---|
+| `מפתח SECRET KEY לא חוקי` | Auth-header not recognised | Use `Authorization: {"secret":"…","userkey":"…"}` (lowercase keys, JSON in header). |
+| `אנא הזן שם הלקוח/בית העסק` | Missing customer name | Send `Customer.Name`. |
+| `No HTTP resource was found...` | Wrong URL | You hit `/api/v1/...` or `/api/user/...`. Use `/api/v1.1/...`. |
+| `something went wrong, we are sorry` | Auth failed before validation | Same fix as the first row — auth scheme is wrong. |
+| `DocumentUniqueKey already exists` | Idempotency hit | Look up the prior receipt using your own donation ID; don't retry. |
+
+---
+
+## 14. Test-connection pattern (no dedicated ping endpoint)
+
+YeshInvoice doesn't expose a `ping` or `getAccountInfo` endpoint, so
+the way to verify credentials is to deliberately call `createDocument`
+with a payload that's missing required fields, and check the error
+message:
+
+```
+POST /api/v1.1/createDocument
+Authorization: {"secret":"...","userkey":"..."}
+
+{}
+```
+
+- `מפתח SECRET KEY לא חוקי` → keys are wrong.
+- `אנא הזן שם הלקוח/בית העסק` → keys are good (auth passed; only the
+  body validation failed). **This is the success signal for a
+  "test connection" button.**
+
+---
+
+## 15. Mapping Matat → YeshInvoice for a typical ILS donation
+
+This is the recipe `app/services/yeshinvoice_service.py` should
+follow when a USD-vs-ILS routed-to-YeshInvoice donation comes in:
+
+```python
+def build_payload(donation, donor):
+    return {
+        # — meta —
+        "DocumentType":              9,                       # Section 46 donation receipt
+        "CurrencyID":                {"ILS": 2, "USD": 1, "EUR": 3, "GBP": 4}[donation.currency.upper()],
+        "LangID":                    359 if donor.language_pref == "he" else 139,
+        "DateCreated":               donation.created_at.strftime("%Y-%m-%d %H:%M"),
+        "MaxDate":                   donation.created_at.strftime("%Y-%m-%d %H:%M"),
+        "hideMaxDate":               True,
+        "statusID":                  1,
+        "vatPercentage":             0,                       # donations are VAT-exempt
+        "DontCreateIsraelTaxNumber": False,
+        "DocumentUniqueKey":         f"matat-{donation.id}",
+        "OrderNumber":               f"matat-{donation.id}",
+        "Title":                     "קבלה על תרומה — מתת מרדכי",
+        # — donor —
+        "Customer": {
+            "Name":         donor.full_name or donor.company_name,
+            "NameInvoice":  donor.full_name or donor.company_name,
+            "FullName":     donor.full_name or donor.company_name,
+            "NumberID":     donor.teudat_zehut or "",
+            "EmailAddress": donor.email or "",
+            "Address":      donor.address_line1 or "",
+            "City":         donor.city or "",
+            "Phone":        donor.phone or "",
+            "ZipCode":      donor.zip or "",
+            "CountryCode":  (donor.country or "IL")[:2].upper(),
+            "CustomKey":    f"matat-donor-{donor.id}",
+            "ID":           donor.yeshinvoice_customer_id or -1,
+        },
+        # — what the donor paid for —
+        "items": [{
+            "Quantity": 1,
+            "Price":    donation.amount_dollars,
+            "Name":     "תרומה לעמותה — מתת מרדכי",
+            "Sku":      "DONATION",
+            "vatType":  4,
+            "SkuID":    -1,
+        }],
+        # — how they paid —
+        "payments": [build_payment_object(donation)],
+    }
+```
+
+`build_payment_object` switches on `donation.payment_processor`:
+- Nedarim / Stripe credit card → `TypeID: 4`, `CardLastDigits`, etc.
+- Manual check → `TypeID: 2`, `CheckNumber`, etc.
+- Bank transfer / Zelle → `TypeID: 3`.
+- Other → `TypeID: 5`.
+
+---
+
+## 16. Action items for the existing codebase
+
+1. **Rewrite `app/services/yeshinvoice_service.py`** — the URL, the
+   auth scheme, and the endpoint names are all wrong. Use the spec in
+   this document.
+2. **Move config**: add `ConfigSettings.yeshinvoice_default_doc_type`
+   default → `9`. Stop letting operators pick `1`.
+3. **Wire it into the donation flow**: when an ILS donation succeeds
+   AND `donor.country == 'IL'` AND `ConfigSettings.yeshinvoice_enabled`,
+   call `createDocument`, store `id` and `docNumber` on the
+   `Donation`, and skip the matatmordechai.org US-receipt email
+   (`send_receipt_email` already gates on country).
+4. **Test-connection button** in admin settings — change the
+   implementation to use the empty-`createDocument` trick from §14.
+5. **Add a "Cancel YeshInvoice receipt" button** on the donation
+   detail page (admin) for cleaning up tests / mistakes. Only show
+   when `donation.yeshinvoice_doc_id` is set; on click, call
+   `cancelDocument` and clear that field.
+
+---
+
+*Last updated: 2026-04-29 — derived from the live YeshInvoice docs at*
+*<https://user.yeshinvoice.co.il/api/doc?an=createdoc>. Re-verify*
+*against that page if anything in this doc looks wrong.*
