@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-29 (Wedding print: bigger font with auto-fit-to-one-page guarantee)
+- Operator wanted larger fonts but the list **must** stay on a single A4 page.
+- Bumped sizes: portrait body `10.5pt → 12pt`, header `16pt → 18pt`; landscape body `13pt → 15pt`, header `20pt → 22pt`. Cell padding +1px.
+- Wrapped the printable content in `#fitWrap` and added a small JS auto-fit that runs on `load` / `resize` / `beforeprint`: if `scrollHeight` exceeds the page-usable height (page minus 12mm @page margin minus 10mm body padding), scale the wrapper via `transform: scale()` in 3% steps down to a 0.55 floor. So if the list ever grows past ~30 entries the print preview just shrinks to fit instead of spilling onto page 2.
+
 ### 2026-04-28 (Claude widget UI translated to Hebrew — Sara tickets #6/#7)
 - Sara reported the chat widget *chrome* was still English even though replies came back in Hebrew. The earlier system-prompt fix only affected the AI's response language; the wrapping HTML had hardcoded "Claude Assistant", "Here to help!", "Hi {name}!", "Ask me anything…", "Type your message…", and the four action buttons (Screenshot / Paste / Upload / Clear).
 - Added a **`claude_widget.*` translation block** to en.json / he.json (~13 keys covering name/status/greeting/tagline/paste-hint/placeholder/btn_screenshot/btn_paste/btn_upload/btn_clear/confirm_clear/uploading/upload_failed). The `greeting` uses a `{name}` token that the template substitutes with `current_user.first_name`.

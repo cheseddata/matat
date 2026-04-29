@@ -18,19 +18,21 @@
         margin: 0; padding: 5mm;
         color: #000;
     }
-    h1 { text-align: center; margin: 0 0 2mm; color: #1e4a7b; font-size: {{ '20pt' if landscape else '16pt' }}; }
-    .meta { text-align: center; color: #555; font-size: {{ '11pt' if landscape else '9pt' }}; margin-bottom: 4mm; }
+    h1 { text-align: center; margin: 0 0 2mm; color: #1e4a7b; font-size: {{ '22pt' if landscape else '18pt' }}; }
+    .meta { text-align: center; color: #555; font-size: {{ '12pt' if landscape else '10pt' }}; margin-bottom: 4mm; }
 
-    /* Full-width table, columns auto-sized to content but expanded to fill
-       the page. Larger font for elderly readability — no zooming needed. */
+    /* Bumped one notch over the previous size — but a JS auto-fit at the
+       bottom of this file scales the whole #fitWrap down if the content
+       overflows one A4 page, so adding more weddings won't push to a
+       second page. */
     table {
         width: 100%;
         border-collapse: collapse;
-        font-size: {{ '13pt' if landscape else '10.5pt' }};
+        font-size: {{ '15pt' if landscape else '12pt' }};
         table-layout: auto;
     }
     th, td {
-        padding: {{ '5px 10px' if landscape else '3px 7px' }};
+        padding: {{ '6px 10px' if landscape else '4px 8px' }};
         border-bottom: 1px solid #888;
         vertical-align: middle;
         white-space: nowrap;
@@ -40,16 +42,22 @@
         background: #e8eef3;
         text-align: right;
         font-weight: 700;
-        font-size: {{ '12pt' if landscape else '10pt' }};
+        font-size: {{ '13pt' if landscape else '11pt' }};
         border-bottom: 2px solid #1e4a7b;
     }
     tr:nth-child(even) td { background: #fafbfc; }
     .notes-row td {
         padding-top: 0;
         color: #555;
-        font-size: {{ '10pt' if landscape else '9pt' }};
+        font-size: {{ '11pt' if landscape else '10pt' }};
         font-style: italic;
         white-space: normal;
+    }
+    /* Wrapper used by the auto-fit JS — it scales this whole block down
+       on print so the list always stays on a single page. */
+    #fitWrap {
+        transform-origin: top right;
+        width: 100%;
     }
     /* phone column always LTR */
     .col-phone-cell { direction: ltr; text-align: right; }
@@ -79,33 +87,71 @@
         </span>
     </div>
 
-    <h1>רשימת חתונות</h1>
-    <div class="meta">{{ weddings|length }} חתונות &middot; הופק {{ moment_now if moment_now else '' }}</div>
+    <div id="fitWrap">
+        <h1>רשימת חתונות</h1>
+        <div class="meta">{{ weddings|length }} חתונות &middot; הופק {{ moment_now if moment_now else '' }}</div>
 
-    <table>
-        <thead><tr>
-            <th>תאריך עברי</th>
-            <th>חתן</th>
-            <th>כלה</th>
-            <th>אולם</th>
-            <th>איש קשר</th>
-            <th>טלפון</th>
-        </tr></thead>
-        <tbody>
-        {% for w in weddings %}
-            <tr>
-                <td>{{ w.hebrew_date }}</td>
-                <td>{{ w.groom_name }}</td>
-                <td>{{ w.bride_name }}</td>
-                <td>{{ w.hall_name or '' }}</td>
-                <td>{{ w.contact_name or '' }}</td>
-                <td class="col-phone-cell">{{ w.phone or '' }}</td>
-            </tr>
-            {% if w.notes %}
-            <tr class="notes-row"><td colspan="6">{{ w.notes }}</td></tr>
-            {% endif %}
-        {% endfor %}
-        </tbody>
-    </table>
+        <table>
+            <thead><tr>
+                <th>תאריך עברי</th>
+                <th>חתן</th>
+                <th>כלה</th>
+                <th>אולם</th>
+                <th>איש קשר</th>
+                <th>טלפון</th>
+            </tr></thead>
+            <tbody>
+            {% for w in weddings %}
+                <tr>
+                    <td>{{ w.hebrew_date }}</td>
+                    <td>{{ w.groom_name }}</td>
+                    <td>{{ w.bride_name }}</td>
+                    <td>{{ w.hall_name or '' }}</td>
+                    <td>{{ w.contact_name or '' }}</td>
+                    <td class="col-phone-cell">{{ w.phone or '' }}</td>
+                </tr>
+                {% if w.notes %}
+                <tr class="notes-row"><td colspan="6">{{ w.notes }}</td></tr>
+                {% endif %}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+<script>
+// Scale the printable content down if it overflows one A4 page.
+// Must always fit on a single page (operator requirement) — fonts grow up
+// to the size set in CSS, then this kicks in if the list ever gets long
+// enough to spill onto page 2.
+(function () {
+    {% if landscape %}
+    const PAGE_HEIGHT_MM = 210;   // A4 landscape: 210mm tall
+    {% else %}
+    const PAGE_HEIGHT_MM = 297;   // A4 portrait: 297mm tall
+    {% endif %}
+    const PAGE_MARGIN_MM = 12;    // 6mm top + 6mm bottom (matches @page margin)
+    const BODY_PADDING_MM = 10;   // 5mm padding * 2 (matches body padding)
+    const PX_PER_MM = 3.7795275591;
+    const TARGET_PX = (PAGE_HEIGHT_MM - PAGE_MARGIN_MM - BODY_PADDING_MM) * PX_PER_MM;
+
+    function fit() {
+        const wrap = document.getElementById('fitWrap');
+        if (!wrap) return;
+        wrap.style.transform = '';
+        // Slight tolerance so we don't shrink for a 1px overflow.
+        if (wrap.scrollHeight <= TARGET_PX + 4) return;
+        let s = 1;
+        let safety = 30;
+        while (wrap.scrollHeight * s > TARGET_PX && s > 0.55 && safety-- > 0) {
+            s -= 0.03;
+        }
+        wrap.style.transform = 'scale(' + s.toFixed(3) + ')';
+    }
+    window.addEventListener('load', fit);
+    window.addEventListener('resize', fit);
+    // Re-measure right before the browser sends to printer.
+    window.addEventListener('beforeprint', fit);
+})();
+</script>
 </body>
 </html>
