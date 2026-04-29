@@ -118,7 +118,7 @@ def create_receipt(donation, donor, config=None):
 
     # Numeric IDs from the YeshInvoice schema example. ILS default since
     # this entire flow only fires for ILS donations.
-    DOC_TYPE_RECEIPT = 3       # קבלה לתרומה
+    DOC_TYPE_RECEIPT = 11      # קבלה לתרומה (per YeshInvoice support 2026-04-29)
     CURRENCY_ID_ILS  = 2       # ILS in YeshInvoice's currency table
     LANG_ID_HE       = 359     # Hebrew
     SOURCE_TYPE_API  = 1       # API-issued

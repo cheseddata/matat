@@ -1,27 +1,28 @@
 {
-  "UserKey": "9PCeHYDzp6f84kwFxqLc",
-  "SecretKey": "2ace27da-a67c-4927-9e76-380f639f176f",
-
-  "DocumentType": 1,
-
-  "CustomerName": "ישראל ישראלי",
-  "EmailAddress": "donor@example.com",
-  "Phone": "0501234567",
-  "NumberID": "123456789",
-
-  "CurrencyID": "ILS",
-
-  "Items": [
+  "Title": "תרומה — Menachem Kantor",
+  "DocumentType": 11,
+  "CurrencyId": 2,
+  "LangId": 359,
+  "sourceType": 1,
+  "statusID": 2,
+  "DateCreated": "2026-04-29 12:00",
+  "MaxDate": "2026-04-29 12:00",
+  "hideMaxDate": true,
+  "SendEmail": false,
+  "SendSMS": false,
+  "Customer": {
+    "Name": "Menachem Kantor",
+    "NameInvoice": "Menachem Kantor",
+    "Address": "1 Sample St, NY, USA",
+    "Phone": "0501234567",
+    "NumberID": "123456789"
+  },
+  "items": [
     {
       "Quantity": 1,
-      "UnitPrice": 360.00,
-      "Name": "תרומה למתת מרדכי"
+      "Price": "18.00",
+      "Name": "תרומה (קבלה MM-2026-00388)",
+      "vatType": 2
     }
-  ],
-
-  "Remarks": "Donation #982 (Receipt MM-2026-00388)",
-  "CustomKey": "donor-id-2",
-
-  "SendEmail": false,
-  "IncludePDF": true
+  ]
 }
