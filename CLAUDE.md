@@ -272,6 +272,10 @@ estimate_fee()        # Estimate processing fee
 - **Admin filter**: `/admin/donors?office=mine|all|<user_id>`. Admins default to "all" with a tab strip showing each user's donor count; non-admins are scoped to their own owner_user_id and can't lift the filter.
 - **Backups**: `mysqldump` of `donors` saved at `/var/www/matat/backups/donors-pre-owner-20260429-073737.sql` (~948 KB) before the migration.
 
+### 2026-04-29 (restore Donor.company_name + helper properties — manual donation 500)
+- "Save & Issue" on the manual donation form returned 500: `TypeError: 'company_name' is an invalid keyword argument for Donor`. Same root cause as ticket #8 — commit `5f0ce15` (Multi-office) deleted the `company_name` column declaration from `app/models/donor.py` along with the `receipt_primary_name` / `has_personal_name` properties. The MySQL column itself was untouched (data intact), only the SQLAlchemy mapping was lost.
+- Restored `company_name = db.Column(db.String(200), nullable=True)` and both helper properties so `Donor(company_name=...)` works again and the receipt templates that use `donor.receipt_primary_name` / `donor.has_personal_name` render correctly.
+
 ### 2026-04-29 (Wire Transfer payment method)
 - Seeded `wire` PaymentProcessor (priority 14, between manual_card=12 and check=15) so a **Wire Transfer** tab auto-appears in the donations-page processor row.
 - Added `Wire Transfer` to the manual-donation form's Payment-method dropdown. The Reference and Date labels relabel dynamically: "Wire reference / confirmation" and "Wire date". Upload-image hint becomes "Optional bank confirmation slip".

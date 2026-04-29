@@ -10,6 +10,7 @@ class Donor(db.Model):
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
+    company_name = db.Column(db.String(200), nullable=True)  # e.g. 'ABC Corporation' — shown on receipt
     email = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(50), nullable=True)
     phone_country_code = db.Column(db.String(10), nullable=True)
@@ -121,7 +122,23 @@ class Donor(db.Model):
 
     @property
     def full_name(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.first_name or ''} {self.last_name or ''}".strip()
+
+    @property
+    def receipt_primary_name(self):
+        """Name to render on the receipt's primary 'made out to' line.
+
+        If the donor has no personal name (company-only donations), use the
+        company name as the primary line; otherwise use the person's full name.
+        """
+        name = self.full_name
+        if name:
+            return name
+        return self.company_name or ''
+
+    @property
+    def has_personal_name(self):
+        return bool(self.full_name)
 
     @property
     def full_address(self):
