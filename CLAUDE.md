@@ -272,6 +272,11 @@ estimate_fee()        # Estimate processing fee
 - **Admin filter**: `/admin/donors?office=mine|all|<user_id>`. Admins default to "all" with a tab strip showing each user's donor count; non-admins are scoped to their own owner_user_id and can't lift the filter.
 - **Backups**: `mysqldump` of `donors` saved at `/var/www/matat/backups/donors-pre-owner-20260429-073737.sql` (~948 KB) before the migration.
 
+### 2026-04-29 (multi-office regression sweep: re-apply admin-in-dropdown fix)
+- Final audit of `git diff 5f0ce15^ 5f0ce15` after restoring the four routes and `Donor.company_name`. Only one remaining silent regression found: the multi-office commit reverted the **"include admins in salesperson dropdown"** fix from `21268f0` (2026-04-28). Both query sites (`/admin/donations` and `/admin/donations/<id>/edit`) had been put back to `User.role == 'salesperson'` only — Sara would be missing from the dropdown again.
+- Re-applied: both queries now use `User.role.in_(['salesperson', 'admin'])` + `User.active.is_(True)` ordered admins-first.
+- Other diff hunks audited: cli.py / donors.html / migration / sync scripts are pure additions (the office filter logic). No further functional regressions.
+
 ### 2026-04-29 (restore Donor.company_name + helper properties — manual donation 500)
 - "Save & Issue" on the manual donation form returned 500: `TypeError: 'company_name' is an invalid keyword argument for Donor`. Same root cause as ticket #8 — commit `5f0ce15` (Multi-office) deleted the `company_name` column declaration from `app/models/donor.py` along with the `receipt_primary_name` / `has_personal_name` properties. The MySQL column itself was untouched (data intact), only the SQLAlchemy mapping was lost.
 - Restored `company_name = db.Column(db.String(200), nullable=True)` and both helper properties so `Donor(company_name=...)` works again and the receipt templates that use `donor.receipt_primary_name` / `donor.has_personal_name` render correctly.
