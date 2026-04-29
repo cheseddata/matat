@@ -99,6 +99,23 @@
 
         /* Date — on SAME baseline as the "date" label, ~6 chars right. */
         #f_date         { top: 239mm; left: 36mm;   font-size: 10pt; }
+
+        /* "Digitally signed document" badge — overlay text directly on
+           top of the medallion stamp baked into the JPEG. */
+        #f_digital_sig {
+            position: absolute;
+            top: 240mm; left: 87mm;
+            width: 26mm;
+            text-align: center;
+            font-size: 6pt;
+            font-weight: 700;
+            color: #1a1a1a;
+            text-transform: uppercase;
+            letter-spacing: 0.15mm;
+            line-height: 1.05;
+            transform: rotate(-8deg);
+            text-shadow: 0 0 0.5mm rgba(255,255,255,0.85);
+        }
     </style>
 </head>
 <body>
@@ -165,6 +182,8 @@
         {% endif %}
 
         <div class="fld" id="f_date">{{ date }}</div>
+
+        <div id="f_digital_sig">Digitally Signed<br>Document</div>
 
     </div>
 </body>
