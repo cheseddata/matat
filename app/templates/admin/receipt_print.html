@@ -270,6 +270,9 @@
             {% elif donation.payment_processor == 'zelle' %}
             <div class="info-label">Payment Method:</div>
             <div class="info-value">Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
+            {% elif donation.payment_processor == 'wire' %}
+            <div class="info-label">Payment Method:</div>
+            <div class="info-value">Wire Transfer{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
             {% elif donation.payment_method_type == 'card' %}
             <div class="info-label">Payment Method:</div>
             <div class="info-value">Credit Card ending in {{ donation.payment_method_last4 or '****' }}</div>

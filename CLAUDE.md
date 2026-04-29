@@ -272,6 +272,13 @@ estimate_fee()        # Estimate processing fee
 - **Admin filter**: `/admin/donors?office=mine|all|<user_id>`. Admins default to "all" with a tab strip showing each user's donor count; non-admins are scoped to their own owner_user_id and can't lift the filter.
 - **Backups**: `mysqldump` of `donors` saved at `/var/www/matat/backups/donors-pre-owner-20260429-073737.sql` (~948 KB) before the migration.
 
+### 2026-04-29 (Wire Transfer payment method)
+- Seeded `wire` PaymentProcessor (priority 14, between manual_card=12 and check=15) so a **Wire Transfer** tab auto-appears in the donations-page processor row.
+- Added `Wire Transfer` to the manual-donation form's Payment-method dropdown. The Reference and Date labels relabel dynamically: "Wire reference / confirmation" and "Wire date". Upload-image hint becomes "Optional bank confirmation slip".
+- Server route accepts `payment_method='wire'`; processor_code passes through unchanged. Flash label says "Wire Transfer".
+- All four receipt templates (PDF EN, PDF HE, admin print, salesperson print) render `Wire Transfer (ref XXX)` instead of falling through to "Credit Card". Hebrew variant: `העברה בנקאית (אסמכתא: …)`.
+- Translation keys: `manual_donation.method_wire / wire_reference / wire_date / upload_hint_wire` + `processor.wire` in both en.json and he.json.
+
 ### 2026-04-29 (restore four admin routes lost in the multi-office refactor — resolves Gittle ticket #8)
 - Gittle reported "check/zelle not working" (ticket #8). Investigation: commit `5f0ce15` (Multi-office: add donors.owner_user_id) trimmed `app/blueprints/admin/routes.py` from 2,997 to ~2,488 lines and removed four endpoint functions wholesale: `reissue_donation_receipt`, `api_search_donors`, `new_check_donation`, `donation_permissions`. The "+ Check / Zelle" button on `/admin/donations` had been stubbed to `href="#"` because the endpoint was gone.
 - Restored all four functions verbatim from `5f0ce15^` and spliced them back into `routes.py`. Re-added `login_required` to the `flask_login` import line. Restored the button's `href` to `url_for('admin.new_check_donation')` in `templates/admin/donations.html`.

@@ -882,7 +882,7 @@ def new_check_donation():
         country = (request.form.get('country') or 'US').strip() or 'US'
         amount_str = (request.form.get('amount') or '').strip()
         payment_method = (request.form.get('payment_method') or 'check').strip().lower()
-        if payment_method not in ('check', 'zelle', 'credit_card'):
+        if payment_method not in ('check', 'zelle', 'credit_card', 'wire'):
             payment_method = 'check'
         reference = (request.form.get('reference') or '').strip()
         # Currency: USD by default, ILS for Israeli donors. The receipt-
@@ -1057,7 +1057,7 @@ def new_check_donation():
             return redirect(url_for('admin.new_check_donation'))
         db.session.commit()
 
-        label = {'check': 'Check', 'zelle': 'Zelle', 'credit_card': 'Credit Card'}.get(payment_method, payment_method.title())
+        label = {'check': 'Check', 'zelle': 'Zelle', 'credit_card': 'Credit Card', 'wire': 'Wire Transfer'}.get(payment_method, payment_method.title())
         if send_email:
             if not donor.email or 'no-email-' in donor.email:
                 flash(f'{label} donation saved (Receipt {receipt.receipt_number}), but donor has no email — skipped sending.', 'warning')

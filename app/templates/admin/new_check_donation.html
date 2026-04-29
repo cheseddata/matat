@@ -198,6 +198,7 @@
                                 <option value="check" selected>{{ t('manual_donation.method_check') }}</option>
                                 <option value="zelle">{{ t('manual_donation.method_zelle') }}</option>
                                 <option value="credit_card">{{ t('manual_donation.method_credit_card') }}</option>
+                                <option value="wire">{{ t('manual_donation.method_wire') }}</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -296,11 +297,14 @@
         check_number: {{ t('manual_donation.check_number') | tojson }},
         zelle_reference: {{ t('manual_donation.zelle_reference') | tojson }},
         card_reference: {{ t('manual_donation.card_reference') | tojson }},
+        wire_reference: {{ t('manual_donation.wire_reference') | tojson }},
         check_date: {{ t('manual_donation.check_date') | tojson }},
         transaction_date: {{ t('manual_donation.transaction_date') | tojson }},
         card_date: {{ t('manual_donation.card_date') | tojson }},
+        wire_date: {{ t('manual_donation.wire_date') | tojson }},
         upload_hint_check: {{ t('manual_donation.upload_hint_check') | tojson }},
         upload_hint_zelle: {{ t('manual_donation.upload_hint_zelle') | tojson }},
+        upload_hint_wire: {{ t('manual_donation.upload_hint_wire') | tojson }},
     };
 </script>
 {% endblock %}
@@ -336,6 +340,10 @@
             refLabel.textContent = I.card_reference || 'Transaction / authorization #';
             dateLabel.textContent = I.card_date || 'Charge date';
             uploadHint.textContent = I.upload_hint_check || '';
+        } else if (v === 'wire') {
+            refLabel.textContent = I.wire_reference || 'Wire reference / confirmation';
+            dateLabel.textContent = I.wire_date || 'Wire date';
+            uploadHint.textContent = I.upload_hint_wire || 'Optional bank confirmation slip.';
         } else {
             refLabel.textContent = I.check_number || 'Check #';
             dateLabel.textContent = I.check_date || 'Check date';

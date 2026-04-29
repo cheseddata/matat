@@ -251,6 +251,8 @@
                             Check{% if donation.processor_confirmation %} #{{ donation.processor_confirmation }}{% endif %}
                         {% elif donation.payment_processor == 'zelle' %}
                             Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}
+                        {% elif donation.payment_processor == 'wire' %}
+                            Wire Transfer{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}
                         {% elif donation.payment_method_type == 'card' %}
                             Credit Card{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}
                         {% elif donation.payment_method_type == 'us_bank_account' %}

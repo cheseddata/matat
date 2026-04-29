@@ -126,6 +126,8 @@
             <div class="fld" id="f_payment">Check{% if donation.processor_confirmation %} #{{ donation.processor_confirmation }}{% endif %}</div>
         {% elif donation.payment_processor == 'zelle' %}
             <div class="fld" id="f_payment">Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
+        {% elif donation.payment_processor == 'wire' %}
+            <div class="fld" id="f_payment">Wire Transfer{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
         {% elif donation.payment_method_type == 'card' %}
             <div class="fld" id="f_payment">Credit Card{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}</div>
         {% elif donation.payment_method_type == 'us_bank_account' %}
@@ -150,11 +152,12 @@
            credit-card entries. Auto-charged Stripe card donations skip
            this section (the card webhook fills payment_processor='stripe',
            not one of the values listed below). #}
-        {% if payment_processor in ('check', 'zelle', 'card', 'manual_card', 'credit_card') %}
+        {% if payment_processor in ('check', 'zelle', 'wire', 'card', 'manual_card', 'credit_card') %}
         <div id="tx_box">
             <table>
                 <thead><tr>
                     <th>{% if payment_processor == 'check' %}Date of Check
+                        {%- elif payment_processor == 'wire' %}Date of Wire
                         {%- elif is_card_payment %}Date of Charge
                         {%- else %}Transaction Date{% endif %}</th>
                     <th>{{ tx_ref_label }}</th>
@@ -172,6 +175,7 @@
             A copy of your
             {%- if payment_processor == 'check' %} check
             {%- elif payment_processor == 'zelle' %} Zelle transaction
+            {%- elif payment_processor == 'wire' %} wire confirmation
             {%- elif is_card_payment %} card receipt
             {%- else %} payment
             {%- endif %} is provided below for your records.

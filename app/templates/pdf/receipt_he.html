@@ -248,6 +248,9 @@
             {% elif donation.payment_processor == 'zelle' %}
             <div class="info-value ltr">Zelle{% if donation.processor_confirmation %} (ref {{ donation.processor_confirmation }}){% endif %}</div>
             <div class="info-label">:אמצעי תשלום</div>
+            {% elif donation.payment_processor == 'wire' %}
+            <div class="info-value">העברה בנקאית{% if donation.processor_confirmation %} (אסמכתא: <span class="ltr">{{ donation.processor_confirmation }}</span>){% endif %}</div>
+            <div class="info-label">:אמצעי תשלום</div>
             {% elif donation.payment_method_type == 'card' %}
             <div class="info-value ltr">Credit Card{% if donation.payment_method_last4 %} ending in {{ donation.payment_method_last4 }}{% endif %}</div>
             <div class="info-label">:אמצעי תשלום</div>

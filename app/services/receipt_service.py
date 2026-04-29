@@ -155,7 +155,12 @@ def generate_receipt_pdf(donation, donor, language='en'):
         ref_label = 'Card Number'
     else:
         ref_number = donation.processor_confirmation or meta.get('reference') or ''
-        ref_label = 'Check Number' if payment_processor == 'check' else 'Reference'
+        if payment_processor == 'check':
+            ref_label = 'Check Number'
+        elif payment_processor == 'wire':
+            ref_label = 'Wire Reference'
+        else:
+            ref_label = 'Reference'
 
     image_path = meta.get('image_path') or None
 
