@@ -272,6 +272,14 @@ estimate_fee()        # Estimate processing fee
 - **Admin filter**: `/admin/donors?office=mine|all|<user_id>`. Admins default to "all" with a tab strip showing each user's donor count; non-admins are scoped to their own owner_user_id and can't lift the filter.
 - **Backups**: `mysqldump` of `donors` saved at `/var/www/matat/backups/donors-pre-owner-20260429-073737.sql` (~948 KB) before the migration.
 
+### 2026-04-29 (YeshInvoice live — manual-review button, no auto-email)
+- **Endpoint corrected**: `POST https://api.yeshinvoice.co.il/api/v1/createDocument` (camelCase, capital D). Old `/api/user/createInvoice` calls returned the same Hebrew errors but never persisted documents. Verified end-to-end: probing produced two real docs (`id 8320455`, `id 8320456`, both `docNumber 30001`) — the operator needs to void those in the YeshInvoice portal.
+- **`yeshinvoice_service.py`**: API_BASE_URL → `/api/v1`, both `_api_request('createInvoice', ...)` callers → `'createDocument'`. Response parsing rewritten to read `ReturnValue.{id, docNumber, pdfurl, url}` (was reading top-level `DocumentID`/`DocumentNumber`/`PDFLink` which don't exist). `test_connection()` retargeted at `createDocument`.
+- **No-delete confirmed via probing**: 22 endpoint variants tried (`deleteDocument`, `cancelDocument`, `voidDocument`, `creditDocument`, etc., across `/api/v1` + `/api/user`) — all 404. YeshInvoice **does not expose document deletion** through the public API. Voids must be done in their portal UI.
+- **New manual-review button** on `/admin/donations`, ILS-only: turquoise **YeshInvoice** button next to Reissue. Clicking it: confirms with operator → POSTs `/admin/donations/<id>/yeshinvoice-generate` → calls `create_receipt()` (which already sends `SendEmail: false / SendSMS: false` so YeshInvoice doesn't email the donor) → opens the returned PDF URL in a new tab for operator review/download.
+- **Double-create guard**: if `donation.yeshinvoice_doc_id` is already set, the route returns the existing values without calling the API again. Operator can clear `yeshinvoice_doc_id` manually if a regenerate is needed.
+- After successful generate, the button label flips to `YeshInvoice ✓ {docNumber}` for visual confirmation.
+
 ### 2026-04-29 (multi-office regression sweep: re-apply admin-in-dropdown fix)
 - Final audit of `git diff 5f0ce15^ 5f0ce15` after restoring the four routes and `Donor.company_name`. Only one remaining silent regression found: the multi-office commit reverted the **"include admins in salesperson dropdown"** fix from `21268f0` (2026-04-28). Both query sites (`/admin/donations` and `/admin/donations/<id>/edit`) had been put back to `User.role == 'salesperson'` only — Sara would be missing from the dropdown again.
 - Re-applied: both queries now use `User.role.in_(['salesperson', 'admin'])` + `User.active.is_(True)` ordered admins-first.

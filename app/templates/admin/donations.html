@@ -163,6 +163,19 @@
         cursor: not-allowed;
     }
 
+    .yesh-btn {
+        background: #16a085;
+    }
+
+    .yesh-btn:hover {
+        background: #117a65;
+    }
+
+    .yesh-btn:disabled {
+        background: #95a5a6;
+        cursor: not-allowed;
+    }
+
     .action-buttons {
         display: flex;
         gap: 5px;
@@ -356,6 +369,11 @@
                         <button class="view-btn pdf-btn" onclick="downloadPdf({{ donation.id }}, '{{ donation.donor.first_name if donation.donor else '' }}')">{{ t('common.pdf') }}</button>
                         <button class="view-btn resend-btn" onclick="resendReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)">{{ t('common.resend') }}</button>
                         <button class="view-btn reissue-btn" onclick="reissueReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)" title="Regenerate the PDF with the current template and email it">{{ t('common.reissue') }}</button>
+                        {% if (donation.currency or '')|upper == 'ILS' %}
+                        <button class="view-btn yesh-btn" onclick="generateYeshInvoice({{ donation.id }}, this)" title="Generate a YeshInvoice kabala (does NOT email the donor — opens the PDF in a new tab so you can download)">
+                            {% if donation.yeshinvoice_doc_number %}YeshInvoice ✓ {{ donation.yeshinvoice_doc_number }}{% else %}YeshInvoice{% endif %}
+                        </button>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
@@ -417,6 +435,51 @@ function downloadPdf(donationId, donorName) {
         return;
     }
     window.location.href = `/admin/donations/${donationId}/receipt/pdf`;
+}
+
+function generateYeshInvoice(donationId, btn) {
+    if (!confirm(
+        'Generate a YeshInvoice kabala for this donation?\n\n' +
+        'This creates a real receipt in YeshInvoice (a credit/void in their portal will be needed if you want to undo it). ' +
+        'The donor will NOT be emailed — the PDF opens in a new tab so you can review and forward it manually.'
+    )) return;
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Generating...';
+
+    fetch(`/admin/donations/${donationId}/yeshinvoice-generate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const note = data.already_exists
+                ? `Already generated: doc ${data.doc_number}.`
+                : `Generated: doc ${data.doc_number}.`;
+            btn.textContent = `YeshInvoice ✓ ${data.doc_number}`;
+            btn.disabled = false;
+            // Open the PDF in a new tab so operator can download / review.
+            if (data.pdf_url) {
+                window.open(data.pdf_url, '_blank', 'noopener');
+            } else {
+                alert(note + '\n\nNo PDF URL returned — check the YeshInvoice portal.');
+            }
+        } else {
+            alert('YeshInvoice error: ' + (data.error || 'unknown'));
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        alert('Network error: ' + (err.message || err));
+        btn.textContent = originalText;
+        btn.disabled = false;
+    });
 }
 
 function reissueReceipt(donationId, donorEmail, btn) {

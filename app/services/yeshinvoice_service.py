@@ -4,7 +4,12 @@ from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-API_BASE_URL = 'https://api.yeshinvoice.co.il/api/user'
+API_BASE_URL = 'https://api.yeshinvoice.co.il/api/v1'
+# Verified live 2026-04-29: the working endpoint is
+#   POST {API_BASE_URL}/createDocument
+# /api/user/createInvoice returns the same Hebrew-error responses but
+# never actually persists a document. Earlier integration work targeted
+# /api/user/createInvoice — that was a dead end.
 
 # Document type mapping
 DOC_TYPES = {
@@ -177,13 +182,20 @@ def create_receipt(donation, donor, config=None):
     if tz:
         payload['Customer']['NumberID'] = tz
 
-    result = _api_request('createInvoice', payload, config)
+    result = _api_request('createDocument', payload, config)
 
     if result['success']:
-        data = result['data']
-        doc_id = str(data.get('DocumentID', ''))
-        doc_number = str(data.get('DocumentNumber', ''))
-        pdf_url = data.get('PDFLink', '')
+        # Response shape (verified live):
+        #   {"Success": true, "ErrorMessage": "",
+        #    "ReturnValue": {"id": 8320455, "docNumber": 30001,
+        #                    "url": "https://yeshbe.co/...",
+        #                    "pdfurl": "https://api.yeshinvoice.co.il/api/user/DownloadInvoice?key=...",
+        #                    "signurl": null, "copypdfurl": ...}}
+        data = result['data'] or {}
+        rv = data.get('ReturnValue') or {}
+        doc_id     = str(rv.get('id') or '')
+        doc_number = str(rv.get('docNumber') or '')
+        pdf_url    = rv.get('pdfurl') or rv.get('url') or ''
 
         # Update donation record
         from ..extensions import db
@@ -242,16 +254,17 @@ def create_credit_note(donation, config=None):
     if config.get('account_id'):
         payload['AccountID'] = config['account_id']
 
-    result = _api_request('createInvoice', payload, config)
+    result = _api_request('createDocument', payload, config)
 
     if result['success']:
-        data = result['data']
-        logger.info(f'YeshInvoice credit note created: id={data.get("DocumentID")}')
+        data = result['data'] or {}
+        rv = data.get('ReturnValue') or {}
+        logger.info(f'YeshInvoice credit note created: id={rv.get("id")}')
         return {
             'success': True,
-            'doc_id': str(data.get('DocumentID', '')),
-            'doc_number': str(data.get('DocumentNumber', '')),
-            'pdf_url': data.get('PDFLink', ''),
+            'doc_id': str(rv.get('id') or ''),
+            'doc_number': str(rv.get('docNumber') or ''),
+            'pdf_url': rv.get('pdfurl') or rv.get('url') or '',
         }
 
     return result
@@ -388,7 +401,7 @@ def test_connection(config=None):
         return {'success': False, 'error': 'YeshInvoice not configured or not enabled'}
 
     import requests
-    url = f"{API_BASE_URL}/createInvoice"
+    url = f"{API_BASE_URL}/createDocument"
     payload = {'UserKey': config['user_key'], 'SecretKey': config['secret_key']}
     try:
         r = requests.post(url, json=payload, timeout=15)

@@ -827,6 +827,75 @@ def reissue_donation_receipt(id):
     except Exception as e:
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/donations/<int:id>/yeshinvoice-generate', methods=['POST'])
+@login_required
+def yeshinvoice_generate(id):
+    """Generate a YeshInvoice kabala for this donation — DO NOT email donor.
+
+    The YeshInvoice service already sends `SendEmail: false / SendSMS: false`
+    in the createDocument payload, so YeshInvoice itself never reaches the
+    donor. This endpoint exists so the operator can preview / download
+    the kabala PDF, hand-check formatting (alignment is finicky), and
+    forward it manually. Once we trust the format we can wire it into
+    the auto-receipt path.
+
+    Returns JSON `{success, doc_id, doc_number, pdf_url}` on success;
+    `{error}` otherwise.
+    """
+    import traceback
+
+    try:
+        donation = Donation.query.get_or_404(id)
+        donor = Donor.query.get(donation.donor_id)
+
+        if not donor:
+            return jsonify({'error': 'Donor not found'}), 400
+        if donation.status != 'succeeded':
+            return jsonify({'error': 'Can only issue YeshInvoice receipts for successful donations.'}), 400
+
+        # YeshInvoice = ILS only.
+        currency = (donation.currency or '').upper()
+        if currency != 'ILS':
+            return jsonify({
+                'error': f'YeshInvoice is ILS-only. This donation is in {currency or "?"}.'
+            }), 400
+
+        # Block double-create — the API has no delete, so we don't want to
+        # accidentally generate two for the same donation. Operator can
+        # force a re-issue by clearing yeshinvoice_doc_id first if needed.
+        if donation.yeshinvoice_doc_id:
+            return jsonify({
+                'success': True,
+                'already_exists': True,
+                'message': f'YeshInvoice doc {donation.yeshinvoice_doc_number} was already generated for this donation.',
+                'doc_id':     donation.yeshinvoice_doc_id,
+                'doc_number': donation.yeshinvoice_doc_number,
+                'pdf_url':    donation.yeshinvoice_pdf_url or '',
+            })
+
+        from ...services.yeshinvoice_service import (
+            create_receipt as yesh_create_receipt,
+            get_yeshinvoice_config,
+        )
+        cfg = get_yeshinvoice_config()
+        if not cfg:
+            return jsonify({'error': 'YeshInvoice is not enabled or credentials are missing. Set them in Admin → Settings.'}), 400
+
+        result = yesh_create_receipt(donation, donor, config=cfg)
+        if not result.get('success'):
+            return jsonify({'error': f'YeshInvoice rejected the request: {result.get("error", "unknown error")}'}), 502
+
+        return jsonify({
+            'success': True,
+            'doc_id':     result.get('doc_id'),
+            'doc_number': result.get('doc_number'),
+            'pdf_url':    result.get('pdf_url'),
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 # =============================================================================
 # DONATIONS MANAGEMENT
 # =============================================================================
