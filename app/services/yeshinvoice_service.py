@@ -144,6 +144,12 @@ def create_receipt(donation, donor, config=None):
     if donation.receipt_number:
         item_name = f'תרומה (קבלה {donation.receipt_number})'
 
+    # Idempotency key — YeshInvoice rejects a second createDocument call
+    # with the same DocumentUniqueKey. Protects against double-clicks /
+    # network-retry races: two simultaneous "Generate" clicks can't both
+    # produce a real receipt. Max 20 chars per their docs.
+    unique_key = f'matat-{donation.id}'[:20]
+
     payload = {
         'Title': f'תרומה — {customer_name}',
         'DocumentType': DOC_TYPE_RECEIPT,
@@ -156,6 +162,7 @@ def create_receipt(donation, donor, config=None):
         'hideMaxDate': True,
         'SendEmail':   False,   # we send our own donor email
         'SendSMS':     False,
+        'DocumentUniqueKey': unique_key,
         'Customer': {
             'Name':        customer_name,
             'NameInvoice': name_invoice,
@@ -255,6 +262,10 @@ def create_credit_note(donation, config=None):
     now_str = _dt.utcnow().strftime('%Y-%m-%d %H:%M')
     orig_num = donation.yeshinvoice_doc_number or donation.yeshinvoice_doc_id
 
+    # Same idempotency safety as the receipt path — distinct key so a
+    # void can coexist with the original receipt's key.
+    unique_key = f'matat-{donation.id}-v'[:20]
+
     payload = {
         'Title': f'ביטול קבלה {orig_num}',
         'DocumentType': DOC_TYPE_CREDIT,
@@ -267,6 +278,7 @@ def create_credit_note(donation, config=None):
         'hideMaxDate': True,
         'SendEmail':   False,
         'SendSMS':     False,
+        'DocumentUniqueKey': unique_key,
         # Best-guess link-back field name; YeshInvoice may use a different one.
         'RelatedDocumentId': donation.yeshinvoice_doc_id,
         'OriginalDocumentID': donation.yeshinvoice_doc_id,  # belt-and-suspenders
