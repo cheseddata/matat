@@ -97,7 +97,7 @@ even if it matches the default.
 | `SendSMS` | bool | Have YeshInvoice SMS the donor a link to the receipt. Default `false`. |
 | `SendEmail` | bool | Have YeshInvoice email the donor the receipt. Default `false`. We typically keep this `false` and email from our own system. |
 | `IncludePDF` | bool | If `SendEmail=true`, attach the PDF inline. Default `false`. |
-| `DocumentType` * | number | **The big one — see §5.** For Section 46 donation receipts use `9`. Default `1` is a shipment, **NOT** what you want. |
+| `DocumentType` * | number | **The big one — see §5.** For Section 46 donation receipts use `11`. Default `1` is a shipment, **NOT** what you want. |
 | `ExchangeRate` | number | Required when `CurrencyID ≠ 2` (non-ILS). Default `1`. |
 | `vatPercentage` | number | Israeli VAT %. Default `17`. For donation receipts (which are VAT-exempt as a tax-deductible gift) we send `0`. |
 | `roundPrice` | number | Round amount. Default `0`. |
@@ -126,7 +126,7 @@ even if it matches the default.
 
 ```json
 {
-  "DocumentType": 9,
+  "DocumentType": 11,
   "CurrencyID": 1,
   "LangID": 359,
   "DateCreated": "2026-04-29 10:00",
@@ -143,33 +143,46 @@ even if it matches the default.
 
 ---
 
-## 4. CurrencyID table
+## 4. CurrencyID
 
-| ID | Currency |
-|---|---|
-| `1` | USD ($) |
-| `2` | ILS (₪) — default |
-| `3` | EUR (€) |
-| `4` | GBP (£) |
+**The only verified value is `2` = ILS** (called out as the default in
+the docs page). The other IDs were guessed during initial development
+and have not been confirmed with YeshInvoice — verify before using.
 
-Other minor currencies exist (CAD, AUD, etc.) — query
-<https://user.yeshinvoice.co.il/api/doc?an=currencies> if you need them.
+Reference page: <https://user.yeshinvoice.co.il/api/doc?an=currencies>
+
+| ID | Currency | Source |
+|---|---|---|
+| **`2`** | **ILS (₪)** | Verified — docs say "default `2`" for `CurrencyID` |
+| `1`, `3`, `4`, … | USD, EUR, GBP, etc. | UNVERIFIED — confirm via the currencies reference page |
 
 ---
 
-## 5. DocumentType — the values you actually need
+## 5. DocumentType
 
-| ID | Hebrew | English | When to use |
+**Only one value below is fully verified. The rest are listed only
+because we encountered them — verify with YeshInvoice support before
+relying on any of them.**
+
+### Verified values
+
+| ID | Hebrew | What it produces | Source |
 |---|---|---|---|
-| `1` | תעודת משלוח | Delivery note | **NEVER for receipts** (this is the bug we keep hitting — it was the old default). |
-| `3` | חשבון עסקה | Proforma invoice | When asking for payment but not yet recording it. |
-| `4` | חשבונית מס | Tax invoice | Standard for-profit invoice. **Wrong for nonprofit donations.** |
-| `5` | חשבונית מס/קבלה | Tax invoice + receipt | Combined invoice and receipt. |
-| `6` | קבלה | Plain receipt | A regular receipt for goods/services rendered. **Doesn't trigger Section-46 tax credit.** |
-| `9` | קבלה לפי סעיף 46 / קבלת תרומה | **Section 46 donation receipt** | **THIS is what Matat uses for every Israeli donor.** |
-| `11` | חשבונית זיכוי | Credit note | Generated automatically by `cancelDocument` — don't issue directly. |
+| **`11`** | **קבלה לתרומה / קבלה לפי סעיף 46** | **Section-46 donation receipt** — what Matat uses for every Israeli donor | YeshInvoice support email, 2026-04-29 (see commit `b0ddc0f`) |
+| `1` | תעודת משלוח | Delivery note / shipment | Observed: when our old code sent `DocumentType=1`, donors got a "shipment" doc, not a receipt |
 
-**Default for Matat: `DocumentType = 9`.**
+### Unverified — DO NOT USE without confirming
+
+The createDocument docs page's body example uses `DocumentType: 9`,
+but `9` is **not** Section-46. Other values in our `DOC_TYPES` map
+(`3`, `4`, `5`, `6`) were our own guesses earlier in development —
+none of them are confirmed. If you need a different document type
+(e.g. a tax invoice or a plain receipt), email
+support@yeshinvoice.co.il and ask for the numeric code rather than
+guessing.
+
+⚠ **Don't trust the docs page's example body.** Don't copy-paste
+`DocumentType` from the example. Use `11` for Matat, full stop.
 
 The above is the working subset based on the API doc example and
 YeshInvoice's `cancelDocument` description ("works only with the
@@ -235,15 +248,20 @@ receipts because the donation isn't a taxable purchase.
 
 ## 8. `payments` array
 
-How the donor paid. `TypeID` selects the payment type:
+How the donor paid. `TypeID` selects the payment type.
 
-| TypeID | Payment type |
-|---|---|
-| `1` | Cash |
-| `2` | Check |
-| `3` | Bank transfer |
-| `4` | Credit card |
-| `5` | Other / payment app (Bit, PayPal, …) |
+**Only `TypeID: 5` is observed in the docs example** — all other
+values below were our development guesses and have **not** been
+confirmed. Before using any other TypeID, verify with YeshInvoice
+support or the
+<https://user.yeshinvoice.co.il/api/doc?an=paymenttypes> reference
+page (if it exists — open the doc page and click into Payments to
+see the list).
+
+| TypeID | Likely meaning | Source |
+|---|---|---|
+| `5` | Other / payment app (Bit, PayPal, …) | Used in the createDocument example body |
+| `1`, `2`, `3`, `4`, … | Cash, Check, Bank transfer, Credit card | UNVERIFIED — confirm before relying on |
 
 For a credit-card donation through Nedarim Plus:
 
@@ -325,9 +343,17 @@ On failure:
 
 ## 10. cancelDocument — reversing a test or mistaken receipt
 
-Receipts are tax records and **can't be deleted** outright — Israeli
-law requires that issued numbers stay in the sequence. Cancellation
-issues a credit note (חשבונית זיכוי) that nets out the original.
+> **From YeshInvoice support (2026-04-29):**
+> *Please note that issued documents cannot be deleted, as deleting
+> official documents is not allowed. If you need to cancel a specific
+> receipt or invoice, you can issue a negative receipt (or credit
+> document) to offset and cancel the original document.*
+
+Translation for our code: there is **no delete endpoint**. To make a
+test or mistake go away, you call `cancelDocument`, which issues an
+offsetting credit-document so the original and the cancellation net
+to zero. Both records remain in the receipt sequence; that's by
+design and required by Israeli tax law.
 
 ```
 POST https://api.yeshinvoice.co.il/api/v1.1/cancelDocument
@@ -414,13 +440,19 @@ Authorization: {"secret":"...","userkey":"..."}
 ## 15. Mapping Matat → YeshInvoice for a typical ILS donation
 
 This is the recipe `app/services/yeshinvoice_service.py` should
-follow when a USD-vs-ILS routed-to-YeshInvoice donation comes in:
+follow when a USD-vs-ILS routed-to-YeshInvoice donation comes in.
+
+⚠ Heads-up: the `CurrencyID` mapping and the `payments[].TypeID`
+values in this snippet are **pseudocode** — only `ILS=2` and `TypeID=5`
+are confirmed (see §4 and §8). Verify the rest with YeshInvoice
+support before flipping the integration on for non-ILS or non-Other
+payment types.
 
 ```python
 def build_payload(donation, donor):
     return {
         # — meta —
-        "DocumentType":              9,                       # Section 46 donation receipt
+        "DocumentType":              11,                      # Section 46 donation receipt — verified with YI support
         "CurrencyID":                {"ILS": 2, "USD": 1, "EUR": 3, "GBP": 4}[donation.currency.upper()],
         "LangID":                    359 if donor.language_pref == "he" else 139,
         "DateCreated":               donation.created_at.strftime("%Y-%m-%d %H:%M"),
@@ -475,7 +507,7 @@ def build_payload(donation, donor):
    auth scheme, and the endpoint names are all wrong. Use the spec in
    this document.
 2. **Move config**: add `ConfigSettings.yeshinvoice_default_doc_type`
-   default → `9`. Stop letting operators pick `1`.
+   default → `11`. Stop letting operators pick `1`.
 3. **Wire it into the donation flow**: when an ILS donation succeeds
    AND `donor.country == 'IL'` AND `ConfigSettings.yeshinvoice_enabled`,
    call `createDocument`, store `id` and `docNumber` on the
