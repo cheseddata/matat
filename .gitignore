@@ -13,3 +13,4 @@ gunicorn*.log
 *.pdf
 uploads/
 feedback_git/
+backups/

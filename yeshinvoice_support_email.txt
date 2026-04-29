@@ -1,0 +1,54 @@
+Subject: API integration — need full createInvoice schema
+
+Hi,
+
+We're integrating your API to issue Israeli kabalas (קבלות) for ILS
+donations from our donor management system. Authentication is working,
+but we're stuck on the request payload.
+
+What's confirmed:
+- API base URL: https://api.yeshinvoice.co.il/api/user/
+- Auth fields: UserKey + SecretKey (in JSON body) — accepted ✓
+- The endpoint we're calling: POST /api/user/createInvoice
+- Without payload, the server returns "מפתח SECRET KEY לא חוקי" for
+  bad keys, and "אנא הזן שם הלקוח/בית העסק" for our keys — so auth
+  is good, payload is just incomplete.
+
+What we need from you:
+
+1. The complete request schema for createInvoice — every required and
+   optional field, exact JSON key names, types, and any enums. We
+   tried generic guesses (CustomerName, EmailAddress, DocumentType,
+   CurrencyID, Items with Quantity/UnitPrice/Name) and the API
+   rejected them. We need the actual field-name list as your system
+   expects them.
+
+2. DocumentType valid values. For us: a donation receipt
+   (קבלה לתרומה) — does that map to DocumentType=1? Or a different
+   code?
+
+3. Currency: is CurrencyID a string ("ILS") or a numeric ID? If
+   numeric, what's the ID for ILS?
+
+4. AccountID — we don't see one in our portal. Is it required? Do
+   our keys have an implicit default account, or do we need to
+   request one?
+
+5. Disable the auto-email — we send our own donor receipts. What's
+   the field/value to tell YeshInvoice not to email the customer
+   directly when a document is created?
+
+6. Document retrieval — is there an endpoint with our UserKey /
+   SecretKey to fetch a previously created document by DocumentID,
+   or to download its PDF? getDocument returns 404 in /api/user/.
+   Is the right endpoint somewhere else?
+
+7. Customer endpoints — same question for createOrUpdateCustomer
+   and getCustomers (also 404 in /api/user/). Do those exist for
+   API users, or are customers auto-created by createInvoice?
+
+Our credentials (account name should be on file):
+- UserKey: 9PCeHYDzp6f84kwFxqLc
+
+Once we have the schema we can wire the integration in the same day.
+Thanks!
