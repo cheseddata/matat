@@ -763,6 +763,15 @@ def reissue_donation_receipt(id):
 
         # ---- YeshInvoice path ----
         if via == 'yesh':
+            # YeshInvoice issues *Israeli kabalas* (קבלות) — denominated in ILS
+            # only. A USD donation cannot be reissued through YeshInvoice;
+            # those use the Matat receipt path.
+            currency = (donation.currency or '').upper()
+            if currency != 'ILS':
+                return jsonify({
+                    'error': f'YeshInvoice is ILS-only. This donation is in {currency or "?"}; reissue via the Matat email path instead.'
+                }), 400
+
             from ...services.yeshinvoice_service import (
                 create_receipt as yesh_create_receipt,
                 get_yeshinvoice_config,
