@@ -202,6 +202,12 @@
                 <div class="detail-label">{{ t('common.name') }}</div>
                 <div class="detail-value">{{ donation.donor.full_name }}</div>
             </div>
+            {% if donation.donor.hebrew_first_name or donation.donor.hebrew_last_name %}
+            <div class="detail-row">
+                <div class="detail-label">שם בעברית</div>
+                <div class="detail-value" dir="rtl">{{ (donation.donor.hebrew_first_name or '') ~ ' ' ~ (donation.donor.hebrew_last_name or '') }}</div>
+            </div>
+            {% endif %}
             <div class="detail-row">
                 <div class="detail-label">{{ t('common.email') }}</div>
                 <div class="detail-value">{{ donation.donor.email }}</div>
@@ -212,14 +218,43 @@
                 <div class="detail-value">{{ donation.donor.phone }}</div>
             </div>
             {% endif %}
+            {% if donation.donor.il_phone_cell or donation.donor.il_phone_home %}
+            <div class="detail-row">
+                <div class="detail-label">Israeli Phone</div>
+                <div class="detail-value">{{ donation.donor.il_phone_cell or donation.donor.il_phone_home }}</div>
+            </div>
+            {% endif %}
+            {% set is_ils = (donation.currency or '')|upper == 'ILS' %}
+            {% if donation.donor.il_address_line1 or donation.donor.il_city %}
+            <div class="detail-row">
+                <div class="detail-label">
+                    Israeli Address
+                    {% if is_ils %}<span style="color:#16a085; font-size:11px;">(used on YeshInvoice receipt)</span>{% endif %}
+                </div>
+                <div class="detail-value" dir="rtl">
+                    {% if donation.donor.il_address_line1 %}{{ donation.donor.il_address_line1 }}<br>{% endif %}
+                    {% if donation.donor.il_address_line2 %}{{ donation.donor.il_address_line2 }}<br>{% endif %}
+                    {{ donation.donor.il_city or '' }}{% if donation.donor.il_zip %} {{ donation.donor.il_zip }}{% endif %}
+                </div>
+            </div>
+            {% endif %}
             {% if donation.donor.address_line1 %}
             <div class="detail-row">
-                <div class="detail-label">{{ t('receipt.address') }}</div>
+                <div class="detail-label">
+                    {% if donation.donor.il_address_line1 %}Mailing Address{% else %}{{ t('receipt.address') }}{% endif %}
+                </div>
                 <div class="detail-value">
                     {{ donation.donor.address_line1 }}<br>
                     {% if donation.donor.address_line2 %}{{ donation.donor.address_line2 }}<br>{% endif %}
                     {{ donation.donor.city }}, {{ donation.donor.state }} {{ donation.donor.zip or donation.donor.zip_code or '' }}<br>
                     {{ donation.donor.country }}
+                </div>
+            </div>
+            {% endif %}
+            {% if is_ils and not donation.donor.il_address_line1 %}
+            <div class="detail-row">
+                <div class="detail-value" style="color:#c0392b; font-size:13px;">
+                    ⚠ This is an ILS donation but the donor has no Israeli address on file. The YeshInvoice receipt will go out with a blank address. Edit the donor to add one.
                 </div>
             </div>
             {% endif %}
@@ -292,7 +327,26 @@
                 <button onclick="sendReceipt({{ donation.id }})" class="btn btn-success" style="font-size: 13px; padding: 8px 12px;">
                     {{ t('receipt.generate_send') }}
                 </button>
+                <p style="color: #999; font-size: 11px; margin-top: 6px;">↑ Sends a Matat-style PDF by email. For Israeli kabala (קבלה לפי סעיף 46), use YeshInvoice below.</p>
                 {% endif %}
+                {% endif %}
+
+                {% if (donation.currency or '')|upper == 'ILS' and donation.status == 'succeeded' %}
+                <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #eee;">
+                    <h4 style="margin: 0 0 8px 0; font-size: 14px;">YeshInvoice (קבלה ישראלית)</h4>
+                    {% if donation.yeshinvoice_doc_number and donation.yeshinvoice_pdf_url %}
+                    <a href="{{ donation.yeshinvoice_pdf_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size: 13px; padding: 8px 12px; background: #16a085;">
+                        Open Receipt {{ donation.yeshinvoice_doc_number }} 📄
+                    </a>
+                    <button onclick="voidYeshInvoiceDetail({{ donation.id }}, this)" class="btn" style="font-size: 13px; padding: 8px 12px; background: #c0392b; color: white;">
+                        Void
+                    </button>
+                    {% else %}
+                    <button onclick="generateYeshInvoiceDetail({{ donation.id }}, this)" class="btn" style="font-size: 13px; padding: 8px 12px; background: #16a085; color: white;">
+                        Generate YeshInvoice Receipt
+                    </button>
+                    {% endif %}
+                </div>
                 {% endif %}
             </div>
 
@@ -360,6 +414,62 @@ function sendReceipt(donationId) {
         alert('{{ t("common.error") }}');
         btn.disabled = false;
         btn.textContent = '{{ t("receipt.generate_send") }}';
+    });
+}
+
+// YeshInvoice direct buttons on the donation detail sidebar.
+function generateYeshInvoiceDetail(donationId, btn) {
+    if (!confirm('Issue an Israeli kabala (YeshInvoice receipt) for this donation?')) return;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Generating...';
+    fetch(`/admin/donations/${donationId}/yeshinvoice-generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (data.pdf_url) { try { window.open(data.pdf_url, '_blank', 'noopener'); } catch (e) {} }
+            alert(`YeshInvoice receipt ${data.doc_number} issued.`);
+            location.reload();
+        } else {
+            alert('YeshInvoice error: ' + (data.error || 'unknown'));
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+    })
+    .catch(err => {
+        alert('Network error: ' + (err.message || err));
+        btn.disabled = false;
+        btn.textContent = original;
+    });
+}
+
+function voidYeshInvoiceDetail(donationId, btn) {
+    if (!confirm('Void this YeshInvoice receipt by issuing a credit document? The original stays on file (Israeli tax law) but the donation is unlinked so a fresh receipt can be issued.')) return;
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Voiding...';
+    fetch(`/admin/donations/${donationId}/yeshinvoice-void`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Voided. Credit doc ${data.doc_number} issued.`);
+            location.reload();
+        } else {
+            alert('Void failed: ' + (data.error || 'unknown'));
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+    })
+    .catch(err => {
+        alert('Network error: ' + (err.message || err));
+        btn.disabled = false;
+        btn.textContent = original;
     });
 }
 
