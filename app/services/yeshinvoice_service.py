@@ -128,34 +128,30 @@ def create_receipt(donation, donor, config=None):
     amount = (donation.amount or 0) / 100  # cents → currency units
     now_str = _dt.utcnow().strftime('%Y-%m-%d %H:%M')
 
-    # Customer name — Israeli receipts prefer the Hebrew name when the
-    # donor has one on file. Falls back to the English first/last, then
-    # company name, then email, then אנונימי.
+    # YeshInvoice receipts are Israeli tax kabalot — Hebrew name only.
+    # When the donor has no hebrew_first_name/hebrew_last_name on file
+    # we fall through to the English name purely because YeshInvoice's
+    # schema requires SOME Customer.Name; the better long-term answer
+    # is to surface this as a missing-Hebrew-name data issue and have
+    # the operator add it before issuing.
     heb_first = (getattr(donor, 'hebrew_first_name', None) or '').strip()
     heb_last  = (getattr(donor, 'hebrew_last_name', None) or '').strip()
-    hebrew_name = f'{heb_first} {heb_last}'.strip()
-    english_name = f"{donor.first_name or ''} {donor.last_name or ''}".strip()
-    customer_name = hebrew_name or english_name
-    name_invoice = getattr(donor, 'company_name', None) or customer_name
+    customer_name = f'{heb_first} {heb_last}'.strip()
     if not customer_name:
-        customer_name = name_invoice or donor.email or 'תורם אנונימי'
+        customer_name = (f"{donor.first_name or ''} {donor.last_name or ''}".strip()
+                         or getattr(donor, 'company_name', None)
+                         or donor.email or 'תורם אנונימי')
+    name_invoice = getattr(donor, 'company_name', None) or customer_name
 
-    # Compose a single address string (YeshInvoice wants one Address field).
-    # YeshInvoice receipts are Israeli kabalot — prefer the donor's Israeli
-    # address when present. Fall back to the foreign address only if the
-    # donor has no Israeli address on file (rare for ILS donations, but
-    # safe for legacy records that haven't been updated yet).
-    has_il_address = (getattr(donor, 'il_address_line1', None) or
-                      getattr(donor, 'il_city', None) or
-                      getattr(donor, 'il_zip', None))
-    if has_il_address:
-        addr_parts = [getattr(donor, 'il_address_line1', None),
-                      getattr(donor, 'il_address_line2', None),
-                      getattr(donor, 'il_city', None),
-                      getattr(donor, 'il_zip', None)]
-    else:
-        addr_parts = [donor.address_line1, donor.address_line2,
-                      donor.city, donor.state, donor.zip, donor.country]
+    # YeshInvoice receipts are Israeli tax kabalot — Israeli address only.
+    # If the donor has no Israeli address on file we send blank rather
+    # than silently substituting the foreign / US address. A blank
+    # address is a data issue the operator can fix; a Lakewood NJ
+    # address on a Hebrew kabala is a regulatory issue.
+    addr_parts = [getattr(donor, 'il_address_line1', None),
+                  getattr(donor, 'il_address_line2', None),
+                  getattr(donor, 'il_city', None),
+                  getattr(donor, 'il_zip', None)]
     address = ', '.join(p for p in addr_parts if p)
 
     # Receipt line item — the donation itself.
@@ -225,13 +221,13 @@ def create_receipt(donation, donor, config=None):
             'Name':        customer_name,
             'NameInvoice': name_invoice,
             'Address':     address,
-            # Israeli receipt — prefer the Israeli phone (cell, then
-            # home, then fax). Fall back to the legacy `donor.phone`
-            # only when the donor has no IL phone on file.
+            # Israeli receipt — Israeli phone only. Cell, then home,
+            # then fax. NEVER `donor.phone` (the legacy field that
+            # often holds a US number).
             'Phone':       (getattr(donor, 'il_phone_cell', None)
                             or getattr(donor, 'il_phone_home', None)
                             or getattr(donor, 'il_phone_fax', None)
-                            or donor.phone or ''),
+                            or ''),
         },
         'items': [
             {
