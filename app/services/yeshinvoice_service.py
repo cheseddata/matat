@@ -128,8 +128,14 @@ def create_receipt(donation, donor, config=None):
     amount = (donation.amount or 0) / 100  # cents → currency units
     now_str = _dt.utcnow().strftime('%Y-%m-%d %H:%M')
 
-    # Customer name fallback chain
-    customer_name = f"{donor.first_name or ''} {donor.last_name or ''}".strip()
+    # Customer name — Israeli receipts prefer the Hebrew name when the
+    # donor has one on file. Falls back to the English first/last, then
+    # company name, then email, then אנונימי.
+    heb_first = (getattr(donor, 'hebrew_first_name', None) or '').strip()
+    heb_last  = (getattr(donor, 'hebrew_last_name', None) or '').strip()
+    hebrew_name = f'{heb_first} {heb_last}'.strip()
+    english_name = f"{donor.first_name or ''} {donor.last_name or ''}".strip()
+    customer_name = hebrew_name or english_name
     name_invoice = getattr(donor, 'company_name', None) or customer_name
     if not customer_name:
         customer_name = name_invoice or donor.email or 'תורם אנונימי'
@@ -219,7 +225,13 @@ def create_receipt(donation, donor, config=None):
             'Name':        customer_name,
             'NameInvoice': name_invoice,
             'Address':     address,
-            'Phone':       donor.phone or '',
+            # Israeli receipt — prefer the Israeli phone (cell, then
+            # home, then fax). Fall back to the legacy `donor.phone`
+            # only when the donor has no IL phone on file.
+            'Phone':       (getattr(donor, 'il_phone_cell', None)
+                            or getattr(donor, 'il_phone_home', None)
+                            or getattr(donor, 'il_phone_fax', None)
+                            or donor.phone or ''),
         },
         'items': [
             {
