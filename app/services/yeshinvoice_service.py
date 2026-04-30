@@ -264,11 +264,13 @@ def create_receipt(donation, donor, config=None):
         'LangId':      LANG_ID_HE,
         'sourceType':  SOURCE_TYPE_API,
         'statusID':    STATUS_ID_ACTIVE,
-        # DateCreated reflects the original payment date so back-dated
-        # receipts show the real charge date, not the day we happen to
-        # be issuing them. MaxDate kept aligned for consistency.
-        'DateCreated': payment_date_str,
-        'MaxDate':     payment_date_str,
+        # DateCreated / MaxDate are the receipt-ISSUANCE dates — always
+        # today. They render in the top-left corner of the kabala. The
+        # ORIGINAL payment date (when the donor actually paid) lives on
+        # the payment entry as PaymentDate and renders in the תאריך
+        # column of the payment-details box at the bottom of the doc.
+        'DateCreated': now_str,
+        'MaxDate':     now_str,
         'hideMaxDate': True,
         'SendEmail':   False,   # we send our own donor email
         'SendSMS':     False,
