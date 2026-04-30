@@ -245,11 +245,35 @@ def create_receipt(donation, donor, config=None):
         # of the payment-details box.
         'PaymentDate': payment_date_str,
     }
-    # Best-effort enrichment — most fields are optional, but supplying
-    # them helps the operator see meaningful info on the YeshInvoice doc.
+    # Best-effort enrichment — pull what we know about the card from
+    # the donation's processor_metadata (populated by the Nedarim sync
+    # for nedarim donations, by the Shva charge handler for shva, etc.)
     last4 = getattr(donation, 'payment_method_last4', None)
     if last4:
         payment_entry['CardLastDigits'] = last4
+
+    meta = donation.processor_metadata or {}
+    # Number of installments — Nedarim's Tashloumim, default 1.
+    try:
+        n_payments = int(meta.get('Tashloumim') or meta.get('NumPayments') or 1)
+    except (ValueError, TypeError):
+        n_payments = 1
+    if payment_type_id == 4:  # credit card
+        payment_entry['NumberofPayments'] = max(n_payments, 1)
+        # CardType — Nedarim's CompagnyCard codes (1-5) map to the major
+        # brands. YeshInvoice's docs sample uses -1 for unknown; we send
+        # the brand code from CompagnyCard if present, else -1.
+        card_type_raw = meta.get('CompagnyCard') or meta.get('card_brand_code')
+        try:
+            payment_entry['CardType'] = int(card_type_raw) if card_type_raw else -1
+        except (ValueError, TypeError):
+            payment_entry['CardType'] = -1
+        # TransactionType — Nedarim sends Hebrew labels ("רגיל" = regular,
+        # "תשלומים" = installments, "קרדיט" = credit). YeshInvoice expects
+        # numeric per the docs sample; without an authoritative mapping we
+        # send -1 (unknown) and rely on the Hebrew text in the line-item
+        # name to convey the type.
+        payment_entry['TransactionType'] = -1
 
     # Reference → renders in the פירוט (details) column on the receipt
     # PDF. Use a human-readable Hebrew label per payment method so the
@@ -273,9 +297,6 @@ def create_receipt(donation, donor, config=None):
         payment_entry['Reference'] = 'כרטיס אשראי'
     else:
         payment_entry['Reference'] = 'תרומה'
-
-    if payment_type_id == 4:
-        payment_entry['NumberofPayments'] = 1
 
     payload = {
         'Title': f'תרומה — {customer_name}',

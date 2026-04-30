@@ -374,13 +374,29 @@ def sync_nedarim_cmd(with_receipts):
             # gets reused) — storing it in nedarim_transaction_id would
             # collide on the column's UNIQUE constraint with old records.
             # Shovar is preserved in processor_metadata for reference.
+            #
+            # Card-brand promotion: Nedarim's `CompagnyCard` codes map to
+            # the major brands. Stored on the top-level column so
+            # downstream code (YeshInvoice receipt, donations list, etc.)
+            # doesn't need to dig into the JSON metadata.
+            COMPANY_CARD_HE = {
+                '1': 'Isracard', '2': 'Visa', '3': 'MasterCard',
+                '4': 'Amex',     '5': 'Diners',
+            }
+            brand_name = COMPANY_CARD_HE.get(str(txn.get('CompagnyCard') or '').strip())
+
             donation = Donation(
                 donor_id=donor.id,
                 salesperson_id=salesperson_id,
                 payment_processor='nedarim',
                 processor_transaction_id=canonical_id,
                 nedarim_transaction_id=canonical_id,
-                nedarim_confirmation=txn.get('Confirmation'),
+                # Keep both columns in sync so admin code that reads either
+                # gets the same value.
+                processor_confirmation=(txn.get('Confirmation') or '').strip() or None,
+                nedarim_confirmation=(txn.get('Confirmation') or '').strip() or None,
+                payment_method_type='card',
+                payment_method_brand=brand_name,
                 charity=(txn.get('Groupe') or '').strip() or None,
                 amount=amount_cents,
                 currency=currency,
