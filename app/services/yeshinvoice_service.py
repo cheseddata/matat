@@ -198,9 +198,30 @@ def create_receipt(donation, donor, config=None):
     last4 = getattr(donation, 'payment_method_last4', None)
     if last4:
         payment_entry['CardLastDigits'] = last4
-    ref = donation.processor_confirmation or donation.processor_transaction_id or ''
-    if ref:
-        payment_entry['Reference'] = str(ref)[:50]
+
+    # Reference → renders in the פירוט (details) column on the receipt
+    # PDF. Use a human-readable Hebrew processor label so the donor sees
+    # "תרומה נדרים פלוס" / "תרומה שב״א" / etc. — far more useful than
+    # a raw transaction ID. The processor's transaction ID still lives
+    # on our donation row and in processor_metadata for our own audit.
+    PROCESSOR_LABELS_HE = {
+        'nedarim':     'תרומה נדרים פלוס',
+        'shva':        'תרומה שב״א',
+        'manual_card': 'תרומה בכרטיס אשראי',
+        'cardcom':     'תרומה CardCom',
+        'grow':        'תרומה Grow',
+        'tranzila':    'תרומה Tranzila',
+        'payme':       'תרומה PayMe',
+        'icount':      'תרומה iCount',
+        'easycard':    'תרומה EasyCard',
+        'creditguard': 'תרומה CreditGuard',
+        'yaad':        'תרומה Yaad',
+        'pelecard':    'תרומה Pelecard',
+        'check':       'תרומה בצ׳ק',
+        'wire':        'תרומה בהעברה בנקאית',
+    }
+    payment_entry['Reference'] = PROCESSOR_LABELS_HE.get(proc_code, 'תרומה')
+
     if payment_type_id == 4:
         payment_entry['NumberofPayments'] = 1
 
