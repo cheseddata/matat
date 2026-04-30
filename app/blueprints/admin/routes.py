@@ -3389,10 +3389,22 @@ def _admin_charge_shva():
                          f'ash_status={result.get("ash_status")} '
                          f'ash_status_desc={result.get("ash_status_desc")!r} '
                          f'raw_xmlStr={raw.get("xmlStr", "")[:500]!r}')
+            ash_status = str(result.get('ash_status') or '')
             err_msg = result.get('error') or 'Unknown error'
             desc = result.get('ash_status_desc') or ''
+            # Friendly explanations for common Shva codes.
+            hints = {
+                '416': 'Card brand not configured at this terminal — your Shva terminal is set up for Isracard only. To accept Visa/MasterCard etc., ask Shva to add the relevant sapakim (clearing providers).',
+                '417': 'Invalid J parameter in the request.',
+                '447': 'Invalid card number.',
+                '33':  'Card declined by issuer.',
+                '36':  'Card blocked / stolen.',
+            }
+            hint = hints.get(ash_status, '')
             if desc and desc not in err_msg:
                 err_msg = f'{err_msg} ({desc})'
+            if hint:
+                err_msg = f'{err_msg} — {hint}'
             flash(f'Shva charge failed: {err_msg}', 'error')
             # Stay on the Shva tab so the operator can fix and retry
             return redirect(url_for('admin.charge_card', processor='shva'))

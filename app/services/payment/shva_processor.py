@@ -119,12 +119,16 @@ class ShvaProcessor(BasePaymentProcessor):
             ash_desc = result_dict.get('ashStatusDes', '')
 
             if not success:
-                # Dump everything we got back so the operator-side error
-                # message and the server log can both be useful.
+                # Dump everything we got back. When ashStatus is set at the
+                # envelope level (top-level AshFullResult) and xmlStr is
+                # empty, the request was rejected pre-processing —
+                # typically auth / terminal-config / currency.
                 log.error(
                     f'Shva DECLINED — ashStatus={ash_status} ashStatusDes={ash_desc!r} '
                     f'parsed={result_dict} '
-                    f'raw_xml={xml_str[:600]!r}'
+                    f'raw_xmlStr={xml_str[:600]!r} '
+                    f'soap_response_keys={list(response.keys())} '
+                    f'AshFullResult={response.get("AshFullResult")!r}'
                 )
 
             return {
@@ -218,6 +222,10 @@ class ShvaProcessor(BasePaymentProcessor):
             log.error(f"Shva error: {r.text[:500]}")
         r.raise_for_status()
 
+        # Capture the full body for diagnostics — Shva sometimes rejects at
+        # the envelope and never populates xmlStr, so we want to see the
+        # raw response.
+        log.info(f"Shva raw body ({len(r.text)} chars): {r.text[:2000]}")
         return self._parse_soap_response(r.text)
 
     def _parse_soap_response(self, xml_text):
