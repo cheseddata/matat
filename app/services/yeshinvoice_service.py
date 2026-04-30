@@ -490,6 +490,17 @@ def create_credit_note(donation, config=None):
         data = result['data'] or {}
         rv = data.get('ReturnValue') or {}
         logger.info(f'YeshInvoice credit note created: id={rv.get("id")}')
+
+        # Clear the link to the (now-offset) original receipt so the admin
+        # UI stops showing it as the donation's active YeshInvoice doc and
+        # so the operator can issue a fresh receipt without tripping
+        # DocumentUniqueKey idempotency on a re-issue.
+        from ..extensions import db
+        donation.yeshinvoice_doc_id = None
+        donation.yeshinvoice_doc_number = None
+        donation.yeshinvoice_pdf_url = None
+        db.session.commit()
+
         return {
             'success': True,
             'doc_id': str(rv.get('id') or ''),
