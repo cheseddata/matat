@@ -14,7 +14,29 @@
         }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .card { background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 20px; }
-        .nav { background: #2c3e50; color: white; padding: 0 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 0; min-height: 50px; }
+        .nav { background: #2c3e50; color: white; padding: 0 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 0; min-height: 50px;
+               position: sticky; top: 0; z-index: 1000; }
+        /* Processor tab strip — sticks directly below the nav, always visible
+           on every Matat admin/salesperson page. Each tab links to the donations
+           list filtered to that processor. ZTorm and Gemach use their own base
+           templates so they aren't affected. */
+        .proc-strip { position: sticky; top: 50px; z-index: 999;
+                      background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+                      padding: 6px 14px; display: flex; flex-wrap: wrap; gap: 4px;
+                      align-items: center; }
+        .proc-strip-label { font-size: 11px; color: #64748b; font-weight: 600;
+                            text-transform: uppercase; letter-spacing: .04em;
+                            margin-{% if is_rtl %}left{% else %}right{% endif %}: 8px; }
+        .proc-strip a { display: inline-block; padding: 5px 12px; border-radius: 4px;
+                        font-size: 12px; font-weight: 500; color: #334155;
+                        background: #fff; border: 1px solid #cbd5e1;
+                        text-decoration: none; transition: all .12s; }
+        .proc-strip a:hover { background: #e0e7ff; border-color: #6366f1; color: #312e81;
+                              text-decoration: none; }
+        .proc-strip a.active { background: #2563eb; color: #fff; border-color: #1e40af; }
+        .proc-strip a.charge-link { background: #10b981; color: #fff; border-color: #047857;
+                                    margin-{% if is_rtl %}right{% else %}left{% endif %}: auto; }
+        .proc-strip a.charge-link:hover { background: #059669; color: #fff; }
         .nav a { color: white; text-decoration: none; font-size: 14px; }
         .nav a:hover { text-decoration: underline; }
         .nav .nav-right { {% if is_rtl %}margin-right: auto;{% else %}margin-left: auto;{% endif %} display: flex; align-items: center; gap: 15px; padding: 10px 0; }
@@ -125,6 +147,9 @@
                     <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
                     <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
                     <div class="menu-divider"></div>
+                    <a href="{{ url_for('admin.charge_card') }}">💳 Charge Card</a>
+                    <a href="{{ url_for('admin.new_check_donation') }}">{{ t('nav.manual_donation') }}</a>
+                    <div class="menu-divider"></div>
                     <a href="{{ url_for('donate.donation_page') }}">Donation Page (USD)</a>
                     <a href="{{ url_for('donate.nedarim_donation_page') }}">Donation Page (ILS)</a>
                 </div>
@@ -152,7 +177,7 @@
                 <div class="dropdown-menu">
                     <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
                     <a href="{{ url_for('admin.payment_processors') }}">Payment Processors</a>
-                    {# <a href="#">Donation Permissions</a> -- endpoint admin.donation_permissions not yet defined #}
+                    <a href="{{ url_for('admin.donation_permissions') }}">Donation Permissions</a>
                     <a href="{{ url_for('admin.email_templates') }}">Email Templates</a>
                     <div class="menu-divider"></div>
                     <a href="{{ url_for('admin.screenshots') }}">Screenshots</a>
@@ -172,7 +197,7 @@
             {% endif %}
             <a href="{{ url_for('salesperson.send_link') }}" class="nav-direct">{{ t('nav.send_link') }}</a>
             <a href="{{ url_for('salesperson.phone_entry') }}" class="nav-direct">{{ t('nav.phone_entry') }}</a>
-            {# admin.new_check_donation endpoint missing -- href stub #} <a href="#" class="nav-direct">{{ t('nav.manual_donation') }}</a>
+            <a href="{{ url_for('admin.new_check_donation') }}" class="nav-direct">{{ t('nav.manual_donation') }}</a>
             {% if current_user.username in ['admin', 'ggoldblum', 'matatmor@gmail.com'] %}
             <a href="{{ url_for('weddings.index') }}" class="nav-direct">💍 {{ t('nav.weddings') }}</a>
             {% endif %}
@@ -188,6 +213,26 @@
             <a href="{{ url_for('auth.logout') }}">{{ t('nav.logout') }} ({{ current_user.username }})</a>
         </div>
     </nav>
+
+    {# Always-visible processor tab strip — sticks directly under the nav.
+       Renders only for authenticated users; ZTorm and Gemach use their own
+       base templates so they're naturally excluded. #}
+    {% if nav_processors %}
+    {% set _proc_active = request.args.get('processor', '') %}
+    <div class="proc-strip">
+        <span class="proc-strip-label">{{ t('common.processor') }}</span>
+        <a href="{{ url_for('admin.donations', processor='all') }}"
+           class="{{ 'active' if _proc_active in ('', 'all') and request.endpoint == 'admin.donations' else '' }}">{{ t('common.all') }}</a>
+        {% for p in nav_processors %}
+        {% set _key = 'processor.' ~ p.code %}{% set _name = t(_key) %}
+        <a href="{{ url_for('admin.donations', processor=p.code) }}"
+           class="{{ 'active' if _proc_active == p.code else '' }}">{{ _name if _name != _key else p.name }}</a>
+        {% endfor %}
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('admin.charge_card') }}" class="charge-link">💳 Charge Card</a>
+        {% endif %}
+    </div>
+    {% endif %}
     {% endif %}
 
     <div class="container">

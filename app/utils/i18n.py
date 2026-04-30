@@ -139,10 +139,27 @@ def init_i18n(app):
             sbx = is_sandbox()
         except Exception:
             sbx = False
+
+        # Processors the current user is allowed to see — used by the
+        # always-visible processor tab strip rendered under the nav bar in
+        # base.html. Empty for unauthenticated requests.
+        nav_processors = []
+        try:
+            from flask_login import current_user
+            if current_user.is_authenticated:
+                from ..models.payment_processor import PaymentProcessor
+                nav_processors = [
+                    p for p in PaymentProcessor.get_enabled()
+                    if current_user.can_view_processor(p.code)
+                ]
+        except Exception:
+            nav_processors = []
+
         return {
             't': t,
             'lang': lang,
             'is_rtl': is_rtl(lang),
             'text_dir': 'rtl' if is_rtl(lang) else 'ltr',
             'sandbox_mode': sbx,
+            'nav_processors': nav_processors,
         }

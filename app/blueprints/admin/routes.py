@@ -3140,3 +3140,191 @@ def campaign_track(campaign_name):
         donated_count=donated_count,
         total_sent=len(target_emails),
     )
+
+
+# ============================================================
+# UNIFIED CHARGE PAGE
+# Lets an admin charge a credit card via any of the live processors
+# (Stripe / Shva / Nedarim Plus) from a single page. Processor picker
+# tabs are always visible at the top and switch which card-entry form
+# is shown. Phase-2: rate-based routing — for now, manual selection only.
+# ============================================================
+LIVE_CHARGE_PROCESSORS = ('stripe', 'shva', 'nedarim')
+
+
+@admin_bp.route('/charge', methods=['GET', 'POST'])
+@admin_required
+def charge_card():
+    """Unified charge page across multiple live processors."""
+    from ...models.payment_processor import PaymentProcessor
+    from ...services.stripe_service import get_stripe_keys
+
+    enabled = (PaymentProcessor.query
+               .filter(PaymentProcessor.enabled.is_(True),
+                       PaymentProcessor.code.in_(LIVE_CHARGE_PROCESSORS))
+               .order_by(PaymentProcessor.priority).all())
+
+    _, stripe_pub_key, stripe_mode, _ = get_stripe_keys()
+
+    if request.method == 'POST':
+        processor_code = (request.form.get('processor') or '').strip()
+        if processor_code == 'shva':
+            return _admin_charge_shva()
+        flash(f'Unsupported processor for server-side charging: {processor_code}.', 'error')
+        return redirect(url_for('admin.charge_card'))
+
+    return render_template(
+        'admin/charge.html',
+        processors=enabled,
+        stripe_publishable_key=stripe_pub_key or '',
+        stripe_mode=stripe_mode or '',
+    )
+
+
+@admin_bp.route('/charge/stripe-intent', methods=['POST'])
+@admin_required
+def charge_stripe_intent():
+    """Create a Stripe PaymentIntent for the unified admin charge page."""
+    from ...services.stripe_service import create_payment_intent, get_or_create_customer, is_test_mode
+
+    data = request.get_json(silent=True) or {}
+    try:
+        amount = float(data.get('amount', 0))
+        if amount <= 0:
+            return jsonify({'error': 'Invalid amount'}), 400
+        amount_cents = int(round(amount * 100))
+        currency = (data.get('currency') or 'usd').lower()
+
+        email = (data.get('email') or '').strip()
+        donor = None
+        customer_id = None
+        if email:
+            donor = Donor.query.filter_by(email=email).first()
+            if not donor:
+                donor = Donor(
+                    first_name=data.get('first_name') or 'Anonymous',
+                    last_name=data.get('last_name') or 'Donor',
+                    email=email,
+                    phone=data.get('phone'),
+                    address_line1=data.get('address_line1'),
+                    city=data.get('city'),
+                    state=data.get('state'),
+                    zip=data.get('zip'),
+                    country=data.get('country', 'US'),
+                    test=is_test_mode(),
+                )
+                db.session.add(donor)
+                db.session.flush()
+            db.session.commit()
+            customer_id = get_or_create_customer(donor)
+
+        metadata = {
+            'donation_type': 'one_time',
+            'source': 'admin_charge',
+            'admin_user_id': str(current_user.id),
+        }
+        if donor:
+            metadata['donor_id'] = str(donor.id)
+            metadata['donor_email'] = donor.email or ''
+            metadata['donor_first_name'] = donor.first_name or ''
+            metadata['donor_last_name'] = donor.last_name or ''
+
+        intent = create_payment_intent(
+            amount_cents=amount_cents,
+            currency=currency,
+            customer_id=customer_id,
+            metadata=metadata,
+        )
+        return jsonify({'clientSecret': intent.client_secret, 'paymentIntentId': intent.id})
+    except Exception as e:
+        logger.error(f'admin charge stripe-intent error: {e}', exc_info=True)
+        return jsonify({'error': str(e)}), 400
+
+
+def _admin_charge_shva():
+    """Server-side Shva charge from the unified admin charge page."""
+    from ...services.payment.router import get_processor
+
+    try:
+        amount_str = (request.form.get('amount') or '').strip()
+        if not amount_str:
+            flash('Amount is required.', 'error')
+            return redirect(url_for('admin.charge_card'))
+        amount_cents = int(round(float(amount_str) * 100))
+        currency = (request.form.get('currency') or 'ILS').upper()
+
+        donor_id = request.form.get('donor_id', type=int)
+        donor = Donor.query.get(donor_id) if donor_id else None
+
+        first_name = (request.form.get('first_name') or '').strip()
+        last_name = (request.form.get('last_name') or '').strip()
+        email = (request.form.get('email') or '').strip()
+        phone = (request.form.get('phone') or '').strip()
+        tz = (request.form.get('tz') or '').strip()
+        address_line1 = (request.form.get('address_line1') or '').strip()
+        city = (request.form.get('city') or '').strip()
+
+        if not donor:
+            donor = Donor(
+                first_name=first_name or 'Unknown',
+                last_name=last_name or 'Unknown',
+                email=email or None,
+                phone=phone or None,
+                teudat_zehut=tz or None,
+                address_line1=address_line1 or None,
+                city=city or None,
+                country='IL' if currency == 'ILS' else 'US',
+            )
+            db.session.add(donor)
+            db.session.flush()
+        else:
+            if first_name: donor.first_name = first_name
+            if last_name: donor.last_name = last_name
+            if email: donor.email = email
+            if phone: donor.phone = phone
+            if tz: donor.teudat_zehut = tz
+            if address_line1: donor.address_line1 = address_line1
+            if city: donor.city = city
+
+        db.session.flush()
+
+        proc = get_processor('shva')
+        result = proc.create_payment(
+            amount=amount_cents,
+            currency=currency,
+            card_data={
+                'card_number': request.form.get('card_number', ''),
+                'expiry': request.form.get('expiry', ''),
+                'cvv': request.form.get('cvv', ''),
+            },
+            donor_data={'tz': tz},
+            installments=int(request.form.get('installments') or 1),
+        )
+
+        if not result.get('success'):
+            db.session.rollback()
+            flash(f'Shva charge failed: {result.get("error", "Unknown error")}', 'error')
+            return redirect(url_for('admin.charge_card'))
+
+        donation = Donation(
+            donor_id=donor.id,
+            amount=amount_cents,
+            currency=currency,
+            payment_method='credit',
+            payment_processor='shva',
+            processor_transaction_id=result.get('transaction_id', ''),
+            processor_confirmation=result.get('confirmation', ''),
+            status='succeeded',
+            donation_type='one_time',
+        )
+        db.session.add(donation)
+        db.session.commit()
+
+        flash(f'Shva charge successful — donation #{donation.id} for {donor.full_name}.', 'success')
+        return redirect(url_for('admin.donations', processor='shva'))
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f'admin shva charge error: {e}', exc_info=True)
+        flash(f'Charge error: {e}', 'error')
+        return redirect(url_for('admin.charge_card'))

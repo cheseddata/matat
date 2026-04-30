@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+{% block title %}Charge Card - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .charge-wrap { max-width: 920px; margin: 16px auto; padding: 0 16px; }
+    .charge-card { background: #fff; border-radius: 10px; box-shadow: 0 2px 14px rgba(0,0,0,.07); padding: 20px; }
+    .charge-card h1 { margin: 0 0 4px; }
+    .charge-card .sub { color: #666; font-size: 13px; margin: 0 0 18px; }
+
+    /* Locked / sticky processor tab strip — always visible at top of viewport,
+       always clickable, never hidden behind page state. */
+    .proc-tabs { position: sticky; top: 0; z-index: 50; background: #fff;
+                 display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 0;
+                 border-bottom: 2px solid #e5e7eb; margin-bottom: 18px; }
+    .proc-tab { flex: 1 1 auto; min-width: 130px; padding: 12px 14px;
+                background: #f3f4f6; border: 2px solid #e5e7eb; border-radius: 8px;
+                cursor: pointer; text-align: center; font-weight: 600; color: #374151;
+                transition: all .15s ease; user-select: none; }
+    .proc-tab:hover { background: #e5e7eb; }
+    .proc-tab.active { background: #2563eb; color: #fff; border-color: #1e40af;
+                       box-shadow: 0 2px 6px rgba(37,99,235,.25); }
+    .proc-tab .icon { font-size: 18px; margin-inline-end: 4px; }
+    .proc-tab .meta { display: block; font-size: 11px; font-weight: 400; opacity: .8; margin-top: 2px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; }
+    .form-section { border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px; }
+    .form-section h3 { margin: 0 0 10px; font-size: 15px; color: #111827; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 12px; color: #4b5563; margin-bottom: 4px; font-weight: 600; }
+    .form-group input, .form-group select { width: 100%; padding: 8px 10px; border: 1px solid #d1d5db;
+                                              border-radius: 6px; font-size: 14px; }
+    .hint { font-size: 11px; color: #6b7280; margin-top: 3px; }
+
+    /* Donor lookup */
+    .lookup { position: relative; margin-bottom: 12px; }
+    .lookup-results { position: absolute; top: 100%; left: 0; right: 0; max-height: 280px;
+                      overflow-y: auto; background: #fff; border: 1px solid #d1d5db;
+                      border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.08); display: none; z-index: 30; }
+    .lookup-result { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+    .lookup-result:hover { background: #eff6ff; }
+    .lookup-result .meta { color: #6b7280; font-size: 11px; }
+    .lookup-badge { background: #10b981; color: #fff; padding: 2px 7px; border-radius: 10px; font-size: 11px; }
+    .lookup-clear { float: inline-end; cursor: pointer; color: #ef4444; font-size: 11px; text-decoration: underline; }
+
+    /* Per-processor body */
+    .proc-body { display: none; }
+    .proc-body.active { display: block; }
+
+    /* Stripe element wrapper */
+    #stripe-card-element { padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; min-height: 44px; }
+    .err { color: #dc2626; font-size: 13px; margin-top: 6px; }
+
+    .submit-row { margin-top: 20px; }
+    .submit-btn { background: #2563eb; color: #fff; padding: 12px 26px; border: 0;
+                  border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; }
+    .submit-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .nedarim-card { background: #fef3c7; border: 1px solid #f59e0b; padding: 16px; border-radius: 8px; }
+    .nedarim-card a.btn { display: inline-block; background: #f59e0b; color: #fff; padding: 10px 18px;
+                          border-radius: 6px; text-decoration: none; font-weight: 600; margin-top: 8px; }
+
+    .test-banner { background: #fef3c7; color: #92400e; padding: 8px 12px; border-radius: 6px;
+                   font-size: 13px; margin-bottom: 12px; border: 1px solid #f59e0b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="charge-wrap">
+    <div class="charge-card">
+        <h1>💳 Charge Credit Card</h1>
+        <p class="sub">Charge any donor's card via the processor of your choice. Phase&nbsp;2 will route automatically by rate.</p>
+
+        {% if stripe_mode == 'test' %}
+        <div class="test-banner"><strong>Stripe is in TEST mode</strong> — cards won't be charged. Toggle to live in Settings → Payment Processors.</div>
+        {% endif %}
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for cat, msg in messages %}
+                <div class="test-banner" style="background: {{ '#dcfce7' if cat == 'success' else '#fee2e2' }};
+                     color: {{ '#166534' if cat == 'success' else '#991b1b' }};
+                     border-color: {{ '#16a34a' if cat == 'success' else '#dc2626' }};">{{ msg }}</div>
+            {% endfor %}
+        {% endwith %}
+
+        <!-- Locked processor tabs -->
+        <div class="proc-tabs" id="proc-tabs">
+            {% for p in processors %}
+            <div class="proc-tab {% if loop.first %}active{% endif %}" data-proc="{{ p.code }}">
+                <span class="icon">
+                    {%- if p.code == 'stripe' -%}🌐
+                    {%- elif p.code == 'shva' -%}🇮🇱
+                    {%- elif p.code == 'nedarim' -%}🪙
+                    {%- else -%}💳{%- endif -%}
+                </span>{{ p.display_name or p.name }}
+                <span class="meta">
+                    {%- if p.code == 'stripe' -%}USD / EUR / GBP / ILS
+                    {%- elif p.code == 'shva' -%}ILS — Israeli direct
+                    {%- elif p.code == 'nedarim' -%}ILS — opens Nedarim iframe
+                    {%- endif -%}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Shared donor + amount form (used by Stripe and Shva paths) -->
+        <form method="POST" id="charge-form" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="processor" id="processor_field" value="{{ processors[0].code if processors else '' }}">
+            <input type="hidden" name="donor_id" id="donor_id" value="">
+
+            <!-- Donor lookup -->
+            <div class="lookup">
+                <label for="donor_search">
+                    Find existing donor (or fill fields below for a new one)
+                    <span id="picked_badge" class="lookup-badge" style="display:none;">selected</span>
+                    <span class="lookup-clear" id="clear_donor" style="display:none;">clear</span>
+                </label>
+                <input type="text" id="donor_search" placeholder="Type at least 2 letters of name / email / phone…">
+                <div class="lookup-results" id="lookup_results"></div>
+            </div>
+
+            <div class="form-section">
+                <h3>Donor</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>First name</label>
+                        <input type="text" name="first_name" id="first_name">
+                    </div>
+                    <div class="form-group">
+                        <label>Last name</label>
+                        <input type="text" name="last_name" id="last_name">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" id="email">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input type="tel" name="phone" id="phone">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>ת.ז. (Israeli ID — optional, used for Israeli receipts)</label>
+                    <input type="text" name="tz" id="tz" maxlength="9" placeholder="123456789">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Address</label>
+                        <input type="text" name="address_line1" id="address_line1">
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <input type="text" name="city" id="city">
+                    </div>
+                </div>
+                <div class="form-row-3">
+                    <div class="form-group">
+                        <label>State / region</label>
+                        <input type="text" name="state" id="state">
+                    </div>
+                    <div class="form-group">
+                        <label>Zip / postal</label>
+                        <input type="text" name="zip" id="zip">
+                    </div>
+                    <div class="form-group">
+                        <label>Country</label>
+                        <select name="country" id="country">
+                            <option value="IL">Israel</option>
+                            <option value="US" selected>United States</option>
+                            <option value="GB">United Kingdom</option>
+                            <option value="CA">Canada</option>
+                            <option value="FR">France</option>
+                            <option value="AU">Australia</option>
+                            <option value="ZZ">Other</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Amount</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" name="amount" id="amount" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Currency</label>
+                        <select name="currency" id="currency">
+                            <option value="USD">USD</option>
+                            <option value="ILS">ILS</option>
+                            <option value="EUR">EUR</option>
+                            <option value="GBP">GBP</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stripe body -->
+            <div class="proc-body" id="body-stripe">
+                <div class="form-section">
+                    <h3>Card details (Stripe)</h3>
+                    <div id="stripe-card-element"></div>
+                    <div id="stripe-card-error" class="err" role="alert"></div>
+                </div>
+                <div class="submit-row">
+                    <button type="button" class="submit-btn" id="stripe-submit-btn">Charge via Stripe</button>
+                </div>
+            </div>
+
+            <!-- Shva body -->
+            <div class="proc-body" id="body-shva">
+                <div class="form-section">
+                    <h3>Card details (Shva / Ashrait)</h3>
+                    <div class="form-group">
+                        <label>Card number</label>
+                        <input type="text" name="card_number" id="shva_card_number" inputmode="numeric" maxlength="19" placeholder="4580 0000 0000 0000">
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>Expiry (MM/YY)</label>
+                            <input type="text" name="expiry" id="shva_expiry" placeholder="MM/YY" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label>CVV</label>
+                            <input type="text" name="cvv" id="shva_cvv" inputmode="numeric" maxlength="4" placeholder="•••">
+                        </div>
+                        <div class="form-group">
+                            <label>Installments</label>
+                            <input type="number" name="installments" id="shva_installments" min="1" max="36" value="1">
+                        </div>
+                    </div>
+                    <div class="hint">Currency defaults to ILS for Shva. Card data is sent server-side; do not collect cards from public users via this form.</div>
+                </div>
+                <div class="submit-row">
+                    <button type="submit" class="submit-btn" id="shva-submit-btn">Charge via Shva</button>
+                </div>
+            </div>
+
+            <!-- Nedarim body — link out to existing /donate/nedarim flow -->
+            <div class="proc-body" id="body-nedarim">
+                <div class="form-section">
+                    <h3>Charge via Nedarim Plus</h3>
+                    <div class="nedarim-card">
+                        <p>Nedarim Plus uses an embedded iframe with their PostMessage API for PCI-compliant card entry. Click below to open Nedarim's hosted donation page in a new tab. The donor info you've typed will be sent along.</p>
+                        <a id="nedarim-link" class="btn" href="/donate/nedarim" target="_blank">Open Nedarim donation page</a>
+                    </div>
+                </div>
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+// =====================================================================
+// Tab switching — always clickable, never disabled.
+// =====================================================================
+const tabs = document.querySelectorAll('.proc-tab');
+const bodies = {
+    'stripe': document.getElementById('body-stripe'),
+    'shva': document.getElementById('body-shva'),
+    'nedarim': document.getElementById('body-nedarim'),
+};
+const procField = document.getElementById('processor_field');
+
+function showProcessor(code) {
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.proc === code));
+    Object.entries(bodies).forEach(([k, el]) => {
+        if (el) el.classList.toggle('active', k === code);
+    });
+    procField.value = code;
+    // Currency default
+    const cur = document.getElementById('currency');
+    if (code === 'shva' || code === 'nedarim') cur.value = 'ILS';
+    else if (cur.value === 'ILS') cur.value = 'USD';
+}
+tabs.forEach(t => t.addEventListener('click', () => showProcessor(t.dataset.proc)));
+// Initialize first available tab
+if (tabs.length) showProcessor(tabs[0].dataset.proc);
+
+// =====================================================================
+// Donor live search.
+// =====================================================================
+const search = document.getElementById('donor_search');
+const results = document.getElementById('lookup_results');
+const pickedBadge = document.getElementById('picked_badge');
+const clearLink = document.getElementById('clear_donor');
+let lookupTimer = null;
+
+function fillDonor(d) {
+    document.getElementById('donor_id').value = d.id || '';
+    document.getElementById('first_name').value = d.first_name || '';
+    document.getElementById('last_name').value = d.last_name || '';
+    document.getElementById('email').value = d.email || '';
+    document.getElementById('phone').value = d.phone || '';
+    document.getElementById('address_line1').value = d.address_line1 || '';
+    document.getElementById('city').value = d.city || '';
+    document.getElementById('state').value = d.state || '';
+    document.getElementById('zip').value = d.zip || '';
+    if (d.country) document.getElementById('country').value = d.country;
+    pickedBadge.style.display = 'inline-block';
+    clearLink.style.display = 'inline';
+    results.style.display = 'none';
+    search.value = (d.first_name || '') + ' ' + (d.last_name || '');
+}
+function clearDonor() {
+    ['donor_id','first_name','last_name','email','phone','address_line1','city','state','zip','tz'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    pickedBadge.style.display = 'none';
+    clearLink.style.display = 'none';
+    search.value = '';
+    results.style.display = 'none';
+}
+clearLink.addEventListener('click', clearDonor);
+
+search.addEventListener('input', () => {
+    if (lookupTimer) clearTimeout(lookupTimer);
+    const q = search.value.trim();
+    if (q.length < 2) { results.style.display = 'none'; return; }
+    lookupTimer = setTimeout(async () => {
+        try {
+            const r = await fetch('/admin/api/donors/search?q=' + encodeURIComponent(q));
+            const data = await r.json();
+            if (!data.length) { results.innerHTML = '<div class="lookup-result" style="color:#999;">No matches</div>'; }
+            else {
+                results.innerHTML = data.map(d => `
+                    <div class="lookup-result" data-d='${JSON.stringify(d).replace(/'/g, "&#39;")}'>
+                        <strong>${(d.first_name || '') + ' ' + (d.last_name || '')}</strong>
+                        ${d.company_name ? '<br><span class="meta">' + d.company_name + '</span>' : ''}
+                        <br><span class="meta">${d.email || ''} ${d.phone ? '— ' + d.phone : ''}</span>
+                    </div>`).join('');
+                results.querySelectorAll('.lookup-result[data-d]').forEach(el => {
+                    el.addEventListener('click', () => fillDonor(JSON.parse(el.dataset.d)));
+                });
+            }
+            results.style.display = 'block';
+        } catch (e) { /* ignore */ }
+    }, 220);
+});
+document.addEventListener('click', e => {
+    if (!e.target.closest('.lookup')) results.style.display = 'none';
+});
+
+// =====================================================================
+// Nedarim link: forward donor info as URL params.
+// =====================================================================
+function updateNedarimLink() {
+    const params = new URLSearchParams();
+    const fn = document.getElementById('first_name').value;
+    const ln = document.getElementById('last_name').value;
+    if (fn || ln) params.set('name', (fn + ' ' + ln).trim());
+    const em = document.getElementById('email').value; if (em) params.set('email', em);
+    const ph = document.getElementById('phone').value; if (ph) params.set('phone', ph);
+    const tz = document.getElementById('tz').value; if (tz) params.set('tz', tz);
+    const am = document.getElementById('amount').value; if (am) params.set('amt', am);
+    document.getElementById('nedarim-link').href = '/donate/nedarim' + (params.toString() ? '?' + params.toString() : '');
+}
+['first_name','last_name','email','phone','tz','amount'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updateNedarimLink);
+});
+
+// =====================================================================
+// Stripe — Elements + PaymentIntent flow (admin-side).
+// =====================================================================
+const stripeKey = '{{ stripe_publishable_key }}';
+let stripe, cardElement;
+const stripeErr = document.getElementById('stripe-card-error');
+
+if (stripeKey) {
+    try {
+        stripe = Stripe(stripeKey);
+        const elements = stripe.elements({ locale: 'en' });
+        cardElement = elements.create('card', {
+            style: { base: { fontSize: '16px', color: '#111827' } }
+        });
+        cardElement.mount('#stripe-card-element');
+        cardElement.on('change', e => { stripeErr.textContent = e.error ? e.error.message : ''; });
+    } catch (e) {
+        stripeErr.textContent = 'Stripe init error: ' + e.message;
+    }
+} else {
+    stripeErr.textContent = 'Stripe is not configured. Set publishable key in Settings.';
+}
+
+document.getElementById('stripe-submit-btn').addEventListener('click', async () => {
+    stripeErr.textContent = '';
+    const amt = parseFloat(document.getElementById('amount').value || 0);
+    if (!amt || amt <= 0) { stripeErr.textContent = 'Enter an amount.'; return; }
+    if (!cardElement) { stripeErr.textContent = 'Stripe not ready.'; return; }
+    const btn = document.getElementById('stripe-submit-btn');
+    btn.disabled = true; btn.textContent = 'Processing…';
+    try {
+        const r = await fetch('{{ url_for("admin.charge_stripe_intent") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() }}' },
+            body: JSON.stringify({
+                amount: amt,
+                currency: document.getElementById('currency').value.toLowerCase(),
+                first_name: document.getElementById('first_name').value,
+                last_name: document.getElementById('last_name').value,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                address_line1: document.getElementById('address_line1').value,
+                city: document.getElementById('city').value,
+                state: document.getElementById('state').value,
+                zip: document.getElementById('zip').value,
+                country: document.getElementById('country').value,
+            }),
+        });
+        const data = await r.json();
+        if (data.error) throw new Error(data.error);
+        const { error, paymentIntent } = await stripe.confirmCardPayment(data.clientSecret, {
+            payment_method: {
+                card: cardElement,
+                billing_details: {
+                    name: (document.getElementById('first_name').value + ' ' + document.getElementById('last_name').value).trim(),
+                    email: document.getElementById('email').value,
+                    phone: document.getElementById('phone').value,
+                },
+            },
+        });
+        if (error) throw new Error(error.message);
+        alert('Stripe charge succeeded — payment intent ' + paymentIntent.id + '. Donation will appear once the webhook fires.');
+        window.location.href = '/admin/donations?processor=stripe';
+    } catch (e) {
+        stripeErr.textContent = e.message;
+        btn.disabled = false; btn.textContent = 'Charge via Stripe';
+    }
+});
+
+// =====================================================================
+// Shva — server-side POST. Validate before submit.
+// =====================================================================
+document.getElementById('charge-form').addEventListener('submit', e => {
+    if (procField.value !== 'shva') {
+        e.preventDefault(); // Stripe and Nedarim don't submit this form
+        return;
+    }
+    const cn = document.getElementById('shva_card_number').value.trim();
+    const ex = document.getElementById('shva_expiry').value.trim();
+    const cv = document.getElementById('shva_cvv').value.trim();
+    if (!cn || !ex || !cv) {
+        e.preventDefault();
+        alert('Card number, expiry, and CVV are required for Shva.');
+    }
+});
+</script>
+{% endblock %}
