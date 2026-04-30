@@ -150,6 +150,40 @@ def create_receipt(donation, donor, config=None):
     # produce a real receipt. Max 20 chars per their docs.
     unique_key = f'matat-{donation.id}'[:20]
 
+    # Payments array — REQUIRED for DocumentType=11. YeshInvoice rejects
+    # the request with "אנא הזן רשימת תקבולים" if missing or empty.
+    # Pick the TypeID by payment processor. TypeID=5 ("other / payment
+    # app") is the only one confirmed in YeshInvoice's docs sample;
+    # 1-4 are conventional guesses (1=cash, 2=check, 3=bank transfer,
+    # 4=credit card). Falling back to 5 keeps us in known-working
+    # territory until each TypeID is independently verified.
+    proc_code = (donation.payment_processor or '').lower()
+    if proc_code in ('stripe', 'nedarim', 'shva', 'manual_card', 'cardcom',
+                     'grow', 'tranzila', 'payme', 'icount', 'easycard',
+                     'creditguard', 'yaad', 'pelecard'):
+        payment_type_id = 4   # credit card (unverified — adjust if YeshInvoice rejects)
+    elif proc_code == 'check':
+        payment_type_id = 2
+    elif proc_code in ('zelle', 'wire'):
+        payment_type_id = 3   # bank transfer
+    else:
+        payment_type_id = 5   # other / payment app — confirmed safe per docs sample
+
+    payment_entry = {
+        'TypeID': payment_type_id,
+        'Price':  f'{amount:.2f}',
+    }
+    # Best-effort enrichment — most fields are optional, but supplying
+    # them helps the operator see meaningful info on the YeshInvoice doc.
+    last4 = getattr(donation, 'payment_method_last4', None)
+    if last4:
+        payment_entry['CardLastDigits'] = last4
+    ref = donation.processor_confirmation or donation.processor_transaction_id or ''
+    if ref:
+        payment_entry['Reference'] = str(ref)[:50]
+    if payment_type_id == 4:
+        payment_entry['NumberofPayments'] = 1
+
     payload = {
         'Title': f'תרומה — {customer_name}',
         'DocumentType': DOC_TYPE_RECEIPT,
@@ -177,6 +211,7 @@ def create_receipt(donation, donor, config=None):
                 'vatType':  VAT_TYPE_EXEMPT,
             }
         ],
+        'payments': [payment_entry],
     }
 
     # Optional account scoping for multi-account customers
