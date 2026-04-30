@@ -70,6 +70,13 @@
     .nedarim-frame-bar .reload-btn:hover { background: #d97706; }
     #nedarim-iframe { width: 100%; height: 1200px; border: 0; display: block; }
 
+    /* When Nedarim is the active processor, the donor+amount fields are
+       redundant — Nedarim's form has its own donor name / amount inputs.
+       Hide our shared sections so the iframe sits directly under the
+       processor tabs. */
+    body.nedarim-mode .lookup,
+    body.nedarim-mode .form-section.shared-fields { display: none; }
+
     .test-banner { background: #fef3c7; color: #92400e; padding: 8px 12px; border-radius: 6px;
                    font-size: 13px; margin-bottom: 12px; border: 1px solid #f59e0b; }
 </style>
@@ -131,7 +138,7 @@
                 <div class="lookup-results" id="lookup_results"></div>
             </div>
 
-            <div class="form-section">
+            <div class="form-section shared-fields">
                 <h3>{{ t('charge.donor') }}</h3>
                 <div class="form-row">
                     <div class="form-group">
@@ -191,7 +198,7 @@
                 </div>
             </div>
 
-            <div class="form-section">
+            <div class="form-section shared-fields">
                 <h3>{{ t('charge.amount_section') }}</h3>
                 <div class="form-row">
                     <div class="form-group">
@@ -306,10 +313,17 @@ function showProcessor(code) {
         if (el) el.classList.toggle('active', k === code);
     });
     procField.value = code;
+
+    // Hide our donor + amount sections when Nedarim is active — Nedarim's
+    // own form already collects them, so showing ours is duplicate.
+    document.body.classList.toggle('nedarim-mode', code === 'nedarim');
+
     // Currency default
     const cur = document.getElementById('currency');
-    if (code === 'shva' || code === 'nedarim') cur.value = 'ILS';
-    else if (cur.value === 'ILS') cur.value = 'USD';
+    if (cur) {
+        if (code === 'shva' || code === 'nedarim') cur.value = 'ILS';
+        else if (cur.value === 'ILS') cur.value = 'USD';
+    }
 
     // Lazy-load the Nedarim iframe the first time their tab is opened.
     if (code === 'nedarim') {
