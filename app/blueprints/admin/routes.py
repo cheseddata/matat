@@ -1243,6 +1243,7 @@ def donations():
 
     status = request.args.get('status', 'all')
     processor = request.args.get('processor', 'all')
+    charity = request.args.get('charity', 'all')
     page = int(request.args.get('page', 1))
     per_page = 50
 
@@ -1266,6 +1267,28 @@ def donations():
         # Restricted user viewing "All" — scope to their allowed processors.
         query = query.filter(Donation.payment_processor.in_(visible_codes))
 
+    # Charity (Groupe / fund) filter — populated for Nedarim donations.
+    # 'untagged' = NULL or empty; '<name>' = exact match.
+    if charity == 'untagged':
+        query = query.filter((Donation.charity.is_(None)) | (Donation.charity == ''))
+    elif charity != 'all':
+        query = query.filter(Donation.charity == charity)
+
+    # Distinct charity list for the tab strip — sorted by row count desc
+    # so the highest-volume tabs come first.
+    from sqlalchemy import func as _f
+    charity_rows = (db.session.query(Donation.charity, _f.count(Donation.id))
+                    .filter(Donation.deleted_at.is_(None),
+                            Donation.charity.isnot(None),
+                            Donation.charity != '')
+                    .group_by(Donation.charity)
+                    .order_by(_f.count(Donation.id).desc())
+                    .all())
+    untagged_count = (Donation.query
+                      .filter(Donation.deleted_at.is_(None),
+                              (Donation.charity.is_(None)) | (Donation.charity == ''))
+                      .count())
+
     donations = query.order_by(Donation.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
@@ -1284,6 +1307,9 @@ def donations():
         donations=donations,
         status_filter=status,
         processor_filter=processor,
+        charity_filter=charity,
+        charity_rows=charity_rows,
+        untagged_count=untagged_count,
         visible_processors=visible_processors,
         salespersons=salespersons
     )

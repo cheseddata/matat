@@ -90,7 +90,8 @@
     "reissue": "הנפק מחדש",
     "one_time": "חד פעמי",
     "recurring": "חוזר",
-    "none_dash": "— ללא —"
+    "none_dash": "— ללא —",
+    "untagged": "(ללא תיוג)"
   },
   "processor": {
     "stripe": "Stripe",

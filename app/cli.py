@@ -368,6 +368,7 @@ def sync_nedarim_cmd(with_receipts):
                 processor_transaction_id=canonical_id,
                 nedarim_transaction_id=canonical_id,
                 nedarim_confirmation=txn.get('Confirmation'),
+                charity=(txn.get('Groupe') or '').strip() or None,
                 amount=amount_cents,
                 currency=currency,
                 status='succeeded',

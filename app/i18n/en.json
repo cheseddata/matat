@@ -90,7 +90,8 @@
     "reissue": "Reissue",
     "one_time": "One Time",
     "recurring": "Recurring",
-    "none_dash": "— None —"
+    "none_dash": "— None —",
+    "untagged": "(untagged)"
   },
   "processor": {
     "stripe": "Stripe",

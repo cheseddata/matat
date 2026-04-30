@@ -69,6 +69,12 @@ class Donation(db.Model):
     status = db.Column(db.String(20), default='pending')  # pending/succeeded/failed/refunded
     donation_type = db.Column(db.String(20), default='one_time')  # one_time/recurring
     source = db.Column(db.String(50), nullable=True)  # phone/email_link/direct/campaign_page
+
+    # Charity / fund / designation — denormalized free-text label of which
+    # cause this donation was directed to (e.g. "מתת מרדכי", "השריפה...",
+    # "החתונה של נותי ושרה"). Populated from Nedarim's `Groupe` field for
+    # nedarim donations, NULL for processors that don't tag.
+    charity = db.Column(db.String(200), nullable=True, index=True)
     
     # Receipt
     receipt_number = db.Column(db.String(50), nullable=True)
