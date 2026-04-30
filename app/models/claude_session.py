@@ -55,7 +55,7 @@ class ClaudeScreenshot(db.Model):
     file_path = db.Column(db.String(500), nullable=False)
     file_size = db.Column(db.Integer, nullable=True)
 
-    description = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationship
