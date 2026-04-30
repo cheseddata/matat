@@ -128,6 +128,34 @@ def create_receipt(donation, donor, config=None):
     amount = (donation.amount or 0) / 100  # cents → currency units
     now_str = _dt.utcnow().strftime('%Y-%m-%d %H:%M')
 
+    # Resolve the ORIGINAL payment date — for back-dated receipts (e.g.
+    # historical Nedarim imports, manual check entries dated weeks ago)
+    # the receipt should show when the donor actually paid, not when we
+    # happen to be issuing the kabala today. Probe order:
+    #   1) processor_metadata.payment_date — set on the manual-donation
+    #      form (check date / charge date / wire date)
+    #   2) processor_metadata.TransactionTime — Nedarim's DD/MM/YYYY
+    #      HH:MM:SS payment timestamp
+    #   3) donation.created_at as a last resort
+    meta_for_date = donation.processor_metadata or {}
+    payment_date_str = now_str
+    pd_raw = meta_for_date.get('payment_date')
+    if pd_raw:
+        for fmt in ('%Y-%m-%d %H:%M', '%Y-%m-%d', '%d/%m/%Y %H:%M:%S', '%d/%m/%Y'):
+            try:
+                payment_date_str = _dt.strptime(pd_raw, fmt).strftime('%Y-%m-%d %H:%M')
+                break
+            except (ValueError, TypeError):
+                continue
+    elif meta_for_date.get('TransactionTime'):
+        try:
+            tt = _dt.strptime(meta_for_date['TransactionTime'], '%d/%m/%Y %H:%M:%S')
+            payment_date_str = tt.strftime('%Y-%m-%d %H:%M')
+        except (ValueError, TypeError):
+            pass
+    elif donation.created_at:
+        payment_date_str = donation.created_at.strftime('%Y-%m-%d %H:%M')
+
     # YeshInvoice receipts are Israeli tax kabalot — Hebrew name only.
     # When the donor has no hebrew_first_name/hebrew_last_name on file
     # we fall through to the English name purely because YeshInvoice's
@@ -192,6 +220,10 @@ def create_receipt(donation, donor, config=None):
     payment_entry = {
         'TypeID': payment_type_id,
         'Price':  f'{amount:.2f}',
+        # Original payment date — when the donor actually paid (not
+        # when we're issuing the kabala). Renders in the תאריך column
+        # of the payment-details box.
+        'PaymentDate': payment_date_str,
     }
     # Best-effort enrichment — most fields are optional, but supplying
     # them helps the operator see meaningful info on the YeshInvoice doc.
@@ -200,27 +232,27 @@ def create_receipt(donation, donor, config=None):
         payment_entry['CardLastDigits'] = last4
 
     # Reference → renders in the פירוט (details) column on the receipt
-    # PDF. Use a human-readable Hebrew processor label so the donor sees
-    # "תרומה נדרים פלוס" / "תרומה שב״א" / etc. — far more useful than
-    # a raw transaction ID. The processor's transaction ID still lives
-    # on our donation row and in processor_metadata for our own audit.
-    PROCESSOR_LABELS_HE = {
-        'nedarim':     'תרומה נדרים פלוס',
-        'shva':        'תרומה שב״א',
-        'manual_card': 'תרומה בכרטיס אשראי',
-        'cardcom':     'תרומה CardCom',
-        'grow':        'תרומה Grow',
-        'tranzila':    'תרומה Tranzila',
-        'payme':       'תרומה PayMe',
-        'icount':      'תרומה iCount',
-        'easycard':    'תרומה EasyCard',
-        'creditguard': 'תרומה CreditGuard',
-        'yaad':        'תרומה Yaad',
-        'pelecard':    'תרומה Pelecard',
-        'check':       'תרומה בצ׳ק',
-        'wire':        'תרומה בהעברה בנקאית',
-    }
-    payment_entry['Reference'] = PROCESSOR_LABELS_HE.get(proc_code, 'תרומה')
+    # PDF. Use a human-readable Hebrew label per payment method so the
+    # donor sees something meaningful. Per operator:
+    #   - Nedarim Plus is special-cased (its brand name is recognized)
+    #   - all OTHER credit-card processors collapse to "כרטיס אשראי"
+    #     (the donor doesn't need to know which gateway routed it)
+    #   - Wire → "העברה"
+    #   - Check → "צ'ק <check_number>" (the check# is in
+    #     processor_confirmation per the manual-donation form)
+    if proc_code == 'nedarim':
+        payment_entry['Reference'] = 'תרומה נדרים פלוס'
+    elif proc_code == 'check':
+        check_num = (donation.processor_confirmation or '').strip()
+        payment_entry['Reference'] = f'צ\'ק {check_num}'.strip() if check_num else 'צ\'ק'
+    elif proc_code == 'wire':
+        payment_entry['Reference'] = 'העברה'
+    elif proc_code in ('shva', 'manual_card', 'cardcom', 'grow', 'tranzila',
+                       'payme', 'icount', 'easycard', 'creditguard',
+                       'yaad', 'pelecard'):
+        payment_entry['Reference'] = 'כרטיס אשראי'
+    else:
+        payment_entry['Reference'] = 'תרומה'
 
     if payment_type_id == 4:
         payment_entry['NumberofPayments'] = 1
@@ -232,8 +264,11 @@ def create_receipt(donation, donor, config=None):
         'LangId':      LANG_ID_HE,
         'sourceType':  SOURCE_TYPE_API,
         'statusID':    STATUS_ID_ACTIVE,
-        'DateCreated': now_str,
-        'MaxDate':     now_str,
+        # DateCreated reflects the original payment date so back-dated
+        # receipts show the real charge date, not the day we happen to
+        # be issuing them. MaxDate kept aligned for consistency.
+        'DateCreated': payment_date_str,
+        'MaxDate':     payment_date_str,
         'hideMaxDate': True,
         'SendEmail':   False,   # we send our own donor email
         'SendSMS':     False,
