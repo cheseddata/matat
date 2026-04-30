@@ -3202,6 +3202,11 @@ def charge_stripe_intent():
             return jsonify({'error': 'Invalid amount'}), 400
         amount_cents = int(round(amount * 100))
         currency = (data.get('currency') or 'usd').lower()
+        # Policy: shekel donations don't go through Stripe — route to Shva
+        # or Nedarim instead. Hard-reject so a tampered client request
+        # can't bypass the disabled <option> in the dropdown.
+        if currency == 'ils':
+            return jsonify({'error': 'Stripe is not used for ILS donations. Use Shva or Nedarim Plus.'}), 400
 
         email = (data.get('email') or '').strip()
         donor = None

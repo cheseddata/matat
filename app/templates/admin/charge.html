@@ -250,7 +250,7 @@
                         <label>{{ t('charge.currency') }}</label>
                         <select name="currency" id="currency">
                             <option value="USD">USD</option>
-                            <option value="ILS">ILS</option>
+                            <option value="ILS" data-not-stripe="1">ILS</option>
                             <option value="EUR">EUR</option>
                             <option value="GBP">GBP</option>
                         </select>
@@ -360,11 +360,19 @@ function showProcessor(code) {
     // own form already collects them, so showing ours is duplicate.
     document.body.classList.toggle('nedarim-mode', code === 'nedarim');
 
-    // Currency default
+    // Currency default + ILS lockout: ILS is disabled in the dropdown
+    // when Stripe is the active processor, since we don't accept shekel
+    // through Stripe (operator should use Shva or Nedarim instead).
     const cur = document.getElementById('currency');
     if (cur) {
-        if (code === 'shva' || code === 'nedarim') cur.value = 'ILS';
-        else if (cur.value === 'ILS') cur.value = 'USD';
+        const ilsOpt = cur.querySelector('option[value="ILS"]');
+        if (code === 'stripe') {
+            if (ilsOpt) ilsOpt.disabled = true;
+            if (cur.value === 'ILS') cur.value = 'USD';
+        } else {
+            if (ilsOpt) ilsOpt.disabled = false;
+            if (code === 'shva' || code === 'nedarim') cur.value = 'ILS';
+        }
     }
 
     // Address-block default — Shva/Nedarim default to IL, Stripe defaults
