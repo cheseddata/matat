@@ -42,6 +42,10 @@ class NedarimProcessor(BasePaymentProcessor):
         return 'nedarim'
 
     @property
+    def name(self) -> str:
+        return 'Nedarim Plus'
+
+    @property
     def display_name(self) -> str:
         return 'Nedarim Plus'
 
