@@ -135,8 +135,21 @@ def create_receipt(donation, donor, config=None):
         customer_name = name_invoice or donor.email or 'תורם אנונימי'
 
     # Compose a single address string (YeshInvoice wants one Address field).
-    addr_parts = [donor.address_line1, donor.address_line2,
-                  donor.city, donor.state, donor.zip, donor.country]
+    # YeshInvoice receipts are Israeli kabalot — prefer the donor's Israeli
+    # address when present. Fall back to the foreign address only if the
+    # donor has no Israeli address on file (rare for ILS donations, but
+    # safe for legacy records that haven't been updated yet).
+    has_il_address = (getattr(donor, 'il_address_line1', None) or
+                      getattr(donor, 'il_city', None) or
+                      getattr(donor, 'il_zip', None))
+    if has_il_address:
+        addr_parts = [getattr(donor, 'il_address_line1', None),
+                      getattr(donor, 'il_address_line2', None),
+                      getattr(donor, 'il_city', None),
+                      getattr(donor, 'il_zip', None)]
+    else:
+        addr_parts = [donor.address_line1, donor.address_line2,
+                      donor.city, donor.state, donor.zip, donor.country]
     address = ', '.join(p for p in addr_parts if p)
 
     # Receipt line item — the donation itself.

@@ -300,6 +300,11 @@ def sync_nedarim_cmd(with_receipts):
             donor_email = (txn.get('Mail') or '').strip()
             donor_name = (txn.get('ClientName') or '').strip()
             donor_phone = (txn.get('Phone') or '').strip()
+            # Nedarim sends a single Hebrew address string in `Adresse`
+            # (e.g. "אצ״ל 17 נתניה" — street + city, no zip). Donations
+            # routed through Nedarim are Israeli, so this lands on the
+            # Israeli address fields, not the foreign ones.
+            donor_il_address = (txn.get('Adresse') or '').strip()
 
             donor = None
             if donor_email:
@@ -319,17 +324,25 @@ def sync_nedarim_cmd(with_receipts):
                     last_name=name_parts[1] if len(name_parts) > 1 else '',
                     email=placeholder_email,
                     phone=donor_phone or None,
+                    il_phone_cell=donor_phone or None,  # Nedarim phones are Israeli
+                    il_address_line1=donor_il_address or None,
                     country='IL',
                     test=False
                 )
                 db.session.add(donor)
                 db.session.flush()  # populate donor.id before donation references it
             else:
-                # Update existing donor with any new info
+                # Update existing donor with any new info — only fill BLANK
+                # fields, never overwrite. Nedarim's Adresse goes onto the
+                # Israeli address slot specifically (not foreign).
                 if donor_email and not donor.email:
                     donor.email = donor_email
                 if donor_phone and not donor.phone:
                     donor.phone = donor_phone
+                if donor_phone and not donor.il_phone_cell:
+                    donor.il_phone_cell = donor_phone
+                if donor_il_address and not donor.il_address_line1:
+                    donor.il_address_line1 = donor_il_address
                 if donor_name and (not donor.first_name or donor.first_name == 'Unknown'):
                     name_parts = donor_name.split(' ', 1)
                     donor.first_name = name_parts[0]
