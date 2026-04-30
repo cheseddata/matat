@@ -92,14 +92,14 @@ even if it matches the default.
 | `Notes` | string | Mid-document notes. |
 | `NotesBottom` | string | Bottom-of-document notes. |
 | `HideNotes` | string | Internal-only note (operator sees, donor doesn't). |
-| `CurrencyID` * | number | See §4 currency table. Default `2` (ILS). |
-| `LangID` * | number | `359` = HEB, `139` = ENG. Default `359`. |
+| `CurrencyId` * | number | See §4 currency table. Default `2` (ILS). |
+| `LangId` * | number | `359` = HEB, `139` = ENG. Default `359`. |
 | `SendSMS` | bool | Have YeshInvoice SMS the donor a link to the receipt. Default `false`. |
 | `SendEmail` | bool | Have YeshInvoice email the donor the receipt. Default `false`. We typically keep this `false` and email from our own system. |
 | `IncludePDF` | bool | If `SendEmail=true`, attach the PDF inline. Default `false`. |
 | `DocumentType` * | number | **The big one — see §5.** For Section 46 donation receipts use `11`. Default `1` is a shipment, **NOT** what you want. |
-| `ExchangeRate` | number | Required when `CurrencyID ≠ 2` (non-ILS). Default `1`. |
-| `vatPercentage` | number | Israeli VAT %. Default `17`. For donation receipts (which are VAT-exempt as a tax-deductible gift) we send `0`. |
+| `ExchangeRate` | number | Required when `CurrencyId ≠ 2` (non-ILS). Default `1`. |
+| `vatPercentage` | number | Document-level VAT %. Default `17`. **For donation receipts the per-item `vatType: 2` (exempt) is what actually matters** — see §7. We can leave `vatPercentage` at the default; it doesn't affect the line items when each item already specifies `vatType: 2`. |
 | `roundPrice` | number | Round amount. Default `0`. |
 | `RoundPriceAuto` | bool | Auto-round to nearest 0.5. Default `false`. |
 | `OrderNumber` | string | Free-text order ref (we use the Matat donation ID). |
@@ -116,6 +116,7 @@ even if it matches the default.
 | `incomeID` | number | Income-category ID (configured per business in YeshInvoice — defines which fund the donation lands in). |
 | `payCreditPluginID` | number | Credit-card processor plugin ID (only for paymentRequest docs). |
 | `DocumentUniqueKey` | string | **Use this for idempotency.** If we send the same key twice, YeshInvoice rejects the duplicate. Max 20 chars. We use the Matat donation ID (e.g. `"matat-921"`). |
+| `sourceType` | number | Not in the official attribute table on the docs page, but the verified body uses `sourceType: 1`. Live tests on 2026-04-29 included this field. Send `1`. |
 | `files` | array of strings | URLs of files to attach to the receipt PDF. |
 | `Customer` | object | See §6. |
 | `items` | array of objects | See §7. For a single donation, one item with the donation amount. |
@@ -126,24 +127,29 @@ even if it matches the default.
 
 ```json
 {
-  "DocumentType": 11,
-  "CurrencyID": 1,
-  "LangID": 359,
-  "DateCreated": "2026-04-29 10:00",
-  "MaxDate": "2026-04-29 10:00",
-  "statusID": 1,
-  "vatPercentage": 0,
-  "DontCreateIsraelTaxNumber": false,
+  "DocumentType":      11,
+  "CurrencyId":        2,
+  "LangId":            359,
+  "sourceType":        1,
+  "statusID":          2,
+  "DateCreated":       "2026-04-29 10:00",
+  "MaxDate":           "2026-04-29 10:00",
+  "hideMaxDate":       true,
   "DocumentUniqueKey": "matat-921",
-  "Customer": { "...": "see §6" },
-  "items":    [ { "...": "see §7" } ],
-  "payments": [ { "...": "see §8" } ]
+  "Title":             "תרומה — Menachem Kantor",
+  "Customer":          { "...": "see §6" },
+  "items":             [ { "Quantity": 1, "Price": "10.00", "Name": "תרומה — Nedarim Plus", "vatType": 2 } ],
+  "payments":          [ { "...": "see §8" } ]
 }
 ```
 
+This payload mirrors `yeshinvoice_body.json` in the repo, which is the
+exact body that produced a valid Section-46 receipt in the
+2026-04-29 live test.
+
 ---
 
-## 4. CurrencyID
+## 4. CurrencyId
 
 **The only verified value is `2` = ILS** (called out as the default in
 the docs page). The other IDs were guessed during initial development
@@ -153,7 +159,7 @@ Reference page: <https://user.yeshinvoice.co.il/api/doc?an=currencies>
 
 | ID | Currency | Source |
 |---|---|---|
-| **`2`** | **ILS (₪)** | Verified — docs say "default `2`" for `CurrencyID` |
+| **`2`** | **ILS (₪)** | Verified — docs say "default `2`" for `CurrencyId` |
 | `1`, `3`, `4`, … | USD, EUR, GBP, etc. | UNVERIFIED — confirm via the currencies reference page |
 
 ---
@@ -235,14 +241,31 @@ For a donation, send a single item:
     "Price":    720,
     "Name":     "תרומה לעמותה — מתת מרדכי",
     "Sku":      "DONATION",
-    "vatType":  4,
+    "vatType":  2,
     "SkuID":    -1
   }
 ]
 ```
 
-`vatType: 4` = פטור ממע"מ (VAT-exempt) — required for donation
-receipts because the donation isn't a taxable purchase.
+`vatType: 2` = **פטור (exempt)** — required for donation receipts
+because the donation isn't a taxable purchase. *Verified working* by
+the live `createDocument` test on 2026-04-29 (see
+`yeshinvoice_void_policy.md` and `yeshinvoice_body.json`).
+
+⚠ A previous draft of this file said `vatType: 4`. **That was wrong.**
+`vatType: 4` = `לא חייב` (not subject to VAT — outside-scope) which
+is a different legal category from "exempt". Donations should be
+**exempt**, not out-of-scope.
+
+Israeli vatType reference (working understanding — verify before
+relying on values other than `2`):
+
+| vatType | Hebrew | English | Use case |
+|---|---|---|---|
+| `1` | חייב במע"מ | Standard 17% VAT | Regular for-profit sales |
+| **`2`** | **פטור** | **Exempt** | **Donations to a registered עמותה — what we use** |
+| `3` | מע"מ אפס | Zero-rated | Exports |
+| `4` | לא חייב | Not subject (out of scope) | Wrong category for donations |
 
 ---
 
@@ -442,7 +465,7 @@ Authorization: {"secret":"...","userkey":"..."}
 This is the recipe `app/services/yeshinvoice_service.py` should
 follow when a USD-vs-ILS routed-to-YeshInvoice donation comes in.
 
-⚠ Heads-up: the `CurrencyID` mapping and the `payments[].TypeID`
+⚠ Heads-up: the `CurrencyId` mapping and the `payments[].TypeID`
 values in this snippet are **pseudocode** — only `ILS=2` and `TypeID=5`
 are confirmed (see §4 and §8). Verify the rest with YeshInvoice
 support before flipping the integration on for non-ILS or non-Other
@@ -451,19 +474,19 @@ payment types.
 ```python
 def build_payload(donation, donor):
     return {
-        # — meta —
+        # — meta — (field names verified by live test on 2026-04-29)
         "DocumentType":              11,                      # Section 46 donation receipt — verified with YI support
-        "CurrencyID":                {"ILS": 2, "USD": 1, "EUR": 3, "GBP": 4}[donation.currency.upper()],
-        "LangID":                    359 if donor.language_pref == "he" else 139,
+        "CurrencyId":                2,                       # ILS — verified default
+        "LangId":                    359,                     # 359=HEB, 139=ENG — verified
+        "sourceType":                1,                       # verified — required field per yeshinvoice_body.json
+        "statusID":                  2,                       # used in verified test bodies; check whether final issued docs need 1
         "DateCreated":               donation.created_at.strftime("%Y-%m-%d %H:%M"),
         "MaxDate":                   donation.created_at.strftime("%Y-%m-%d %H:%M"),
         "hideMaxDate":               True,
-        "statusID":                  1,
-        "vatPercentage":             0,                       # donations are VAT-exempt
         "DontCreateIsraelTaxNumber": False,
         "DocumentUniqueKey":         f"matat-{donation.id}",
         "OrderNumber":               f"matat-{donation.id}",
-        "Title":                     "קבלה על תרומה — מתת מרדכי",
+        "Title":                     f"תרומה — {donor.full_name or donor.company_name}",
         # — donor —
         "Customer": {
             "Name":         donor.full_name or donor.company_name,
@@ -485,7 +508,7 @@ def build_payload(donation, donor):
             "Price":    donation.amount_dollars,
             "Name":     "תרומה לעמותה — מתת מרדכי",
             "Sku":      "DONATION",
-            "vatType":  4,
+            "vatType":  2,                                    # פטור — exempt (donations); verified
             "SkuID":    -1,
         }],
         # — how they paid —
