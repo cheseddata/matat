@@ -77,6 +77,18 @@
     body.nedarim-mode .lookup,
     body.nedarim-mode .form-section.shared-fields { display: none; }
 
+    /* Dual-address pattern — donor can have both an Israeli and a foreign
+       address. Toggle between them based on processor/currency, with the
+       operator able to flip manually. */
+    .addr-toggle { display: inline-flex; gap: 4px; background: #f3f4f6; border-radius: 6px;
+                   padding: 3px; margin-bottom: 8px; }
+    .addr-toggle .pill { padding: 5px 12px; font-size: 12px; font-weight: 600;
+                         color: #4b5563; border-radius: 4px; cursor: pointer;
+                         border: 0; background: transparent; }
+    .addr-toggle .pill.active { background: #2563eb; color: #fff; }
+    .addr-block { display: none; }
+    .addr-block.active { display: block; }
+
     .test-banner { background: #fef3c7; color: #92400e; padding: 8px 12px; border-radius: 6px;
                    font-size: 13px; margin-bottom: 12px; border: 1px solid #f59e0b; }
 </style>
@@ -126,6 +138,7 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="processor" id="processor_field" value="{{ processors[0].code if processors else '' }}">
             <input type="hidden" name="donor_id" id="donor_id" value="">
+            <input type="hidden" name="address_type" id="address_type" value="il">
 
             <!-- Donor lookup -->
             <div class="lookup">
@@ -164,36 +177,64 @@
                     <label>{{ t('charge.tz') }}</label>
                     <input type="text" name="tz" id="tz" maxlength="9" placeholder="123456789">
                 </div>
-                <div class="form-row">
+
+                <!-- Address: dual block (Israeli vs Foreign) -->
+                <div class="addr-toggle" role="tablist">
+                    <button type="button" class="pill active" data-addr="il">{{ t('charge.addr_pill_il') }}</button>
+                    <button type="button" class="pill" data-addr="foreign">{{ t('charge.addr_pill_foreign') }}</button>
+                </div>
+
+                <!-- Israeli address -->
+                <div class="addr-block active" data-addr-block="il">
                     <div class="form-group">
-                        <label>{{ t('charge.address') }}</label>
-                        <input type="text" name="address_line1" id="address_line1">
+                        <label>{{ t('charge.il_address_line1') }}</label>
+                        <input type="text" name="il_address_line1" id="il_address_line1">
                     </div>
-                    <div class="form-group">
-                        <label>{{ t('charge.city') }}</label>
-                        <input type="text" name="city" id="city">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>{{ t('charge.il_city') }}</label>
+                            <input type="text" name="il_city" id="il_city">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.il_zip') }}</label>
+                            <input type="text" name="il_zip" id="il_zip">
+                        </div>
                     </div>
                 </div>
-                <div class="form-row-3">
-                    <div class="form-group">
-                        <label>{{ t('charge.state') }}</label>
-                        <input type="text" name="state" id="state">
+
+                <!-- Foreign / US address -->
+                <div class="addr-block" data-addr-block="foreign">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>{{ t('charge.address') }}</label>
+                            <input type="text" name="address_line1" id="address_line1">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.city') }}</label>
+                            <input type="text" name="city" id="city">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>{{ t('charge.zip') }}</label>
-                        <input type="text" name="zip" id="zip">
-                    </div>
-                    <div class="form-group">
-                        <label>{{ t('charge.country') }}</label>
-                        <select name="country" id="country">
-                            <option value="IL">{{ t('charge.country_il') }}</option>
-                            <option value="US" selected>{{ t('charge.country_us') }}</option>
-                            <option value="GB">{{ t('charge.country_gb') }}</option>
-                            <option value="CA">{{ t('charge.country_ca') }}</option>
-                            <option value="FR">{{ t('charge.country_fr') }}</option>
-                            <option value="AU">{{ t('charge.country_au') }}</option>
-                            <option value="ZZ">{{ t('charge.country_other') }}</option>
-                        </select>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>{{ t('charge.state') }}</label>
+                            <input type="text" name="state" id="state">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.zip') }}</label>
+                            <input type="text" name="zip" id="zip">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.country') }}</label>
+                            <select name="country" id="country">
+                                <option value="IL">{{ t('charge.country_il') }}</option>
+                                <option value="US" selected>{{ t('charge.country_us') }}</option>
+                                <option value="GB">{{ t('charge.country_gb') }}</option>
+                                <option value="CA">{{ t('charge.country_ca') }}</option>
+                                <option value="FR">{{ t('charge.country_fr') }}</option>
+                                <option value="AU">{{ t('charge.country_au') }}</option>
+                                <option value="ZZ">{{ t('charge.country_other') }}</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -294,6 +335,7 @@ const I18N = {
     js_stripe_init_error: {{ t('charge.js_stripe_init_error')|tojson }},
     js_shva_card_required: {{ t('charge.js_shva_card_required')|tojson }},
     stripe_btn: {{ t('charge.stripe_btn')|tojson }},
+    dual_address_prompt: {{ t('charge.dual_address_prompt')|tojson }},
 };
 
 // =====================================================================
@@ -325,12 +367,33 @@ function showProcessor(code) {
         else if (cur.value === 'ILS') cur.value = 'USD';
     }
 
+    // Address-block default — Shva/Nedarim default to IL, Stripe defaults
+    // to foreign. Operator can still override via the toggle pills.
+    if (code === 'shva' || code === 'nedarim') setAddressType('il');
+    else setAddressType('foreign');
+
     // Lazy-load the Nedarim iframe the first time their tab is opened.
     if (code === 'nedarim') {
         const ifr = document.getElementById('nedarim-iframe');
         if (ifr.src === 'about:blank' || !ifr.src) loadNedarimIframe();
     }
 }
+
+// =====================================================================
+// Address toggle (IL vs foreign).
+// =====================================================================
+function setAddressType(t) {
+    document.getElementById('address_type').value = t;
+    document.querySelectorAll('.addr-toggle .pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.addr === t);
+    });
+    document.querySelectorAll('[data-addr-block]').forEach(b => {
+        b.classList.toggle('active', b.dataset.addrBlock === t);
+    });
+}
+document.querySelectorAll('.addr-toggle .pill').forEach(p => {
+    p.addEventListener('click', () => setAddressType(p.dataset.addr));
+});
 tabs.forEach(t => t.addEventListener('click', () => showProcessor(t.dataset.proc)));
 // Initialize first available tab
 if (tabs.length) showProcessor(tabs[0].dataset.proc);
@@ -350,19 +413,38 @@ function fillDonor(d) {
     document.getElementById('last_name').value = d.last_name || '';
     document.getElementById('email').value = d.email || '';
     document.getElementById('phone').value = d.phone || '';
+    document.getElementById('tz').value = d.teudat_zehut || '';
+    // Foreign address
     document.getElementById('address_line1').value = d.address_line1 || '';
     document.getElementById('city').value = d.city || '';
     document.getElementById('state').value = d.state || '';
     document.getElementById('zip').value = d.zip || '';
     if (d.country) document.getElementById('country').value = d.country;
+    // Israeli address
+    document.getElementById('il_address_line1').value = d.il_address_line1 || '';
+    document.getElementById('il_city').value = d.il_city || '';
+    document.getElementById('il_zip').value = d.il_zip || '';
     pickedBadge.style.display = 'inline-block';
     clearLink.style.display = 'inline';
     results.style.display = 'none';
-    search.value = (d.first_name || '') + ' ' + (d.last_name || '');
+    search.value = ((d.first_name || '') + ' ' + (d.last_name || '')).trim();
+
+    // If the donor has BOTH an Israeli and a foreign address, ask which
+    // one to charge against. Otherwise auto-pick whichever exists.
+    if (d.has_il_address && d.has_foreign_address) {
+        const useIl = window.confirm(I18N.dual_address_prompt);
+        setAddressType(useIl ? 'il' : 'foreign');
+    } else if (d.has_il_address) {
+        setAddressType('il');
+    } else if (d.has_foreign_address) {
+        setAddressType('foreign');
+    }
 }
 function clearDonor() {
-    ['donor_id','first_name','last_name','email','phone','address_line1','city','state','zip','tz'].forEach(id => {
-        document.getElementById(id).value = '';
+    ['donor_id','first_name','last_name','email','phone','tz',
+     'address_line1','city','state','zip',
+     'il_address_line1','il_city','il_zip'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
     });
     pickedBadge.style.display = 'none';
     clearLink.style.display = 'none';

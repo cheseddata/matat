@@ -924,12 +924,20 @@ def api_search_donors():
         'company_name': d.company_name or '',
         'email': d.email if d.email and 'no-email-' not in d.email else '',
         'phone': d.phone or '',
+        'teudat_zehut': d.teudat_zehut or '',
         'address_line1': d.address_line1 or '',
         'address_line2': d.address_line2 or '',
         'city': d.city or '',
         'state': d.state or '',
         'zip': d.zip or '',
         'country': d.country or 'US',
+        # Israeli address (used by Shva / YeshInvoice receipts)
+        'il_address_line1': d.il_address_line1 or '',
+        'il_address_line2': d.il_address_line2 or '',
+        'il_city': d.il_city or '',
+        'il_zip': d.il_zip or '',
+        'has_il_address': bool(d.il_address_line1 or d.il_city or d.il_zip),
+        'has_foreign_address': bool(d.address_line1 or d.city or d.zip),
     } for d in donors])
 
 
@@ -3261,8 +3269,19 @@ def _admin_charge_shva():
         email = (request.form.get('email') or '').strip()
         phone = (request.form.get('phone') or '').strip()
         tz = (request.form.get('tz') or '').strip()
-        address_line1 = (request.form.get('address_line1') or '').strip()
-        city = (request.form.get('city') or '').strip()
+
+        # Address fields — operator picks IL vs foreign via the address_type
+        # toggle. Each set saves to its own column on Donor so a person who
+        # has both an Israeli and US address keeps them separate.
+        address_type = (request.form.get('address_type') or 'il').lower()
+        il_address_line1 = (request.form.get('il_address_line1') or '').strip()
+        il_city = (request.form.get('il_city') or '').strip()
+        il_zip = (request.form.get('il_zip') or '').strip()
+        foreign_address_line1 = (request.form.get('address_line1') or '').strip()
+        foreign_city = (request.form.get('city') or '').strip()
+        foreign_state = (request.form.get('state') or '').strip()
+        foreign_zip = (request.form.get('zip') or '').strip()
+        foreign_country = (request.form.get('country') or '').strip()
 
         if not donor:
             donor = Donor(
@@ -3271,9 +3290,7 @@ def _admin_charge_shva():
                 email=email or None,
                 phone=phone or None,
                 teudat_zehut=tz or None,
-                address_line1=address_line1 or None,
-                city=city or None,
-                country='IL' if currency == 'ILS' else 'US',
+                country=foreign_country or ('IL' if currency == 'ILS' else 'US'),
             )
             db.session.add(donor)
             db.session.flush()
@@ -3283,8 +3300,17 @@ def _admin_charge_shva():
             if email: donor.email = email
             if phone: donor.phone = phone
             if tz: donor.teudat_zehut = tz
-            if address_line1: donor.address_line1 = address_line1
-            if city: donor.city = city
+
+        # Save into the right address columns. Both sets persist — even
+        # if the operator only filled one, the other column stays as it was.
+        if il_address_line1: donor.il_address_line1 = il_address_line1
+        if il_city: donor.il_city = il_city
+        if il_zip: donor.il_zip = il_zip
+        if foreign_address_line1: donor.address_line1 = foreign_address_line1
+        if foreign_city: donor.city = foreign_city
+        if foreign_state: donor.state = foreign_state
+        if foreign_zip: donor.zip = foreign_zip
+        if foreign_country: donor.country = foreign_country
 
         db.session.flush()
 
