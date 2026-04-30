@@ -227,11 +227,21 @@ def create_receipt(donation, donor, config=None):
 
     # Payments array — REQUIRED for DocumentType=11. YeshInvoice rejects
     # the request with "אנא הזן רשימת תקבולים" if missing or empty.
-    # Pick the TypeID by payment processor. TypeID=5 ("other / payment
-    # app") is the only one confirmed in YeshInvoice's docs sample;
-    # 1-4 are conventional guesses (1=cash, 2=check, 3=bank transfer,
-    # 4=credit card). Falling back to 5 keeps us in known-working
-    # territory until each TypeID is independently verified.
+    #
+    # TypeID → Hebrew label mapping verified 2026-04-30 by clicking through
+    # the YeshInvoice portal's createDocument UI and matching each tab to
+    # its lazy-loaded `tabkull{N}` JS chunk:
+    #   1 = צ'ק (Check)
+    #   2 = העברה בנקאית (Bank transfer)
+    #   3 = כרטיס אשראי (Credit card)
+    #   4 = אפליקציית תשלום (Payment app — Bit, PayBox, etc.)
+    #   5 = פייפאל (PayPal)
+    #   6 = מזומן (Cash)
+    #   7 = אחר (Other)
+    #   8 = ניכוי במקור (Withholding)
+    # Earlier code shipped 4 for credit card, which rendered receipts as
+    # "אפליקציית תשלום" instead of "כרטיס אשראי" — visible on receipt 1015
+    # (docNumber 1015, MM-2026-00392).
     #
     # YeshInvoice only fires for ILS donations, so US-only methods
     # (zelle, donor-advised funds) and foreign-only methods (stripe
@@ -241,13 +251,13 @@ def create_receipt(donation, donor, config=None):
     if proc_code in ('nedarim', 'shva', 'manual_card', 'cardcom',
                      'grow', 'tranzila', 'payme', 'icount', 'easycard',
                      'creditguard', 'yaad', 'pelecard'):
-        payment_type_id = 4   # credit card (unverified — adjust if YeshInvoice rejects)
+        payment_type_id = 3   # כרטיס אשראי
     elif proc_code == 'check':
-        payment_type_id = 2
+        payment_type_id = 1   # צ'ק
     elif proc_code == 'wire':
-        payment_type_id = 3   # bank transfer (Israeli wire)
+        payment_type_id = 2   # העברה בנקאית
     else:
-        payment_type_id = 5   # other / payment app — confirmed safe per docs sample
+        payment_type_id = 7   # אחר
 
     payment_entry = {
         'TypeID': payment_type_id,
@@ -270,7 +280,7 @@ def create_receipt(donation, donor, config=None):
         n_payments = int(meta.get('Tashloumim') or meta.get('NumPayments') or 1)
     except (ValueError, TypeError):
         n_payments = 1
-    if payment_type_id == 4:  # credit card
+    if payment_type_id == 3:  # כרטיס אשראי
         payment_entry['NumberofPayments'] = max(n_payments, 1)
         # CardType — Nedarim's CompagnyCard codes (1-5) map to the major
         # brands. YeshInvoice's docs sample uses -1 for unknown; we send

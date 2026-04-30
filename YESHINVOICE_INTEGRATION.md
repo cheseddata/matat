@@ -273,25 +273,29 @@ relying on values other than `2`):
 
 How the donor paid. `TypeID` selects the payment type.
 
-**Only `TypeID: 5` is observed in the docs example** — all other
-values below were our development guesses and have **not** been
-confirmed. Before using any other TypeID, verify with YeshInvoice
-support or the
-<https://user.yeshinvoice.co.il/api/doc?an=paymenttypes> reference
-page (if it exists — open the doc page and click into Payments to
-see the list).
+Verified 2026-04-30 by clicking each tab in the YeshInvoice portal's
+createDocument UI and observing which lazy-loaded `tabkull{N}.js` chunk
+loaded — the chunk number matches the TypeID. Empirical evidence: a
+receipt sent with `TypeID=4` rendered as "אפליקציית תשלום" on the PDF
+(receipt 1015, MM-2026-00392, 2026-04-30).
 
-| TypeID | Likely meaning | Source |
+| TypeID | Hebrew label | Use for |
 |---|---|---|
-| `5` | Other / payment app (Bit, PayPal, …) | Used in the createDocument example body |
-| `1`, `2`, `3`, `4`, … | Cash, Check, Bank transfer, Credit card | UNVERIFIED — confirm before relying on |
+| `1` | צ'ק | Manual check entry |
+| `2` | העברה בנקאית | Wire transfer |
+| `3` | כרטיס אשראי | Credit-card processors (Nedarim, Shva, Cardcom, …) |
+| `4` | אפליקציית תשלום | Bit / PayBox / etc. — NOT credit card |
+| `5` | פייפאל | PayPal (this is YeshInvoice's docs example value) |
+| `6` | מזומן | Cash |
+| `7` | אחר | Fallback for unrecognized processor |
+| `8` | ניכוי במקור | Withholding tax |
 
 For a credit-card donation through Nedarim Plus:
 
 ```json
 [
   {
-    "TypeID":           4,
+    "TypeID":           3,
     "Price":            720,
     "CardLastDigits":   "1234",
     "CardType":         -1,
@@ -307,7 +311,7 @@ For a check:
 ```json
 [
   {
-    "TypeID":       2,
+    "TypeID":       1,
     "Price":        720,
     "BankNumber":   "12",
     "BranchNumber": "456",
@@ -517,10 +521,10 @@ def build_payload(donation, donor):
 ```
 
 `build_payment_object` switches on `donation.payment_processor`:
-- Nedarim / Stripe credit card → `TypeID: 4`, `CardLastDigits`, etc.
-- Manual check → `TypeID: 2`, `CheckNumber`, etc.
-- Bank transfer / Zelle → `TypeID: 3`.
-- Other → `TypeID: 5`.
+- Nedarim / Stripe credit card → `TypeID: 3`, `CardLastDigits`, etc.
+- Manual check → `TypeID: 1`, `CheckNumber`, etc.
+- Bank transfer → `TypeID: 2`.
+- Other → `TypeID: 7`.
 
 ---
 
