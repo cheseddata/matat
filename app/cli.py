@@ -215,51 +215,72 @@ def sync_nedarim_cmd(with_receipts):
         click.echo('Nedarim Plus not configured (missing credentials).')
         return
 
-    # Get last synced transaction ID from processor config
-    last_id = int(config.get('last_sync_id', 0))
+    # Sync strategy:
+    #   Earlier code used `Shovar` as a monotonic cursor — but Nedarim
+    #   resets / wraps Shovar values periodically (April 2026 records came
+    #   back as 27001001-55001003 even though March 2026 went up to
+    #   99001009). That meant any cursor stored against Shovar would skip
+    #   subsequent days entirely. Switching to `TransactionId` which IS
+    #   globally monotonic across Nedarim's whole history.
+    last_txn_id = int(config.get('last_sync_txn_id', 0))
 
-    click.echo(f'Syncing Nedarim transactions from ID {last_id}...')
+    click.echo(f'Syncing Nedarim — pulling full history, deduping by TransactionId > {last_txn_id}...')
 
-    result = processor.sync_transactions(last_id=last_id)
+    # Always pull from LastId=0 (Shovar=0) so we don't rely on Nedarim's
+    # broken Shovar ordering. TransactionId-based dedup happens below.
+    result = processor.sync_transactions(last_id=0)
     if not result.get('success'):
         click.echo(f'Sync failed: {result.get("error")}')
         return
 
-    transactions = result.get('transactions', [])
+    raw_transactions = result.get('transactions', [])
+    # Filter to only those with TransactionId > our cursor
+    transactions = []
+    for t in raw_transactions:
+        try:
+            tid = int(t.get('TransactionId') or 0)
+        except ValueError:
+            tid = 0
+        if tid > last_txn_id:
+            transactions.append(t)
+
     if not transactions:
         click.echo('No new transactions.')
         return
 
-    click.echo(f'Found {len(transactions)} transactions to process.')
+    click.echo(f'Found {len(transactions)} new transactions (out of {len(raw_transactions)} total).')
 
     imported = 0
     skipped = 0
-    max_id = last_id
+    max_txn_id = last_txn_id
 
     for txn in transactions:
         try:
-            txn_id = str(txn.get('Shovar') or txn.get('TransactionId', ''))
-            if not txn_id or txn_id == '0':
+            shovar = str(txn.get('Shovar', '')).strip()
+            txn_id = str(txn.get('TransactionId') or '').strip()
+            # Use TransactionId as the canonical identifier (it's globally
+            # unique and monotonic). Fall back to Shovar only if absent.
+            canonical_id = txn_id or shovar
+            if not canonical_id or canonical_id == '0':
                 skipped += 1
                 continue
 
-            # Track highest ID for next sync
+            # Track highest TransactionId we've imported, for next run's cursor
             try:
                 numeric_id = int(txn_id)
-                if numeric_id > max_id:
-                    max_id = numeric_id
+                if numeric_id > max_txn_id:
+                    max_txn_id = numeric_id
             except ValueError:
                 pass
 
-            # Check for duplicate
+            # Dedup by TransactionId only — Shovar is NOT unique across
+            # Nedarim's history (it cycles by date and gets reused), so
+            # checking against historical rows by Shovar would falsely
+            # mark new charges as duplicates of unrelated old ones.
             existing = Donation.query.filter_by(
-                nedarim_transaction_id=txn_id
+                processor_transaction_id=canonical_id,
+                payment_processor='nedarim'
             ).first()
-            if not existing:
-                existing = Donation.query.filter_by(
-                    processor_transaction_id=txn_id,
-                    payment_processor='nedarim'
-                ).first()
             if existing:
                 skipped += 1
                 continue
@@ -288,14 +309,21 @@ def sync_nedarim_cmd(with_receipts):
 
             if not donor:
                 name_parts = donor_name.split(' ', 1) if donor_name else ['Unknown', '']
+                # email is NOT NULL on donors — synthesize a placeholder
+                # using the canonical Nedarim TransactionId when the donor
+                # didn't enter one. Pattern matches existing
+                # nedarim_<id>@unknown.com placeholders in the DB.
+                placeholder_email = donor_email or f'nedarim_{canonical_id}@unknown.com'
                 donor = Donor(
                     first_name=name_parts[0],
                     last_name=name_parts[1] if len(name_parts) > 1 else '',
-                    email=donor_email or None,
-                    phone=donor_phone,
+                    email=placeholder_email,
+                    phone=donor_phone or None,
                     country='IL',
                     test=False
                 )
+                db.session.add(donor)
+                db.session.flush()  # populate donor.id before donation references it
             else:
                 # Update existing donor with any new info
                 if donor_email and not donor.email:
@@ -327,12 +355,18 @@ def sync_nedarim_cmd(with_receipts):
                     pass
 
             # Create donation
+            # Both processor_transaction_id and nedarim_transaction_id hold
+            # the canonical TransactionId (globally unique across Nedarim's
+            # full history). Shovar is NOT unique (it cycles by date and
+            # gets reused) — storing it in nedarim_transaction_id would
+            # collide on the column's UNIQUE constraint with old records.
+            # Shovar is preserved in processor_metadata for reference.
             donation = Donation(
                 donor_id=donor.id,
                 salesperson_id=salesperson_id,
                 payment_processor='nedarim',
-                processor_transaction_id=txn_id,
-                nedarim_transaction_id=txn_id,
+                processor_transaction_id=canonical_id,
+                nedarim_transaction_id=canonical_id,
                 nedarim_confirmation=txn.get('Confirmation'),
                 amount=amount_cents,
                 currency=currency,
@@ -373,23 +407,24 @@ def sync_nedarim_cmd(with_receipts):
                     logger.error(f'Receipt email failed for nedarim txn {txn_id}: {e}')
 
             imported += 1
-            click.echo(f'  Imported: {txn_id} - {amount_raw} {currency} - {donor_name}')
+            click.echo(f'  Imported: txn={canonical_id} shovar={shovar} {amount_raw} {currency} - {donor_name}')
 
         except Exception as e:
             logger.error(f'Error processing nedarim txn: {e}')
             db.session.rollback()
             click.echo(f'  Error: {e}')
 
-    # Save last sync ID in processor config
-    if max_id > last_id:
+    # Save last synced TransactionId in processor config — leave the old
+    # last_sync_id (Shovar-based) alone so a downgrade still has it.
+    if max_txn_id > last_txn_id:
         proc = PaymentProcessor.query.filter_by(code='nedarim').first()
         if proc:
             updated_config = dict(proc.config_json or {})
-            updated_config['last_sync_id'] = str(max_id)
+            updated_config['last_sync_txn_id'] = str(max_txn_id)
             proc.config_json = updated_config
             db.session.commit()
 
-    click.echo(f'Sync complete: {imported} imported, {skipped} skipped. Last ID: {max_id}')
+    click.echo(f'Sync complete: {imported} imported, {skipped} skipped. Last TransactionId: {max_txn_id}')
 
 
 @click.command('backfill-donor-owner')
