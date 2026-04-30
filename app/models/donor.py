@@ -10,6 +10,7 @@ class Donor(db.Model):
     stripe_customer_id = db.Column(db.String(255), unique=True, nullable=True)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False)
+    hebrew_name = db.Column(db.String(200), nullable=True, index=True)  # שם עברי — full Hebrew name; donor lookup ILIKEs against this too
     company_name = db.Column(db.String(200), nullable=True)  # e.g. 'ABC Corporation' — shown on receipt
     email = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(50), nullable=True)

@@ -913,14 +913,18 @@ def api_search_donors():
         Donor.deleted_at.is_(None),
         or_(
             func.concat(Donor.first_name, ' ', Donor.last_name).ilike(like),
+            Donor.hebrew_name.ilike(like),
+            Donor.company_name.ilike(like),
             Donor.email.ilike(like),
             Donor.phone.ilike(like),
+            Donor.teudat_zehut.ilike(like),
         )
     ).order_by(Donor.last_name, Donor.first_name).limit(15).all()
     return jsonify([{
         'id': d.id,
         'first_name': d.first_name or '',
         'last_name': d.last_name or '',
+        'hebrew_name': d.hebrew_name or '',
         'company_name': d.company_name or '',
         'email': d.email if d.email and 'no-email-' not in d.email else '',
         'phone': d.phone or '',
@@ -3217,6 +3221,7 @@ def charge_stripe_intent():
                 donor = Donor(
                     first_name=data.get('first_name') or 'Anonymous',
                     last_name=data.get('last_name') or 'Donor',
+                    hebrew_name=(data.get('hebrew_name') or None),
                     email=email,
                     phone=data.get('phone'),
                     address_line1=data.get('address_line1'),
@@ -3228,6 +3233,11 @@ def charge_stripe_intent():
                 )
                 db.session.add(donor)
                 db.session.flush()
+            else:
+                # Update Hebrew name on existing donor if provided
+                hn = (data.get('hebrew_name') or '').strip()
+                if hn and hn != (donor.hebrew_name or ''):
+                    donor.hebrew_name = hn
             db.session.commit()
             customer_id = get_or_create_customer(donor)
 
@@ -3271,6 +3281,7 @@ def _admin_charge_shva():
 
         first_name = (request.form.get('first_name') or '').strip()
         last_name = (request.form.get('last_name') or '').strip()
+        hebrew_name = (request.form.get('hebrew_name') or '').strip()
         email = (request.form.get('email') or '').strip()
         phone = (request.form.get('phone') or '').strip()
         tz = (request.form.get('tz') or '').strip()
@@ -3292,6 +3303,7 @@ def _admin_charge_shva():
             donor = Donor(
                 first_name=first_name or 'Unknown',
                 last_name=last_name or 'Unknown',
+                hebrew_name=hebrew_name or None,
                 email=email or None,
                 phone=phone or None,
                 teudat_zehut=tz or None,
@@ -3302,6 +3314,7 @@ def _admin_charge_shva():
         else:
             if first_name: donor.first_name = first_name
             if last_name: donor.last_name = last_name
+            if hebrew_name: donor.hebrew_name = hebrew_name
             if email: donor.email = email
             if phone: donor.phone = phone
             if tz: donor.teudat_zehut = tz
