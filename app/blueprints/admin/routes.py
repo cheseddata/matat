@@ -829,6 +829,53 @@ def reissue_donation_receipt(id):
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/donations/<int:id>/yeshinvoice-void', methods=['POST'])
+@admin_required
+def yeshinvoice_void(id):
+    """Void a YeshInvoice receipt by issuing a credit document.
+
+    Per YeshInvoice support (2026-04-29): issued documents cannot be
+    deleted under Israeli tax law. The supported "void" path is to
+    issue a matching negative-amount document via createDocument with
+    `DocumentType=4`. The original receipt and the credit doc both
+    stay in the records; they net to zero.
+
+    On success, `create_credit_note` clears the donation's
+    yeshinvoice_doc_id / _doc_number / _pdf_url so the admin page no
+    longer shows the link to the now-offset receipt and a fresh
+    receipt can be issued.
+
+    Admin-only — see @admin_required.
+    """
+    import traceback
+    try:
+        donation = Donation.query.get_or_404(id)
+        if not donation.yeshinvoice_doc_id:
+            return jsonify({'error': 'This donation has no active YeshInvoice receipt to void.'}), 400
+
+        from ...services.yeshinvoice_service import (
+            create_credit_note,
+            get_yeshinvoice_config,
+        )
+        cfg = get_yeshinvoice_config()
+        if not cfg:
+            return jsonify({'error': 'YeshInvoice is not enabled or credentials are missing.'}), 400
+
+        result = create_credit_note(donation, config=cfg)
+        if not result.get('success'):
+            return jsonify({'error': f'YeshInvoice rejected the void: {result.get("error", "unknown error")}'}), 502
+
+        return jsonify({
+            'success': True,
+            'doc_id':     result.get('doc_id'),
+            'doc_number': result.get('doc_number'),
+            'pdf_url':    result.get('pdf_url'),
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/donations/<int:id>/yeshinvoice-generate', methods=['POST'])
 @login_required
 def yeshinvoice_generate(id):

@@ -176,6 +176,19 @@
         cursor: not-allowed;
     }
 
+    .yesh-void-btn {
+        background: #c0392b;
+    }
+
+    .yesh-void-btn:hover {
+        background: #922b21;
+    }
+
+    .yesh-void-btn:disabled {
+        background: #95a5a6;
+        cursor: not-allowed;
+    }
+
     .action-buttons {
         display: flex;
         gap: 5px;
@@ -400,6 +413,11 @@
                         <button class="view-btn yesh-btn" onclick="generateYeshInvoice({{ donation.id }}, this)" title="Generate a YeshInvoice kabala (does NOT email the donor — opens the PDF in a new tab so you can download)">
                             {% if donation.yeshinvoice_doc_number %}YeshInvoice ✓ {{ donation.yeshinvoice_doc_number }}{% else %}YeshInvoice{% endif %}
                         </button>
+                        {% if donation.yeshinvoice_doc_number %}
+                        <button class="view-btn yesh-void-btn" onclick="voidYeshInvoice({{ donation.id }}, this)" title="Issue a credit document that offsets this YeshInvoice receipt to zero. The original stays in the records (Israeli tax law) but the donation is unlinked so a fresh receipt can be issued.">
+                            Void
+                        </button>
+                        {% endif %}
                         {% endif %}
                     </div>
                 </td>
@@ -498,6 +516,43 @@ function generateYeshInvoice(donationId, btn) {
             }
         } else {
             alert('YeshInvoice error: ' + (data.error || 'unknown'));
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        alert('Network error: ' + (err.message || err));
+        btn.textContent = originalText;
+        btn.disabled = false;
+    });
+}
+
+function voidYeshInvoice(donationId, btn) {
+    if (!confirm(
+        'Void this YeshInvoice receipt by issuing a credit document?\n\n' +
+        'The original receipt stays in YeshInvoice (Israeli tax law forbids deletion), ' +
+        'but a matching negative-amount document is created so the two net to zero. ' +
+        'The donation will be unlinked from the original so you can re-issue a fresh receipt.'
+    )) return;
+
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = 'Voiding...';
+
+    fetch(`/admin/donations/${donationId}/yeshinvoice-void`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Voided. Credit doc ${data.doc_number} issued.\n\nReloading page.`);
+            window.location.reload();
+        } else {
+            alert('Void failed: ' + (data.error || 'unknown'));
             btn.textContent = originalText;
             btn.disabled = false;
         }
