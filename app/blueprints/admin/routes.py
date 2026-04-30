@@ -3409,16 +3409,34 @@ def _admin_charge_shva():
             # Stay on the Shva tab so the operator can fix and retry
             return redirect(url_for('admin.charge_card', processor='shva'))
 
+        # Capture the card-brand info Shva returned so future runs of
+        # this query show what brand actually charged. The card_number
+        # last-4 is derived from the form input — Shva doesn't echo the
+        # PAN back (PCI). solek/rrn/ash_status_desc go into metadata.
+        card_number_clean = (request.form.get('card_number', '') or '').replace(' ', '').replace('-', '')
+        last4 = card_number_clean[-4:] if len(card_number_clean) >= 4 else None
         donation = Donation(
             donor_id=donor.id,
             amount=amount_cents,
             currency=currency,
             payment_method='credit',
             payment_processor='shva',
-            processor_transaction_id=result.get('transaction_id', ''),
-            processor_confirmation=result.get('confirmation', ''),
+            processor_transaction_id=result.get('transaction_id', '') or '',
+            processor_confirmation=result.get('confirmation', '') or '',
             status='succeeded',
             donation_type='one_time',
+            payment_method_type='card',
+            payment_method_last4=last4,
+            payment_method_brand=(result.get('card_brand') or result.get('card_name') or '').strip() or None,
+            processor_metadata={
+                'card_name': result.get('card_name', ''),
+                'card_brand': result.get('card_brand', ''),
+                'solek': result.get('solek', ''),
+                'rrn': result.get('rrn', ''),
+                'ash_status': result.get('ash_status', ''),
+                'ash_status_desc': result.get('ash_status_desc', ''),
+                'authorization_code': result.get('authorization_code', ''),
+            },
         )
         db.session.add(donation)
         db.session.commit()
