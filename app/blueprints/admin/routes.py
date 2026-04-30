@@ -829,6 +829,46 @@ def reissue_donation_receipt(id):
         return jsonify({'error': str(e)}), 500
 
 
+@admin_bp.route('/donations/<int:id>/yeshinvoice-pdf')
+@admin_required
+def yeshinvoice_pdf_proxy(id):
+    """Proxy YeshInvoice's PDF so the browser opens it inline.
+
+    YeshInvoice serves their PDFs with `Content-Disposition: attachment`,
+    which forces every browser to download the file rather than open it
+    in the built-in PDF viewer. Operators want to *see* the receipt
+    immediately to verify formatting before forwarding the link to the
+    donor — a forced download interrupts that flow.
+
+    We fetch the PDF server-side and re-emit it with `inline`
+    disposition. The original key stays on YeshInvoice's side; we never
+    expose it to the browser.
+    """
+    import requests
+    from flask import Response
+
+    donation = Donation.query.get_or_404(id)
+    if not donation.yeshinvoice_pdf_url:
+        return jsonify({'error': 'No YeshInvoice receipt on this donation.'}), 404
+
+    try:
+        r = requests.get(donation.yeshinvoice_pdf_url, timeout=30)
+        if r.status_code != 200 or not r.content:
+            return jsonify({'error': f'YeshInvoice PDF fetch failed: {r.status_code}'}), 502
+
+        filename = f'matat-receipt-{donation.yeshinvoice_doc_number or donation.id}.pdf'
+        return Response(
+            r.content,
+            mimetype='application/pdf',
+            headers={
+                'Content-Disposition': f'inline; filename="{filename}"',
+                'Cache-Control': 'private, max-age=300',
+            },
+        )
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Network error fetching YeshInvoice PDF: {e}'}), 502
+
+
 @admin_bp.route('/donations/<int:id>/yeshinvoice-void', methods=['POST'])
 @admin_required
 def yeshinvoice_void(id):

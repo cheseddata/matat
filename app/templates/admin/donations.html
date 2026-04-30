@@ -411,7 +411,7 @@
                         <button class="view-btn reissue-btn" onclick="reissueReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)" title="Regenerate the PDF with the current template and email it">{{ t('common.reissue') }}</button>
                         {% if (donation.currency or '')|upper == 'ILS' %}
                         {% if donation.yeshinvoice_doc_number and donation.yeshinvoice_pdf_url %}
-                        <a class="view-btn yesh-btn" href="{{ donation.yeshinvoice_pdf_url }}" target="_blank" rel="noopener" title="Open the YeshInvoice PDF in a new tab">
+                        <a class="view-btn yesh-btn" href="{{ url_for('admin.yeshinvoice_pdf_proxy', id=donation.id) }}" target="_blank" rel="noopener" title="Open the YeshInvoice PDF in a new tab">
                             YeshInvoice ✓ {{ donation.yeshinvoice_doc_number }}  📄
                         </a>
                         <button class="view-btn yesh-void-btn" onclick="voidYeshInvoice({{ donation.id }}, this)" title="Issue a credit document that offsets this YeshInvoice receipt to zero. The original stays in the records (Israeli tax law) but the donation is unlinked so a fresh receipt can be issued.">
@@ -507,13 +507,15 @@ function generateYeshInvoice(donationId, btn) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            // Replace the button with an anchor pointing at the PDF —
-            // a real <a target="_blank"> avoids the popup-blocker that
-            // kills window.open() inside an async fetch callback. The
-            // operator clicks the green badge to open the PDF.
+            // Replace the button with an anchor pointing at OUR proxy —
+            // YeshInvoice's direct PDF URL has Content-Disposition:
+            // attachment which forces a download instead of opening in
+            // the browser's PDF viewer. Our proxy re-serves with inline
+            // so the operator can preview before downloading.
             if (data.pdf_url) {
+                const proxyUrl = `/admin/donations/${donationId}/yeshinvoice-pdf`;
                 const a = document.createElement('a');
-                a.href = data.pdf_url;
+                a.href = proxyUrl;
                 a.target = '_blank';
                 a.rel = 'noopener';
                 a.className = 'view-btn yesh-btn';
@@ -521,7 +523,7 @@ function generateYeshInvoice(donationId, btn) {
                 a.title = 'Click to open the YeshInvoice PDF in a new tab';
                 btn.replaceWith(a);
                 // Try popup too — works if popup-blocker is off, harmless if blocked.
-                try { window.open(data.pdf_url, '_blank', 'noopener'); } catch (e) {}
+                try { window.open(proxyUrl, '_blank', 'noopener'); } catch (e) {}
             } else {
                 btn.textContent = `YeshInvoice ✓ ${data.doc_number}`;
                 btn.disabled = false;
