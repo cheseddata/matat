@@ -214,7 +214,21 @@ class ShvaProcessor(BasePaymentProcessor):
             'SOAPAction': f'http://shva.co.il/xmlwebservices/{method}',
         }
 
+        # Log the inputObj inner XML (with the PAN masked) so we can
+        # verify what we sent — TZ, currency, amount, etc.
+        masked = soap
+        try:
+            import re as _re
+            masked = _re.sub(r'(<clientInputPan>)\d+(?=</clientInputPan>)',
+                             lambda m: m.group(1) + '**MASKED**', masked)
+            masked = _re.sub(r'(<cvv2>)\d+(?=</cvv2>)',
+                             lambda m: m.group(1) + '***', masked)
+            masked = _re.sub(r'(<Password>)[^<]+(?=</Password>)',
+                             lambda m: m.group(1) + '****', masked)
+        except Exception:
+            pass
         log.info(f"Shva {method} -> {self.url}")
+        log.info(f"Shva REQUEST body: {masked[:1500]}")
         r = requests.post(self.url, data=soap.encode('utf-8'), headers=headers, timeout=timeout)
         log.info(f"Shva response: {r.status_code}")
 
