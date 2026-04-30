@@ -3193,11 +3193,19 @@ def charge_card():
         if processor_code == 'shva':
             return _admin_charge_shva()
         flash(f'Unsupported processor for server-side charging: {processor_code}.', 'error')
-        return redirect(url_for('admin.charge_card'))
+        return redirect(url_for('admin.charge_card', processor=processor_code or None))
+
+    # Initial tab — sticky across redirects: when ?processor=<code> is set
+    # and is one of our supported codes, render that tab as active. Falls
+    # back to the first enabled processor when the param is absent.
+    initial_proc = (request.args.get('processor') or '').strip().lower()
+    if initial_proc not in {p.code for p in enabled}:
+        initial_proc = enabled[0].code if enabled else ''
 
     return render_template(
         'admin/charge.html',
         processors=enabled,
+        initial_processor=initial_proc,
         stripe_publishable_key=stripe_pub_key or '',
         stripe_mode=stripe_mode or '',
     )
@@ -3276,7 +3284,7 @@ def _admin_charge_shva():
         amount_str = (request.form.get('amount') or '').strip()
         if not amount_str:
             flash('Amount is required.', 'error')
-            return redirect(url_for('admin.charge_card'))
+            return redirect(url_for('admin.charge_card', processor='shva'))
         amount_cents = int(round(float(amount_str) * 100))
         currency = (request.form.get('currency') or 'ILS').upper()
 
@@ -3375,8 +3383,19 @@ def _admin_charge_shva():
 
         if not result.get('success'):
             db.session.rollback()
-            flash(f'Shva charge failed: {result.get("error", "Unknown error")}', 'error')
-            return redirect(url_for('admin.charge_card'))
+            # Log the full raw response so we can diagnose what Shva sent.
+            raw = result.get('raw_response') or {}
+            logger.error(f'[admin/charge] Shva charge FAILED — '
+                         f'ash_status={result.get("ash_status")} '
+                         f'ash_status_desc={result.get("ash_status_desc")!r} '
+                         f'raw_xmlStr={raw.get("xmlStr", "")[:500]!r}')
+            err_msg = result.get('error') or 'Unknown error'
+            desc = result.get('ash_status_desc') or ''
+            if desc and desc not in err_msg:
+                err_msg = f'{err_msg} ({desc})'
+            flash(f'Shva charge failed: {err_msg}', 'error')
+            # Stay on the Shva tab so the operator can fix and retry
+            return redirect(url_for('admin.charge_card', processor='shva'))
 
         donation = Donation(
             donor_id=donor.id,
@@ -3399,4 +3418,4 @@ def _admin_charge_shva():
         db.session.rollback()
         logger.error(f'admin shva charge error: {e}', exc_info=True)
         flash(f'Charge error: {e}', 'error')
-        return redirect(url_for('admin.charge_card'))
+        return redirect(url_for('admin.charge_card', processor='shva'))

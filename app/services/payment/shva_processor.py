@@ -118,6 +118,15 @@ class ShvaProcessor(BasePaymentProcessor):
             success = str(ash_status) in ('0', '777', '42')
             ash_desc = result_dict.get('ashStatusDes', '')
 
+            if not success:
+                # Dump everything we got back so the operator-side error
+                # message and the server log can both be useful.
+                log.error(
+                    f'Shva DECLINED — ashStatus={ash_status} ashStatusDes={ash_desc!r} '
+                    f'parsed={result_dict} '
+                    f'raw_xml={xml_str[:600]!r}'
+                )
+
             return {
                 'success': success,
                 'transaction_id': result_dict.get('uid', ''),

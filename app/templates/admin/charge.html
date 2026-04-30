@@ -121,7 +121,7 @@
         <div class="proc-tabs" id="proc-tabs">
             {% for p in processors %}
             {% set _key = 'processor.' ~ p.code %}{% set _name = t(_key) %}
-            <div class="proc-tab {% if loop.first %}active{% endif %}" data-proc="{{ p.code }}">
+            <div class="proc-tab {% if p.code == initial_processor %}active{% elif not initial_processor and loop.first %}active{% endif %}" data-proc="{{ p.code }}">
                 <span class="icon">
                     {%- if p.code == 'stripe' -%}🌐
                     {%- elif p.code == 'shva' -%}🇮🇱
@@ -141,7 +141,7 @@
         <!-- Shared donor + amount form (used by Stripe and Shva paths) -->
         <form method="POST" id="charge-form" autocomplete="off">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="processor" id="processor_field" value="{{ processors[0].code if processors else '' }}">
+            <input type="hidden" name="processor" id="processor_field" value="{{ initial_processor or (processors[0].code if processors else '') }}">
             <input type="hidden" name="donor_id" id="donor_id" value="">
             <input type="hidden" name="address_type" id="address_type" value="il">
 
@@ -482,8 +482,10 @@ document.querySelectorAll('input[data-phone-kind]').forEach(input => {
     });
 });
 tabs.forEach(t => t.addEventListener('click', () => showProcessor(t.dataset.proc)));
-// Initialize first available tab
-if (tabs.length) showProcessor(tabs[0].dataset.proc);
+// Initialize: respect server-rendered initial_processor (sticky across
+// post-redirect-get) and fall back to the first available tab.
+const initialProc = {{ (initial_processor or '')|tojson }} || (tabs.length ? tabs[0].dataset.proc : '');
+if (initialProc) showProcessor(initialProc);
 
 // =====================================================================
 // Donor live search.
