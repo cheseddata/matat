@@ -229,7 +229,7 @@
     "nedarim_frame_label": "Nedarim Plus — fill out the form below",
     "nedarim_open_new_tab": "Open in new tab",
     "nedarim_reload": "Refresh",
-    "tab_meta_stripe": "USD / EUR / GBP / ILS",
+    "tab_meta_stripe": "USD / EUR / GBP",
     "tab_meta_shva": "ILS — Israeli direct",
     "tab_meta_nedarim": "ILS — opens Nedarim iframe",
     "js_amount_required": "Enter an amount.",
