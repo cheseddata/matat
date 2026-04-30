@@ -16,6 +16,15 @@ class Donor(db.Model):
     email = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(50), nullable=True)
     phone_country_code = db.Column(db.String(10), nullable=True)
+    # Structured phones — Israeli vs foreign × home/cell/fax. The legacy
+    # `phone` column stays as a primary/SMS-target field, kept in sync
+    # server-side from whichever cell field was last touched.
+    il_phone_home = db.Column(db.String(50), nullable=True)
+    il_phone_cell = db.Column(db.String(50), nullable=True)
+    il_phone_fax = db.Column(db.String(50), nullable=True)
+    foreign_phone_home = db.Column(db.String(50), nullable=True)
+    foreign_phone_cell = db.Column(db.String(50), nullable=True)
+    foreign_phone_fax = db.Column(db.String(50), nullable=True)
     teudat_zehut = db.Column(db.String(9), nullable=True)  # Israeli ID number
     address_line1 = db.Column(db.String(255), nullable=True)
     address_line2 = db.Column(db.String(255), nullable=True)

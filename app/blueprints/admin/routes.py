@@ -945,6 +945,13 @@ def api_search_donors():
         'il_zip': d.il_zip or '',
         'has_il_address': bool(d.il_address_line1 or d.il_city or d.il_zip),
         'has_foreign_address': bool(d.address_line1 or d.city or d.zip),
+        # Phones — Israeli vs foreign × home/cell/fax
+        'il_phone_home': d.il_phone_home or '',
+        'il_phone_cell': d.il_phone_cell or '',
+        'il_phone_fax': d.il_phone_fax or '',
+        'foreign_phone_home': d.foreign_phone_home or '',
+        'foreign_phone_cell': d.foreign_phone_cell or '',
+        'foreign_phone_fax': d.foreign_phone_fax or '',
     } for d in donors])
 
 
@@ -3281,8 +3288,20 @@ def _admin_charge_shva():
         hebrew_first_name = (request.form.get('hebrew_first_name') or '').strip()
         hebrew_last_name = (request.form.get('hebrew_last_name') or '').strip()
         email = (request.form.get('email') or '').strip()
-        phone = (request.form.get('phone') or '').strip()
         tz = (request.form.get('tz') or '').strip()
+
+        # Six structured phones — Israeli vs foreign × home/cell/fax.
+        il_phone_home = (request.form.get('il_phone_home') or '').strip()
+        il_phone_cell = (request.form.get('il_phone_cell') or '').strip()
+        il_phone_fax = (request.form.get('il_phone_fax') or '').strip()
+        foreign_phone_home = (request.form.get('foreign_phone_home') or '').strip()
+        foreign_phone_cell = (request.form.get('foreign_phone_cell') or '').strip()
+        foreign_phone_fax = (request.form.get('foreign_phone_fax') or '').strip()
+        # Legacy `phone` column kept in sync from whichever cell is most
+        # relevant for the chosen address (IL cell when address_type=il,
+        # else foreign cell). SMS / receipts read `donor.phone`.
+        phone = (il_phone_cell if (request.form.get('address_type') == 'il')
+                 else foreign_phone_cell) or il_phone_cell or foreign_phone_cell
 
         # Address fields — operator picks IL vs foreign via the address_type
         # toggle. Each set saves to its own column on Donor so a person who
@@ -3318,6 +3337,15 @@ def _admin_charge_shva():
             if email: donor.email = email
             if phone: donor.phone = phone
             if tz: donor.teudat_zehut = tz
+
+        # Persist all six structured phones. Empty values DO overwrite
+        # since the operator might have intentionally cleared a phone.
+        donor.il_phone_home = il_phone_home or None
+        donor.il_phone_cell = il_phone_cell or None
+        donor.il_phone_fax = il_phone_fax or None
+        donor.foreign_phone_home = foreign_phone_home or None
+        donor.foreign_phone_cell = foreign_phone_cell or None
+        donor.foreign_phone_fax = foreign_phone_fax or None
 
         # Save into the right address columns. Both sets persist — even
         # if the operator only filled one, the other column stays as it was.

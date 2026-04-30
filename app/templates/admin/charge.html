@@ -179,15 +179,9 @@
                     </div>
                 </div>
                 <div class="hint hebrew-name-row" style="margin-top:-4px;">{{ t('charge.hebrew_name_hint') }}</div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>{{ t('charge.email') }}</label>
-                        <input type="email" name="email" id="email">
-                    </div>
-                    <div class="form-group">
-                        <label>{{ t('charge.phone') }}</label>
-                        <input type="tel" name="phone" id="phone">
-                    </div>
+                <div class="form-group">
+                    <label>{{ t('charge.email') }}</label>
+                    <input type="email" name="email" id="email">
                 </div>
                 <div class="form-group">
                     <label>{{ t('charge.tz') }}</label>
@@ -214,6 +208,20 @@
                         <div class="form-group">
                             <label>{{ t('charge.il_zip') }}</label>
                             <input type="text" name="il_zip" id="il_zip">
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>{{ t('charge.phone_home') }}</label>
+                            <input type="tel" name="il_phone_home" id="il_phone_home" data-phone-kind="home" data-phone-side="il">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.phone_cell') }}</label>
+                            <input type="tel" name="il_phone_cell" id="il_phone_cell" data-phone-kind="cell" data-phone-side="il">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.phone_fax') }}</label>
+                            <input type="tel" name="il_phone_fax" id="il_phone_fax" data-phone-kind="fax" data-phone-side="il">
                         </div>
                     </div>
                 </div>
@@ -250,6 +258,20 @@
                                 <option value="AU">{{ t('charge.country_au') }}</option>
                                 <option value="ZZ">{{ t('charge.country_other') }}</option>
                             </select>
+                        </div>
+                    </div>
+                    <div class="form-row-3">
+                        <div class="form-group">
+                            <label>{{ t('charge.phone_home') }}</label>
+                            <input type="tel" name="foreign_phone_home" id="foreign_phone_home" data-phone-kind="home" data-phone-side="foreign">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.phone_cell') }}</label>
+                            <input type="tel" name="foreign_phone_cell" id="foreign_phone_cell" data-phone-kind="cell" data-phone-side="foreign">
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('charge.phone_fax') }}</label>
+                            <input type="tel" name="foreign_phone_fax" id="foreign_phone_fax" data-phone-kind="fax" data-phone-side="foreign">
                         </div>
                     </div>
                 </div>
@@ -352,6 +374,10 @@ const I18N = {
     js_shva_card_required: {{ t('charge.js_shva_card_required')|tojson }},
     stripe_btn: {{ t('charge.stripe_btn')|tojson }},
     dual_address_prompt: {{ t('charge.dual_address_prompt')|tojson }},
+    phone_sync_prompt: {{ t('charge.phone_sync_prompt')|tojson }},
+    phone_kind_home: {{ t('charge.phone_home')|tojson }},
+    phone_kind_cell: {{ t('charge.phone_cell')|tojson }},
+    phone_kind_fax: {{ t('charge.phone_fax')|tojson }},
 };
 
 // =====================================================================
@@ -421,6 +447,40 @@ function setAddressType(t) {
 document.querySelectorAll('.addr-toggle .pill').forEach(p => {
     p.addEventListener('click', () => setAddressType(p.dataset.addr));
 });
+
+// =====================================================================
+// Phone cross-block sync — when the operator types a new value into
+// any phone field, check whether the matching kind (home/cell/fax) on
+// the OTHER side has a different non-empty value. If yes, popup asks
+// "Update the other side too?" (per ticket #11).
+// Tracks original value so the prompt only fires when the value
+// actually changes, not on every keystroke.
+// =====================================================================
+document.querySelectorAll('input[data-phone-kind]').forEach(input => {
+    input.dataset.original = input.value;
+    input.addEventListener('blur', () => {
+        const newVal = input.value.trim();
+        if (newVal === input.dataset.original) return;
+        input.dataset.original = newVal;
+        if (!newVal) return;  // clearing a phone doesn't trigger the popup
+        const kind = input.dataset.phoneKind;
+        const side = input.dataset.phoneSide;
+        const otherSide = side === 'il' ? 'foreign' : 'il';
+        const otherEl = document.getElementById(`${otherSide}_phone_${kind}`);
+        if (!otherEl) return;
+        const otherVal = otherEl.value.trim();
+        if (otherVal === newVal) return;  // already in sync, no prompt
+        // Only prompt if the other side actually has a different value
+        // (or is empty — operator might want to populate it).
+        const msg = I18N.phone_sync_prompt
+            .replace('{kind}', I18N['phone_kind_' + kind] || kind)
+            .replace('{value}', newVal);
+        if (window.confirm(msg)) {
+            otherEl.value = newVal;
+            otherEl.dataset.original = newVal;
+        }
+    });
+});
 tabs.forEach(t => t.addEventListener('click', () => showProcessor(t.dataset.proc)));
 // Initialize first available tab
 if (tabs.length) showProcessor(tabs[0].dataset.proc);
@@ -441,8 +501,14 @@ function fillDonor(d) {
     document.getElementById('hebrew_first_name').value = d.hebrew_first_name || '';
     document.getElementById('hebrew_last_name').value = d.hebrew_last_name || '';
     document.getElementById('email').value = d.email || '';
-    document.getElementById('phone').value = d.phone || '';
     document.getElementById('tz').value = d.teudat_zehut || '';
+    // Phones — 6 structured inputs split between the two address blocks
+    document.getElementById('il_phone_home').value = d.il_phone_home || '';
+    document.getElementById('il_phone_cell').value = d.il_phone_cell || '';
+    document.getElementById('il_phone_fax').value = d.il_phone_fax || '';
+    document.getElementById('foreign_phone_home').value = d.foreign_phone_home || '';
+    document.getElementById('foreign_phone_cell').value = d.foreign_phone_cell || '';
+    document.getElementById('foreign_phone_fax').value = d.foreign_phone_fax || '';
     // Foreign address
     document.getElementById('address_line1').value = d.address_line1 || '';
     document.getElementById('city').value = d.city || '';
@@ -471,9 +537,11 @@ function fillDonor(d) {
 }
 function clearDonor() {
     ['donor_id','first_name','last_name','hebrew_first_name','hebrew_last_name',
-     'email','phone','tz',
+     'email','tz',
      'address_line1','city','state','zip',
-     'il_address_line1','il_city','il_zip'].forEach(id => {
+     'il_address_line1','il_city','il_zip',
+     'il_phone_home','il_phone_cell','il_phone_fax',
+     'foreign_phone_home','foreign_phone_cell','foreign_phone_fax'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
     });
     pickedBadge.style.display = 'none';
@@ -527,7 +595,10 @@ function buildNedarimUrl() {
     const ln = document.getElementById('last_name').value;
     if (fn || ln) params.set('name', (fn + ' ' + ln).trim());
     const em = document.getElementById('email').value; if (em) params.set('email', em);
-    const ph = document.getElementById('phone').value; if (ph) params.set('phone', ph);
+    // Pick the most relevant cell phone for the URL (IL preferred for Nedarim).
+    const ph = document.getElementById('il_phone_cell').value
+            || document.getElementById('foreign_phone_cell').value;
+    if (ph) params.set('phone', ph);
     const tz = document.getElementById('tz').value; if (tz) params.set('tz', tz);
     const am = document.getElementById('amount').value; if (am) params.set('amt', am);
     return '/donate/nedarim' + (params.toString() ? '?' + params.toString() : '');
@@ -538,7 +609,7 @@ function refreshNedarimLink() {
 function loadNedarimIframe() {
     document.getElementById('nedarim-iframe').src = buildNedarimUrl();
 }
-['first_name','last_name','email','phone','tz','amount'].forEach(id => {
+['first_name','last_name','email','il_phone_cell','foreign_phone_cell','tz','amount'].forEach(id => {
     document.getElementById(id).addEventListener('input', refreshNedarimLink);
 });
 document.getElementById('nedarim-reload').addEventListener('click', loadNedarimIframe);
@@ -583,7 +654,10 @@ document.getElementById('stripe-submit-btn').addEventListener('click', async () 
                 first_name: document.getElementById('first_name').value,
                 last_name: document.getElementById('last_name').value,
                 email: document.getElementById('email').value,
-                phone: document.getElementById('phone').value,
+                phone: document.getElementById('foreign_phone_cell').value,
+                foreign_phone_home: document.getElementById('foreign_phone_home').value,
+                foreign_phone_cell: document.getElementById('foreign_phone_cell').value,
+                foreign_phone_fax: document.getElementById('foreign_phone_fax').value,
                 address_line1: document.getElementById('address_line1').value,
                 city: document.getElementById('city').value,
                 state: document.getElementById('state').value,
