@@ -126,7 +126,15 @@ def create_receipt(donation, donor, config=None):
     CURRENCY_ID_ILS  = 2       # ILS in YeshInvoice's currency table
     LANG_ID_HE       = 359     # Hebrew
     SOURCE_TYPE_API  = 1       # API-issued
-    STATUS_ID_ACTIVE = 2       # Active / issued
+    # statusID:
+    #   1 = active / issued (סגור) → triggers tax-authority allocation
+    #   2 = draft (טיוטה) → no allocation, can't even be cancelled
+    # We had this inverted (2 instead of 1), which is why every receipt
+    # we issued through the service came out as a draft and never got an
+    # allocation number. Verified live on 2026-04-30: docs sent with
+    # statusID=2 are stuck in draft; statusID=1 produces a kabala that's
+    # auto-stamped with `הקצאה מספר` from רשות המסים.
+    STATUS_ID_ACTIVE = 1       # Active / issued (verified)
     VAT_TYPE_EXEMPT  = 2       # Donations are VAT-exempt
 
     amount = (donation.amount or 0) / 100  # cents → currency units
@@ -419,7 +427,7 @@ def create_credit_note(donation, config=None):
     CURRENCY_ID_ILS  = 2
     LANG_ID_HE       = 359
     SOURCE_TYPE_API  = 1
-    STATUS_ID_ACTIVE = 2
+    STATUS_ID_ACTIVE = 1       # NOT 2 — see note in create_receipt; 2 = draft
     VAT_TYPE_EXEMPT  = 2
 
     refund_amount = (donation.refund_amount or donation.amount or 0) / 100
