@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Charge Card - Matat Mordechai{% endblock %}
+{% block title %}{{ t('charge.title') }} - Matat Mordechai{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -67,13 +67,13 @@
 {% endblock %}
 
 {% block content %}
-<div class="charge-wrap">
+<div class="charge-wrap" {% if lang == 'he' %}dir="rtl"{% endif %}>
     <div class="charge-card">
-        <h1>💳 Charge Credit Card</h1>
-        <p class="sub">Charge any donor's card via the processor of your choice. Phase&nbsp;2 will route automatically by rate.</p>
+        <h1>💳 {{ t('charge.title') }}</h1>
+        <p class="sub">{{ t('charge.subtitle') }}</p>
 
         {% if stripe_mode == 'test' %}
-        <div class="test-banner"><strong>Stripe is in TEST mode</strong> — cards won't be charged. Toggle to live in Settings → Payment Processors.</div>
+        <div class="test-banner"><strong>{{ t('charge.test_mode_warning') }}</strong></div>
         {% endif %}
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -87,17 +87,18 @@
         <!-- Locked processor tabs -->
         <div class="proc-tabs" id="proc-tabs">
             {% for p in processors %}
+            {% set _key = 'processor.' ~ p.code %}{% set _name = t(_key) %}
             <div class="proc-tab {% if loop.first %}active{% endif %}" data-proc="{{ p.code }}">
                 <span class="icon">
                     {%- if p.code == 'stripe' -%}🌐
                     {%- elif p.code == 'shva' -%}🇮🇱
                     {%- elif p.code == 'nedarim' -%}🪙
                     {%- else -%}💳{%- endif -%}
-                </span>{{ p.display_name or p.name }}
+                </span>{{ _name if _name != _key else (p.display_name or p.name) }}
                 <span class="meta">
-                    {%- if p.code == 'stripe' -%}USD / EUR / GBP / ILS
-                    {%- elif p.code == 'shva' -%}ILS — Israeli direct
-                    {%- elif p.code == 'nedarim' -%}ILS — opens Nedarim iframe
+                    {%- if p.code == 'stripe' -%}{{ t('charge.tab_meta_stripe') }}
+                    {%- elif p.code == 'shva' -%}{{ t('charge.tab_meta_shva') }}
+                    {%- elif p.code == 'nedarim' -%}{{ t('charge.tab_meta_nedarim') }}
                     {%- endif -%}
                 </span>
             </div>
@@ -113,83 +114,83 @@
             <!-- Donor lookup -->
             <div class="lookup">
                 <label for="donor_search">
-                    Find existing donor (or fill fields below for a new one)
-                    <span id="picked_badge" class="lookup-badge" style="display:none;">selected</span>
-                    <span class="lookup-clear" id="clear_donor" style="display:none;">clear</span>
+                    {{ t('charge.lookup_label') }}
+                    <span id="picked_badge" class="lookup-badge" style="display:none;">{{ t('charge.lookup_selected') }}</span>
+                    <span class="lookup-clear" id="clear_donor" style="display:none;">{{ t('charge.lookup_clear') }}</span>
                 </label>
-                <input type="text" id="donor_search" placeholder="Type at least 2 letters of name / email / phone…">
+                <input type="text" id="donor_search" placeholder="{{ t('charge.lookup_placeholder') }}">
                 <div class="lookup-results" id="lookup_results"></div>
             </div>
 
             <div class="form-section">
-                <h3>Donor</h3>
+                <h3>{{ t('charge.donor') }}</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>First name</label>
+                        <label>{{ t('charge.first_name') }}</label>
                         <input type="text" name="first_name" id="first_name">
                     </div>
                     <div class="form-group">
-                        <label>Last name</label>
+                        <label>{{ t('charge.last_name') }}</label>
                         <input type="text" name="last_name" id="last_name">
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Email</label>
+                        <label>{{ t('charge.email') }}</label>
                         <input type="email" name="email" id="email">
                     </div>
                     <div class="form-group">
-                        <label>Phone</label>
+                        <label>{{ t('charge.phone') }}</label>
                         <input type="tel" name="phone" id="phone">
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>ת.ז. (Israeli ID — optional, used for Israeli receipts)</label>
+                    <label>{{ t('charge.tz') }}</label>
                     <input type="text" name="tz" id="tz" maxlength="9" placeholder="123456789">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Address</label>
+                        <label>{{ t('charge.address') }}</label>
                         <input type="text" name="address_line1" id="address_line1">
                     </div>
                     <div class="form-group">
-                        <label>City</label>
+                        <label>{{ t('charge.city') }}</label>
                         <input type="text" name="city" id="city">
                     </div>
                 </div>
                 <div class="form-row-3">
                     <div class="form-group">
-                        <label>State / region</label>
+                        <label>{{ t('charge.state') }}</label>
                         <input type="text" name="state" id="state">
                     </div>
                     <div class="form-group">
-                        <label>Zip / postal</label>
+                        <label>{{ t('charge.zip') }}</label>
                         <input type="text" name="zip" id="zip">
                     </div>
                     <div class="form-group">
-                        <label>Country</label>
+                        <label>{{ t('charge.country') }}</label>
                         <select name="country" id="country">
-                            <option value="IL">Israel</option>
-                            <option value="US" selected>United States</option>
-                            <option value="GB">United Kingdom</option>
-                            <option value="CA">Canada</option>
-                            <option value="FR">France</option>
-                            <option value="AU">Australia</option>
-                            <option value="ZZ">Other</option>
+                            <option value="IL">{{ t('charge.country_il') }}</option>
+                            <option value="US" selected>{{ t('charge.country_us') }}</option>
+                            <option value="GB">{{ t('charge.country_gb') }}</option>
+                            <option value="CA">{{ t('charge.country_ca') }}</option>
+                            <option value="FR">{{ t('charge.country_fr') }}</option>
+                            <option value="AU">{{ t('charge.country_au') }}</option>
+                            <option value="ZZ">{{ t('charge.country_other') }}</option>
                         </select>
                     </div>
                 </div>
             </div>
 
             <div class="form-section">
-                <h3>Amount</h3>
+                <h3>{{ t('charge.amount_section') }}</h3>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Amount</label>
+                        <label>{{ t('charge.amount') }}</label>
                         <input type="number" name="amount" id="amount" step="0.01" min="0.01" required>
                     </div>
                     <div class="form-group">
-                        <label>Currency</label>
+                        <label>{{ t('charge.currency') }}</label>
                         <select name="currency" id="currency">
                             <option value="USD">USD</option>
                             <option value="ILS">ILS</option>
@@ -203,51 +204,51 @@
             <!-- Stripe body -->
             <div class="proc-body" id="body-stripe">
                 <div class="form-section">
-                    <h3>Card details (Stripe)</h3>
+                    <h3>{{ t('charge.stripe_section') }}</h3>
                     <div id="stripe-card-element"></div>
                     <div id="stripe-card-error" class="err" role="alert"></div>
                 </div>
                 <div class="submit-row">
-                    <button type="button" class="submit-btn" id="stripe-submit-btn">Charge via Stripe</button>
+                    <button type="button" class="submit-btn" id="stripe-submit-btn">{{ t('charge.stripe_btn') }}</button>
                 </div>
             </div>
 
             <!-- Shva body -->
             <div class="proc-body" id="body-shva">
                 <div class="form-section">
-                    <h3>Card details (Shva / Ashrait)</h3>
+                    <h3>{{ t('charge.shva_section') }}</h3>
                     <div class="form-group">
-                        <label>Card number</label>
+                        <label>{{ t('charge.card_number') }}</label>
                         <input type="text" name="card_number" id="shva_card_number" inputmode="numeric" maxlength="19" placeholder="4580 0000 0000 0000">
                     </div>
                     <div class="form-row-3">
                         <div class="form-group">
-                            <label>Expiry (MM/YY)</label>
+                            <label>{{ t('charge.expiry') }}</label>
                             <input type="text" name="expiry" id="shva_expiry" placeholder="MM/YY" maxlength="5">
                         </div>
                         <div class="form-group">
-                            <label>CVV</label>
+                            <label>{{ t('charge.cvv') }}</label>
                             <input type="text" name="cvv" id="shva_cvv" inputmode="numeric" maxlength="4" placeholder="•••">
                         </div>
                         <div class="form-group">
-                            <label>Installments</label>
+                            <label>{{ t('charge.installments') }}</label>
                             <input type="number" name="installments" id="shva_installments" min="1" max="36" value="1">
                         </div>
                     </div>
-                    <div class="hint">Currency defaults to ILS for Shva. Card data is sent server-side; do not collect cards from public users via this form.</div>
+                    <div class="hint">{{ t('charge.shva_hint') }}</div>
                 </div>
                 <div class="submit-row">
-                    <button type="submit" class="submit-btn" id="shva-submit-btn">Charge via Shva</button>
+                    <button type="submit" class="submit-btn" id="shva-submit-btn">{{ t('charge.shva_btn') }}</button>
                 </div>
             </div>
 
             <!-- Nedarim body — link out to existing /donate/nedarim flow -->
             <div class="proc-body" id="body-nedarim">
                 <div class="form-section">
-                    <h3>Charge via Nedarim Plus</h3>
+                    <h3>{{ t('charge.nedarim_section') }}</h3>
                     <div class="nedarim-card">
-                        <p>Nedarim Plus uses an embedded iframe with their PostMessage API for PCI-compliant card entry. Click below to open Nedarim's hosted donation page in a new tab. The donor info you've typed will be sent along.</p>
-                        <a id="nedarim-link" class="btn" href="/donate/nedarim" target="_blank">Open Nedarim donation page</a>
+                        <p>{{ t('charge.nedarim_desc') }}</p>
+                        <a id="nedarim-link" class="btn" href="/donate/nedarim" target="_blank">{{ t('charge.nedarim_btn') }}</a>
                     </div>
                 </div>
             </div>
@@ -260,6 +261,17 @@
 {% block extra_js %}
 <script src="https://js.stripe.com/v3/"></script>
 <script>
+const I18N = {
+    no_matches: {{ t('charge.no_matches')|tojson }},
+    js_amount_required: {{ t('charge.js_amount_required')|tojson }},
+    js_stripe_not_ready: {{ t('charge.js_stripe_not_ready')|tojson }},
+    js_processing: {{ t('charge.js_processing')|tojson }},
+    js_stripe_success: {{ t('charge.js_stripe_success')|tojson }},
+    js_stripe_init_error: {{ t('charge.js_stripe_init_error')|tojson }},
+    js_shva_card_required: {{ t('charge.js_shva_card_required')|tojson }},
+    stripe_btn: {{ t('charge.stripe_btn')|tojson }},
+};
+
 // =====================================================================
 // Tab switching — always clickable, never disabled.
 // =====================================================================
@@ -330,7 +342,7 @@ search.addEventListener('input', () => {
         try {
             const r = await fetch('/admin/api/donors/search?q=' + encodeURIComponent(q));
             const data = await r.json();
-            if (!data.length) { results.innerHTML = '<div class="lookup-result" style="color:#999;">No matches</div>'; }
+            if (!data.length) { results.innerHTML = '<div class="lookup-result" style="color:#999;">' + I18N.no_matches + '</div>'; }
             else {
                 results.innerHTML = data.map(d => `
                     <div class="lookup-result" data-d='${JSON.stringify(d).replace(/'/g, "&#39;")}'>
@@ -388,16 +400,16 @@ if (stripeKey) {
         stripeErr.textContent = 'Stripe init error: ' + e.message;
     }
 } else {
-    stripeErr.textContent = 'Stripe is not configured. Set publishable key in Settings.';
+    stripeErr.textContent = I18N.js_stripe_init_error;
 }
 
 document.getElementById('stripe-submit-btn').addEventListener('click', async () => {
     stripeErr.textContent = '';
     const amt = parseFloat(document.getElementById('amount').value || 0);
-    if (!amt || amt <= 0) { stripeErr.textContent = 'Enter an amount.'; return; }
-    if (!cardElement) { stripeErr.textContent = 'Stripe not ready.'; return; }
+    if (!amt || amt <= 0) { stripeErr.textContent = I18N.js_amount_required; return; }
+    if (!cardElement) { stripeErr.textContent = I18N.js_stripe_not_ready; return; }
     const btn = document.getElementById('stripe-submit-btn');
-    btn.disabled = true; btn.textContent = 'Processing…';
+    btn.disabled = true; btn.textContent = I18N.js_processing;
     try {
         const r = await fetch('{{ url_for("admin.charge_stripe_intent") }}', {
             method: 'POST',
@@ -429,11 +441,11 @@ document.getElementById('stripe-submit-btn').addEventListener('click', async () 
             },
         });
         if (error) throw new Error(error.message);
-        alert('Stripe charge succeeded — payment intent ' + paymentIntent.id + '. Donation will appear once the webhook fires.');
+        alert(I18N.js_stripe_success.replace('{id}', paymentIntent.id));
         window.location.href = '/admin/donations?processor=stripe';
     } catch (e) {
         stripeErr.textContent = e.message;
-        btn.disabled = false; btn.textContent = 'Charge via Stripe';
+        btn.disabled = false; btn.textContent = I18N.stripe_btn;
     }
 });
 
@@ -450,7 +462,7 @@ document.getElementById('charge-form').addEventListener('submit', e => {
     const cv = document.getElementById('shva_cvv').value.trim();
     if (!cn || !ex || !cv) {
         e.preventDefault();
-        alert('Card number, expiry, and CVV are required for Shva.');
+        alert(I18N.js_shva_card_required);
     }
 });
 </script>

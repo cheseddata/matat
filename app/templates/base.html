@@ -147,7 +147,7 @@
                     <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
                     <a href="{{ url_for('admin.receipts') }}">{{ t('nav.receipts') }}</a>
                     <div class="menu-divider"></div>
-                    <a href="{{ url_for('admin.charge_card') }}">💳 Charge Card</a>
+                    <a href="{{ url_for('admin.charge_card') }}">{{ t('nav.charge_card') }}</a>
                     <a href="{{ url_for('admin.new_check_donation') }}">{{ t('nav.manual_donation') }}</a>
                     <div class="menu-divider"></div>
                     <a href="{{ url_for('donate.donation_page') }}">Donation Page (USD)</a>
@@ -229,7 +229,7 @@
            class="{{ 'active' if _proc_active == p.code else '' }}">{{ _name if _name != _key else p.name }}</a>
         {% endfor %}
         {% if current_user.role == 'admin' %}
-        <a href="{{ url_for('admin.charge_card') }}" class="charge-link">💳 Charge Card</a>
+        <a href="{{ url_for('admin.charge_card') }}" class="charge-link">{{ t('nav.charge_card') }}</a>
         {% endif %}
     </div>
     {% endif %}

@@ -265,6 +265,12 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-30 (charge page: Hebrew translation + RTL — ticket #9)
+- Admin (logged in as `admin`) reported via ticket #9: *"this should all be in hebrew"* — the new `/admin/charge` page rendered fully in English. Root cause: brand-new template, no `charge.*` translation block existed yet.
+- **Added `charge.*` block (50 keys)** to both `app/i18n/en.json` and `app/i18n/he.json` — full coverage of titles, labels, hints, country names, button text, and JS error/status messages. Verified count parity (`en_charge_keys == he_charge_keys`).
+- **Added `nav.charge_card`** to both files: English `💳 Charge Card` / Hebrew `💳 חיוב כרטיס`. Used by both the admin Donations dropdown entry and the green "Charge Card" shortcut on the always-visible processor strip.
+- **Template wired through `t()` everywhere.** Page now renders fully in Hebrew when `lang=he` (via cookie / toggle / user.language_pref). RTL applied: `<div class="charge-wrap" dir="rtl">` when `lang == 'he'`. JS strings (success message, validation errors, button labels) injected via `{{ t(...)|tojson }}` into a small `I18N` JS object, so the dynamic alerts/labels also localize.
+
 ### 2026-04-30 (unified admin charge page + sticky nav + processor tab strip on every page)
 - **New `/admin/charge` page** — admin-only unified charge form. One page, one set of donor/amount fields, a processor picker tab row at the top (sticky/locked, always clickable), and a per-processor card-entry section that swaps in based on the selected tab. Live processors wired: **Stripe** (Stripe Elements + PaymentIntent flow on the admin side, mirrors `/salesperson/phone-entry`), **Shva** (server-side POST → `app.services.payment.shva_processor.create_payment` → records donation), **Nedarim Plus** (link-out to existing `/donate/nedarim` iframe with donor info forwarded as query params, since Nedarim's PostMessage flow is a separate page anyway).
 - Phase 2 — rate-based routing — left explicit in route comments. The picker is the manual override; routing-by-rate will replace the default selection logic later. The `LIVE_CHARGE_PROCESSORS = ('stripe', 'shva', 'nedarim')` allowlist is the seam for adding more.
