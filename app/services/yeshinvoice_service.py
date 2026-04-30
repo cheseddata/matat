@@ -327,13 +327,17 @@ def create_receipt(donation, donor, config=None):
         'LangId':      LANG_ID_HE,
         'sourceType':  SOURCE_TYPE_API,
         'statusID':    STATUS_ID_ACTIVE,
-        # DateCreated / MaxDate are the receipt-ISSUANCE dates — always
-        # today. They render in the top-left corner of the kabala. The
-        # ORIGINAL payment date (when the donor actually paid) lives on
-        # the payment entry as PaymentDate and renders in the תאריך
-        # column of the payment-details box at the bottom of the doc.
-        'DateCreated': now_str,
-        'MaxDate':     now_str,
+        # DateCreated / MaxDate = when the donation actually occurred.
+        # Per the YeshInvoice API docs, DateCreated is "when the
+        # donation actually occurred" (not the receipt issuance date).
+        # Verified live 2026-04-30: when DateCreated was set to "today"
+        # for a back-dated charge, both the header date AND the תאריך
+        # column on the payment-details box rendered as today —
+        # ignoring the PaymentDate field we sent in the payments array.
+        # Setting DateCreated to the original charge date makes both
+        # locations show the correct date.
+        'DateCreated': payment_date_str,
+        'MaxDate':     payment_date_str,
         'hideMaxDate': True,
         'SendEmail':   False,   # we send our own donor email
         'SendSMS':     False,
