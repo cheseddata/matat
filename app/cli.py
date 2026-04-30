@@ -385,6 +385,23 @@ def sync_nedarim_cmd(with_receipts):
             }
             brand_name = COMPANY_CARD_HE.get(str(txn.get('CompagnyCard') or '').strip())
 
+            # Resolve the original transaction time from Nedarim's
+            # TransactionTime field (DD/MM/YYYY HH:MM:SS, Israel local
+            # time). Without this, created_at defaults to "now" — when
+            # the cron sync ran — so a donation from two weeks ago shows
+            # up as if it was made today on the YeshInvoice receipt and
+            # in the donations list.
+            txn_dt = None
+            tt_raw = (txn.get('TransactionTime') or '').strip()
+            if tt_raw:
+                from datetime import datetime as _dt
+                for fmt in ('%d/%m/%Y %H:%M:%S', '%d/%m/%Y %H:%M', '%d/%m/%Y'):
+                    try:
+                        txn_dt = _dt.strptime(tt_raw, fmt)
+                        break
+                    except ValueError:
+                        continue
+
             donation = Donation(
                 donor_id=donor.id,
                 salesperson_id=salesperson_id,
@@ -406,6 +423,7 @@ def sync_nedarim_cmd(with_receipts):
                 payment_method_last4=txn.get('LastNum'),
                 donor_comment=txn.get('Comments') or None,
                 processor_metadata=txn,
+                created_at=txn_dt,  # None falls through to SQLAlchemy default (utcnow)
             )
 
             if is_keva:
