@@ -77,6 +77,11 @@
     body.nedarim-mode .lookup,
     body.nedarim-mode .form-section.shared-fields { display: none; }
 
+    /* Hebrew name fields are only relevant for Israeli processors
+       (Shva / Nedarim) — Stripe is for foreign currency donations and
+       there's no Hebrew receipt downstream, so the row is hidden there. */
+    body.stripe-mode .hebrew-name-row { display: none; }
+
     /* Dual-address pattern — donor can have both an Israeli and a foreign
        address. Toggle between them based on processor/currency, with the
        operator able to flip manually. */
@@ -163,11 +168,17 @@
                         <input type="text" name="last_name" id="last_name">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>{{ t('charge.hebrew_name') }}</label>
-                    <input type="text" name="hebrew_name" id="hebrew_name" dir="rtl" placeholder="{{ t('charge.hebrew_name_placeholder') }}">
-                    <div class="hint">{{ t('charge.hebrew_name_hint') }}</div>
+                <div class="form-row hebrew-name-row">
+                    <div class="form-group">
+                        <label>{{ t('charge.hebrew_first_name') }}</label>
+                        <input type="text" name="hebrew_first_name" id="hebrew_first_name" dir="rtl" placeholder="מנחם">
+                    </div>
+                    <div class="form-group">
+                        <label>{{ t('charge.hebrew_last_name') }}</label>
+                        <input type="text" name="hebrew_last_name" id="hebrew_last_name" dir="rtl" placeholder="קנטור">
+                    </div>
                 </div>
+                <div class="hint hebrew-name-row" style="margin-top:-4px;">{{ t('charge.hebrew_name_hint') }}</div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>{{ t('charge.email') }}</label>
@@ -364,6 +375,9 @@ function showProcessor(code) {
     // Hide our donor + amount sections when Nedarim is active — Nedarim's
     // own form already collects them, so showing ours is duplicate.
     document.body.classList.toggle('nedarim-mode', code === 'nedarim');
+    // Hide the שם עברי row on the Stripe path — Stripe is foreign-currency
+    // only, no Hebrew receipt downstream.
+    document.body.classList.toggle('stripe-mode', code === 'stripe');
 
     // Currency default + ILS lockout: ILS is disabled in the dropdown
     // when Stripe is the active processor, since we don't accept shekel
@@ -424,7 +438,8 @@ function fillDonor(d) {
     document.getElementById('donor_id').value = d.id || '';
     document.getElementById('first_name').value = d.first_name || '';
     document.getElementById('last_name').value = d.last_name || '';
-    document.getElementById('hebrew_name').value = d.hebrew_name || '';
+    document.getElementById('hebrew_first_name').value = d.hebrew_first_name || '';
+    document.getElementById('hebrew_last_name').value = d.hebrew_last_name || '';
     document.getElementById('email').value = d.email || '';
     document.getElementById('phone').value = d.phone || '';
     document.getElementById('tz').value = d.teudat_zehut || '';
@@ -455,7 +470,8 @@ function fillDonor(d) {
     }
 }
 function clearDonor() {
-    ['donor_id','first_name','last_name','hebrew_name','email','phone','tz',
+    ['donor_id','first_name','last_name','hebrew_first_name','hebrew_last_name',
+     'email','phone','tz',
      'address_line1','city','state','zip',
      'il_address_line1','il_city','il_zip'].forEach(id => {
         const el = document.getElementById(id); if (el) el.value = '';
@@ -477,13 +493,16 @@ search.addEventListener('input', () => {
             const data = await r.json();
             if (!data.length) { results.innerHTML = '<div class="lookup-result" style="color:#999;">' + I18N.no_matches + '</div>'; }
             else {
-                results.innerHTML = data.map(d => `
+                results.innerHTML = data.map(d => {
+                    const heb = ((d.hebrew_first_name || '') + ' ' + (d.hebrew_last_name || '')).trim();
+                    return `
                     <div class="lookup-result" data-d='${JSON.stringify(d).replace(/'/g, "&#39;")}'>
                         <strong>${(d.first_name || '') + ' ' + (d.last_name || '')}</strong>
-                        ${d.hebrew_name ? '<span class="meta" style="margin-inline-start:8px;" dir="rtl">' + d.hebrew_name + '</span>' : ''}
+                        ${heb ? '<span class="meta" style="margin-inline-start:8px;" dir="rtl">' + heb + '</span>' : ''}
                         ${d.company_name ? '<br><span class="meta">' + d.company_name + '</span>' : ''}
                         <br><span class="meta">${d.email || ''} ${d.phone ? '— ' + d.phone : ''}</span>
-                    </div>`).join('');
+                    </div>`;
+                }).join('');
                 results.querySelectorAll('.lookup-result[data-d]').forEach(el => {
                     el.addEventListener('click', () => fillDonor(JSON.parse(el.dataset.d)));
                 });
@@ -563,7 +582,6 @@ document.getElementById('stripe-submit-btn').addEventListener('click', async () 
                 currency: document.getElementById('currency').value.toLowerCase(),
                 first_name: document.getElementById('first_name').value,
                 last_name: document.getElementById('last_name').value,
-                hebrew_name: document.getElementById('hebrew_name').value,
                 email: document.getElementById('email').value,
                 phone: document.getElementById('phone').value,
                 address_line1: document.getElementById('address_line1').value,
