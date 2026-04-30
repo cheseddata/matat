@@ -157,15 +157,20 @@ def create_receipt(donation, donor, config=None):
     # 1-4 are conventional guesses (1=cash, 2=check, 3=bank transfer,
     # 4=credit card). Falling back to 5 keeps us in known-working
     # territory until each TypeID is independently verified.
+    #
+    # YeshInvoice only fires for ILS donations, so US-only methods
+    # (zelle, donor-advised funds) and foreign-only methods (stripe
+    # international) intentionally aren't in this mapping — they'll
+    # never reach this code path. Listing them would just be noise.
     proc_code = (donation.payment_processor or '').lower()
-    if proc_code in ('stripe', 'nedarim', 'shva', 'manual_card', 'cardcom',
+    if proc_code in ('nedarim', 'shva', 'manual_card', 'cardcom',
                      'grow', 'tranzila', 'payme', 'icount', 'easycard',
                      'creditguard', 'yaad', 'pelecard'):
         payment_type_id = 4   # credit card (unverified — adjust if YeshInvoice rejects)
     elif proc_code == 'check':
         payment_type_id = 2
-    elif proc_code in ('zelle', 'wire'):
-        payment_type_id = 3   # bank transfer
+    elif proc_code == 'wire':
+        payment_type_id = 3   # bank transfer (Israeli wire)
     else:
         payment_type_id = 5   # other / payment app — confirmed safe per docs sample
 
