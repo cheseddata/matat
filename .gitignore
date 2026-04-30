@@ -14,3 +14,4 @@ gunicorn*.log
 uploads/
 feedback_git/
 backups/
+test/
