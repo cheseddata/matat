@@ -76,6 +76,10 @@ def _api_request(endpoint, data, config):
     try:
         response = requests.post(url, json=body, headers=headers, timeout=30)
         logger.info(f'YeshInvoice API {endpoint}: status={response.status_code}')
+        # Log the full body so we can see every field YeshInvoice returns
+        # — looking specifically for any allocation-number / MispatHakzaa
+        # / taxNumber field that isn't in the documented schema.
+        logger.info(f'YeshInvoice API {endpoint} body: {response.text[:3000]}')
         if response.status_code == 200:
             result = response.json()
             # YeshInvoice always returns 200 + Success boolean + ErrorMessage
