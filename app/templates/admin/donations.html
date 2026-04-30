@@ -410,12 +410,16 @@
                         <button class="view-btn resend-btn" onclick="resendReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)">{{ t('common.resend') }}</button>
                         <button class="view-btn reissue-btn" onclick="reissueReceipt({{ donation.id }}, '{{ donation.donor.email if donation.donor else '' }}', this)" title="Regenerate the PDF with the current template and email it">{{ t('common.reissue') }}</button>
                         {% if (donation.currency or '')|upper == 'ILS' %}
-                        <button class="view-btn yesh-btn" onclick="generateYeshInvoice({{ donation.id }}, this)" title="Generate a YeshInvoice kabala (does NOT email the donor — opens the PDF in a new tab so you can download)">
-                            {% if donation.yeshinvoice_doc_number %}YeshInvoice ✓ {{ donation.yeshinvoice_doc_number }}{% else %}YeshInvoice{% endif %}
-                        </button>
-                        {% if donation.yeshinvoice_doc_number %}
+                        {% if donation.yeshinvoice_doc_number and donation.yeshinvoice_pdf_url %}
+                        <a class="view-btn yesh-btn" href="{{ donation.yeshinvoice_pdf_url }}" target="_blank" rel="noopener" title="Open the YeshInvoice PDF in a new tab">
+                            YeshInvoice ✓ {{ donation.yeshinvoice_doc_number }}  📄
+                        </a>
                         <button class="view-btn yesh-void-btn" onclick="voidYeshInvoice({{ donation.id }}, this)" title="Issue a credit document that offsets this YeshInvoice receipt to zero. The original stays in the records (Israeli tax law) but the donation is unlinked so a fresh receipt can be issued.">
                             Void
+                        </button>
+                        {% else %}
+                        <button class="view-btn yesh-btn" onclick="generateYeshInvoice({{ donation.id }}, this)" title="Generate a YeshInvoice kabala (does NOT email the donor — opens the PDF in a new tab so you can download)">
+                            YeshInvoice
                         </button>
                         {% endif %}
                         {% endif %}
@@ -503,16 +507,25 @@ function generateYeshInvoice(donationId, btn) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            const note = data.already_exists
-                ? `Already generated: doc ${data.doc_number}.`
-                : `Generated: doc ${data.doc_number}.`;
-            btn.textContent = `YeshInvoice ✓ ${data.doc_number}`;
-            btn.disabled = false;
-            // Open the PDF in a new tab so operator can download / review.
+            // Replace the button with an anchor pointing at the PDF —
+            // a real <a target="_blank"> avoids the popup-blocker that
+            // kills window.open() inside an async fetch callback. The
+            // operator clicks the green badge to open the PDF.
             if (data.pdf_url) {
-                window.open(data.pdf_url, '_blank', 'noopener');
+                const a = document.createElement('a');
+                a.href = data.pdf_url;
+                a.target = '_blank';
+                a.rel = 'noopener';
+                a.className = 'view-btn yesh-btn';
+                a.textContent = `YeshInvoice ✓ ${data.doc_number}  📄`;
+                a.title = 'Click to open the YeshInvoice PDF in a new tab';
+                btn.replaceWith(a);
+                // Try popup too — works if popup-blocker is off, harmless if blocked.
+                try { window.open(data.pdf_url, '_blank', 'noopener'); } catch (e) {}
             } else {
-                alert(note + '\n\nNo PDF URL returned — check the YeshInvoice portal.');
+                btn.textContent = `YeshInvoice ✓ ${data.doc_number}`;
+                btn.disabled = false;
+                alert('Generated: doc ' + data.doc_number + '\n\nNo PDF URL returned — check the YeshInvoice portal.');
             }
         } else {
             alert('YeshInvoice error: ' + (data.error || 'unknown'));
