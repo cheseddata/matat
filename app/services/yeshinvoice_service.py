@@ -183,9 +183,29 @@ def create_receipt(donation, donor, config=None):
     address = ', '.join(p for p in addr_parts if p)
 
     # Receipt line item — the donation itself.
-    item_name = 'תרומה'
+    # Build a Hebrew payment-method label that appears in the items
+    # table's פירוט column. This is the most prominent place on the
+    # kabala — guaranteed to render, unlike the payment-details box
+    # at the bottom which depends on YeshInvoice accepting our
+    # TypeID + Reference fields.
+    proc_code_for_label = (donation.payment_processor or '').lower()
+    if proc_code_for_label == 'nedarim':
+        method_he = 'נדרים פלוס'
+    elif proc_code_for_label == 'check':
+        check_num = (donation.processor_confirmation or '').strip()
+        method_he = f'צ\'ק {check_num}'.strip() if check_num else 'צ\'ק'
+    elif proc_code_for_label == 'wire':
+        method_he = 'העברה בנקאית'
+    elif proc_code_for_label in ('shva', 'manual_card', 'cardcom', 'grow',
+                                  'tranzila', 'payme', 'icount', 'easycard',
+                                  'creditguard', 'yaad', 'pelecard'):
+        method_he = 'כרטיס אשראי'
+    else:
+        method_he = ''
+
+    item_name = f'תרומה — {method_he}' if method_he else 'תרומה'
     if donation.receipt_number:
-        item_name = f'תרומה (קבלה {donation.receipt_number})'
+        item_name = f'{item_name} (קבלה {donation.receipt_number})'
 
     # Idempotency key — YeshInvoice rejects a second createDocument call
     # with the same DocumentUniqueKey. Protects against double-clicks /
