@@ -3589,3 +3589,165 @@ def _admin_charge_shva():
         logger.error(f'admin shva charge error: {e}', exc_info=True)
         flash(f'Charge error: {e}', 'error')
         return redirect(url_for('admin.charge_card', processor='shva'))
+
+
+# =============================================================================
+# INBOX PORTAL — read-only view of mail pulled from any inbox provider
+# =============================================================================
+
+@admin_bp.route('/inbox')
+@admin_required
+def inbox():
+    """Inbox portal — list view of ingested email messages."""
+    from ...models.email_message import EmailMessage
+    from ...models.email_inbox_provider import EmailInboxProvider
+
+    page = int(request.args.get('page', 1))
+    per_page = 50
+    filter_unread = request.args.get('unread') == '1'
+    filter_attachments = request.args.get('attachments') == '1'
+    q = (request.args.get('q') or '').strip()
+
+    query = EmailMessage.query.filter(EmailMessage.is_archived == False)
+    if filter_unread:
+        query = query.filter(EmailMessage.is_read == False)
+    if filter_attachments:
+        query = query.filter(EmailMessage.has_attachments == True)
+    if q:
+        like = f'%{q}%'
+        query = query.filter(db.or_(
+            EmailMessage.subject.ilike(like),
+            EmailMessage.from_address.ilike(like),
+            EmailMessage.from_name.ilike(like),
+            EmailMessage.body_preview.ilike(like),
+        ))
+
+    pagination = query.order_by(EmailMessage.received_at.desc().nullslast()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    unread_count = EmailMessage.query.filter_by(is_read=False, is_archived=False).count()
+    providers = EmailInboxProvider.query_active().all()
+
+    return render_template(
+        'admin/inbox_list.html',
+        messages=pagination,
+        unread_count=unread_count,
+        filter_unread=filter_unread,
+        filter_attachments=filter_attachments,
+        q=q,
+        providers=providers,
+    )
+
+
+@admin_bp.route('/inbox/<int:id>')
+@admin_required
+def inbox_message(id):
+    """Single email view — full body + attachment list."""
+    from ...models.email_message import EmailMessage
+
+    msg = EmailMessage.query.get_or_404(id)
+
+    # Mark as read on first open
+    if not msg.is_read:
+        msg.is_read = True
+        db.session.commit()
+
+    # Other messages in the same conversation, oldest first
+    thread = []
+    if msg.conversation_id:
+        thread = EmailMessage.query.filter_by(
+            conversation_id=msg.conversation_id
+        ).order_by(EmailMessage.received_at.asc()).all()
+
+    return render_template('admin/inbox_message.html', msg=msg, thread=thread)
+
+
+@admin_bp.route('/inbox/<int:id>/archive', methods=['POST'])
+@admin_required
+def inbox_archive(id):
+    """Mark a message archived in our portal (does not touch the upstream mailbox)."""
+    from ...models.email_message import EmailMessage
+    msg = EmailMessage.query.get_or_404(id)
+    msg.is_archived = True
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/inbox/<int:id>/mark-unread', methods=['POST'])
+@admin_required
+def inbox_mark_unread(id):
+    """Force-mark a message as unread again (handy after accidental open)."""
+    from ...models.email_message import EmailMessage
+    msg = EmailMessage.query.get_or_404(id)
+    msg.is_read = False
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@admin_bp.route('/inbox/attachment/<int:id>')
+@admin_required
+def inbox_attachment(id):
+    """Download an attachment.
+
+    Lazy-fetches the binary from the upstream provider on first click,
+    then caches it on the row so subsequent downloads are instant.
+    """
+    import base64
+    from datetime import datetime
+    from flask import Response
+    from ...models.email_attachment import EmailAttachment
+    from ...models.email_message import EmailMessage
+
+    att = EmailAttachment.query.get_or_404(id)
+    msg = EmailMessage.query.get(att.email_id)
+    if not msg:
+        return jsonify({'error': 'Parent message not found'}), 404
+
+    if not att.content_b64:
+        # First click — fetch from provider
+        try:
+            handler = msg.provider.get_handler()
+            resp = handler.download_attachment(msg.remote_id, att.remote_id)
+        except Exception as e:
+            return jsonify({'error': f'Provider fetch failed: {e}'}), 502
+        if not resp.get('success'):
+            return jsonify({'error': resp.get('error', 'unknown')}), 502
+        att.content_b64 = resp.get('content_b64')
+        att.fetched_at = datetime.utcnow()
+        # If the provider gave us a more accurate filename / size, capture
+        if resp.get('filename') and not att.filename:
+            att.filename = resp['filename']
+        if resp.get('content_type') and not att.content_type:
+            att.content_type = resp['content_type']
+        db.session.commit()
+
+    if not att.content_b64:
+        return jsonify({'error': 'No content available'}), 502
+
+    try:
+        binary = base64.b64decode(att.content_b64)
+    except Exception:
+        return jsonify({'error': 'Stored attachment is not valid base64'}), 500
+
+    safe_name = (att.filename or f'attachment-{att.id}').replace('"', '')
+    return Response(
+        binary,
+        mimetype=att.content_type or 'application/octet-stream',
+        headers={
+            'Content-Disposition': f'inline; filename="{safe_name}"',
+            'Content-Length': str(len(binary)),
+        },
+    )
+
+
+@admin_bp.route('/inbox/sync-now', methods=['POST'])
+@admin_required
+def inbox_sync_now():
+    """Trigger an inbox sync on demand (in addition to the cron timer)."""
+    from ...services.email.sync import sync_all
+    try:
+        results = sync_all(limit=200)
+        return jsonify({'success': True, 'results': results})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500

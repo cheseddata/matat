@@ -139,6 +139,7 @@
         {% if current_user.role == 'admin' %}
         <div class="nav-menu">
             <a href="{{ url_for('admin.dashboard') }}" class="nav-direct">{{ t('nav.dashboard') }}</a>
+            <a href="{{ url_for('admin.inbox') }}" class="nav-direct">Inbox</a>
 
             <div class="nav-dropdown">
                 <span class="nav-link">{{ t('nav.donations') }} <span class="arrow">&#9662;</span></span>

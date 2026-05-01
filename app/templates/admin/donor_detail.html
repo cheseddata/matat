@@ -609,6 +609,35 @@
             </div>
             {% endif %}
 
+            <!-- Emails (auto-linked by from-address) -->
+            {% set donor_emails = donor.emails | sort(attribute='received_at', reverse=True) if donor.emails else [] %}
+            {% if donor_emails %}
+            <h2 class="section-title">📧 Emails ({{ donor_emails|length }})</h2>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>{{ t('common.date') }}</th>
+                        <th>Subject</th>
+                        <th>From</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for em in donor_emails[:20] %}
+                    <tr>
+                        <td>{{ em.received_at.strftime('%Y-%m-%d %H:%M') if em.received_at else '' }}</td>
+                        <td><a href="{{ url_for('admin.inbox_message', id=em.id) }}">{{ (em.subject or '(no subject)')[:80] }}{% if em.has_attachments %} 📎{% endif %}</a></td>
+                        <td>{{ em.from_address }}</td>
+                        <td>{% if not em.is_read %}<span style="color:#3498db; font-weight:600;">unread</span>{% else %}read{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% if donor_emails|length > 20 %}
+            <p style="color:#888; font-size:12px;">Showing 20 most recent of {{ donor_emails|length }}.</p>
+            {% endif %}
+            {% endif %}
+
             <!-- Receipts -->
             <h2 class="section-title">{{ t('nav.receipts') }}</h2>
 

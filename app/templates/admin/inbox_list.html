@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+{% block title %}Inbox - Admin - Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex; gap: 10px; flex-wrap: wrap;
+        margin-bottom: 25px; padding: 15px; background: white;
+        border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .admin-nav a {
+        padding: 8px 16px; background: #ecf0f1; color: #2c3e50;
+        text-decoration: none; border-radius: 4px; font-size: 14px;
+    }
+    .admin-nav a:hover, .admin-nav a.active { background: #3498db; color: white; }
+
+    .inbox-toolbar {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+    .inbox-toolbar .filter-btn {
+        padding: 6px 14px; border-radius: 4px; border: 1px solid #ddd;
+        background: white; color: #2c3e50; font-size: 13px;
+        text-decoration: none; cursor: pointer;
+    }
+    .inbox-toolbar .filter-btn.active {
+        background: #3498db; color: white; border-color: #3498db;
+    }
+    .inbox-toolbar input[type="search"] {
+        flex: 1; min-width: 220px;
+        padding: 7px 12px; border-radius: 4px; border: 1px solid #ddd;
+        font-size: 13px;
+    }
+    .inbox-toolbar button.sync-btn {
+        padding: 7px 14px; border-radius: 4px; border: none;
+        background: #16a085; color: white; cursor: pointer; font-size: 13px;
+    }
+    .inbox-toolbar button.sync-btn:disabled { background: #95a5a6; cursor: not-allowed; }
+
+    .msg-list { background: white; border-radius: 8px; overflow: hidden;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .msg-row {
+        display: grid;
+        grid-template-columns: 16px 240px 1fr 110px;
+        gap: 14px; align-items: center;
+        padding: 12px 16px; border-bottom: 1px solid #eee;
+        text-decoration: none; color: #2c3e50; cursor: pointer;
+    }
+    .msg-row:hover { background: #f8f9fa; }
+    .msg-row.unread { font-weight: 600; background: #fafbff; }
+    .msg-dot { width: 8px; height: 8px; border-radius: 50%; background: transparent; }
+    .msg-row.unread .msg-dot { background: #3498db; }
+    .msg-from { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .msg-subject { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .msg-subject .preview { color: #888; font-weight: 400; margin-left: 8px; }
+    .msg-date { color: #888; font-size: 12px; text-align: right; white-space: nowrap; }
+    .msg-attach-icon { color: #888; margin-left: 6px; }
+    .donor-tag {
+        display: inline-block; font-size: 11px; padding: 1px 6px;
+        background: #e8f5e9; color: #1e7e34; border-radius: 3px;
+        margin-left: 8px; font-weight: 500;
+    }
+
+    .pagination { display: flex; justify-content: center; gap: 5px; margin-top: 25px; }
+    .pagination a, .pagination span {
+        padding: 8px 14px; background: white; border: 1px solid #ddd;
+        border-radius: 4px; text-decoration: none; color: #2c3e50;
+    }
+    .pagination .disabled { color: #999; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: #888; }
+
+    .provider-status {
+        font-size: 12px; color: #666; margin-bottom: 14px; padding: 8px 12px;
+        background: #f8f9fa; border-radius: 6px;
+    }
+    .provider-status .err { color: #c0392b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">Inbox <small style="color:#888; font-size: 16px;">({{ unread_count }} unread)</small></h1>
+    </div>
+
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">{{ t('nav.dashboard') }}</a>
+        <a href="{{ url_for('admin.donations') }}">{{ t('nav.donations') }}</a>
+        <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
+        <a href="{{ url_for('admin.inbox') }}" class="active">Inbox</a>
+        <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
+    </div>
+
+    {% for p in providers %}
+    <div class="provider-status">
+        <strong>{{ p.name }}</strong> — {{ p.mailbox_address or '(no mailbox)' }} ·
+        {% if p.last_sync_at %}
+            last sync {{ p.last_sync_at.strftime('%Y-%m-%d %H:%M') }} UTC
+            {% if p.last_sync_status == 'error' %}<span class="err">— ERROR: {{ p.last_sync_error }}</span>{% else %}— OK{% endif %}
+        {% else %}
+            never synced
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <form method="get" class="inbox-toolbar">
+        <a href="{{ url_for('admin.inbox') }}" class="filter-btn {% if not filter_unread and not filter_attachments and not q %}active{% endif %}">All</a>
+        <a href="{{ url_for('admin.inbox', unread='1') }}" class="filter-btn {% if filter_unread %}active{% endif %}">Unread</a>
+        <a href="{{ url_for('admin.inbox', attachments='1') }}" class="filter-btn {% if filter_attachments %}active{% endif %}">With attachments</a>
+        <input type="search" name="q" placeholder="Search subject, sender, snippet..." value="{{ q }}">
+        <button type="submit" class="filter-btn">Search</button>
+        <button type="button" class="sync-btn" onclick="syncNow(this)">⟳ Sync now</button>
+    </form>
+
+    {% if messages.items %}
+    <div class="msg-list">
+        {% for m in messages.items %}
+        <a class="msg-row {% if not m.is_read %}unread{% endif %}" href="{{ url_for('admin.inbox_message', id=m.id) }}">
+            <span class="msg-dot"></span>
+            <span class="msg-from">
+                {{ m.from_name or m.from_address or '(no sender)' }}
+                {% if m.donor %}<span class="donor-tag">{{ m.donor.first_name }} {{ m.donor.last_name }}</span>{% endif %}
+            </span>
+            <span class="msg-subject">
+                {{ m.subject or '(no subject)' }}
+                {% if m.has_attachments %}<span class="msg-attach-icon">📎</span>{% endif %}
+                <span class="preview">— {{ m.body_preview or '' }}</span>
+            </span>
+            <span class="msg-date">{{ m.received_at.strftime('%b %d, %H:%M') if m.received_at else '' }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if messages.pages > 1 %}
+    <div class="pagination">
+        {% if messages.has_prev %}
+        <a href="{{ url_for('admin.inbox', page=messages.prev_num, unread='1' if filter_unread else None, attachments='1' if filter_attachments else None, q=q if q else None) }}">&laquo; Prev</a>
+        {% else %}<span class="disabled">&laquo; Prev</span>{% endif %}
+        <span>Page {{ messages.page }} of {{ messages.pages }}</span>
+        {% if messages.has_next %}
+        <a href="{{ url_for('admin.inbox', page=messages.next_num, unread='1' if filter_unread else None, attachments='1' if filter_attachments else None, q=q if q else None) }}">Next &raquo;</a>
+        {% else %}<span class="disabled">Next &raquo;</span>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="empty-state">
+        <h3>No messages yet</h3>
+        <p>Click <strong>⟳ Sync now</strong> above to pull mail from the configured providers.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function syncNow(btn) {
+    btn.disabled = true;
+    const original = btn.textContent;
+    btn.textContent = 'Syncing...';
+    fetch('{{ url_for("admin.inbox_sync_now") }}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            const summary = (d.results || []).map(r =>
+                r.success
+                  ? `${r.provider}: +${r.created} new, ${r.updated} updated`
+                  : `${r.provider}: ERROR ${r.error}`
+            ).join('\n');
+            alert(summary || 'No providers enabled.');
+            location.reload();
+        } else {
+            alert('Sync failed: ' + (d.error || 'unknown'));
+            btn.disabled = false;
+            btn.textContent = original;
+        }
+    })
+    .catch(err => {
+        alert('Network error: ' + err);
+        btn.disabled = false;
+        btn.textContent = original;
+    });
+}
+</script>
+{% endblock %}

@@ -515,9 +515,35 @@ def backfill_donor_owner_cmd(user_id, include_deleted, dry_run):
     click.echo(f'[OK] {updated} donors now owned by user_id={user_id}.')
 
 
+@click.command('sync-email')
+@click.option('--limit', default=500, type=int, help='Max messages per provider per run.')
+@with_appcontext
+def sync_email_cmd(limit):
+    """Pull new messages from every enabled inbox provider.
+
+    Run on a 60-second timer in production. The first run on a fresh
+    provider does a backfill (capped at `--limit` per page); subsequent
+    runs use Graph delta tokens (or the equivalent) to fetch only what's
+    new since last time.
+    """
+    from .services.email.sync import sync_all
+    results = sync_all(limit=limit)
+    if not results:
+        click.echo('No enabled inbox providers.')
+        return
+    for r in results:
+        if r.get('success'):
+            tag = 'OK '
+            extra = f' has_more={r.get("has_more")}' if r.get('has_more') else ''
+            click.echo(f'[{tag}] {r["provider"]:10s} created={r["created"]:4d} updated={r["updated"]:4d}{extra}')
+        else:
+            click.echo(f'[ERR] {r["provider"]:10s} {r.get("error")}')
+
+
 def init_app(app):
     """Register CLI commands with the app."""
     app.cli.add_command(import_donors_cmd)
     app.cli.add_command(import_donations_cmd)
     app.cli.add_command(sync_nedarim_cmd)
     app.cli.add_command(backfill_donor_owner_cmd)
+    app.cli.add_command(sync_email_cmd)

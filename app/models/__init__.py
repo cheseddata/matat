@@ -14,6 +14,9 @@ from .chat_message import ChatMessage
 from .chat_archive import ChatArchive
 from .payment_processor import PaymentProcessor
 from .payment_routing_rule import PaymentRoutingRule
+from .email_inbox_provider import EmailInboxProvider
+from .email_message import EmailMessage
+from .email_attachment import EmailAttachment
 from .donor_note import DonorNote
 from .wedding import Wedding
 
@@ -67,6 +70,9 @@ __all__ = [
     'ChatArchive',
     'PaymentProcessor',
     'PaymentRoutingRule',
+    'EmailInboxProvider',
+    'EmailMessage',
+    'EmailAttachment',
     'DonorNote',
     'Wedding',
     'Agreement',
