@@ -71,26 +71,38 @@ class MicrosoftGraphInbox(BaseInboxProvider):
         if 'error' in token_resp:
             return {'success': False, 'error': f'Auth failed: {token_resp["error"]}'}
 
+        # Probe a Mail.Read-only endpoint (one inbox message header) so
+        # we don't accidentally fail because the app lacks User.Read.All.
+        # /users/{mbx}/mailFolders/inbox/messages?$top=1 works with just
+        # Mail.Read application permission.
         headers = {'Authorization': f'Bearer {token_resp["access_token"]}'}
-        url = f'{GRAPH_BASE_URL}/users/{self._mailbox()}'
+        url = (f'{GRAPH_BASE_URL}/users/{self._mailbox()}'
+               f'/mailFolders/inbox/messages?$top=1&$select=id,subject,receivedDateTime')
         try:
             r = requests.get(url, headers=headers, timeout=15)
         except requests.exceptions.RequestException as e:
-            return {'success': False, 'error': f'Mailbox lookup network error: {e}'}
+            return {'success': False, 'error': f'Mailbox probe network error: {e}'}
 
         if r.status_code == 200:
-            u = r.json()
+            data = r.json() or {}
+            messages = data.get('value') or []
             return {
-                'success':      True,
-                'mailbox':      u.get('mail') or u.get('userPrincipalName'),
-                'display_name': u.get('displayName'),
-                'user_id':      u.get('id'),
-                'message':      'Authenticated and mailbox is reachable.',
+                'success': True,
+                'mailbox': self._mailbox(),
+                'message': f'Authenticated, Mail.Read works. Inbox has at least one message: {bool(messages)}',
+                'sample_subject': messages[0].get('subject') if messages else None,
             }
         if r.status_code == 404:
-            return {'success': False, 'error': f'Mailbox "{self._mailbox()}" not found in this tenant.'}
+            return {'success': False, 'error': f'Mailbox "{self._mailbox()}" not found in this tenant. Check the address.'}
         if r.status_code == 403:
-            return {'success': False, 'error': 'Authenticated but no permission for this mailbox. Verify Mail.Read admin consent or any Application Access Policy scoping.'}
+            try:
+                err = r.json()
+                graph_msg = err.get('error', {}).get('message', '')
+            except ValueError:
+                graph_msg = r.text[:300]
+            return {'success': False, 'error': f'Forbidden — admin consent for Mail.Read may not have propagated yet (5-15 min), or an Application Access Policy is scoping us out. Graph said: {graph_msg}'}
+        if r.status_code == 401:
+            return {'success': False, 'error': 'Token rejected — secret may be invalid or expired.'}
 
         try:
             err = r.json()
