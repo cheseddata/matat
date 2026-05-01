@@ -826,6 +826,79 @@ def activetrail_webhook():
         return jsonify({'error': str(e)}), 500
 
 
+@webhook_bp.route('/yeshinvoice/webhook', methods=['POST'])
+@csrf.exempt
+def yeshinvoice_webhook():
+    """Receive YeshInvoice document / tax-allocation callbacks.
+
+    YeshInvoice posts here twice per receipt:
+      1. document creation event (`/yesh/haesh/doc` in their config)
+      2. tax-allocation event   (`/yesh/haesh/tax` in their config)
+
+    Both bodies wrap the payload in {Success, ErrorMessage, ReturnValue}.
+    The ReturnValue carries — among other fields — `docNumber` (the
+    receipt sequence number we already store as
+    Donation.yeshinvoice_doc_number) and `lawnumber` (the הקצאה /
+    tax-authority allocation number we want to capture).
+
+    `lawnumber` is the ONLY field we can't get back any other way
+    through the public API; it's stamped after רשות המסים allocates a
+    number for the issued document and is never returned by the
+    createDocument endpoint we call.
+
+    The endpoint is unauthenticated by design — YeshInvoice does not
+    sign its webhook payloads. We rely on:
+      - the docNumber lookup (a wrong / random number simply won't
+        match a donation row), and
+      - the fact that this endpoint only ever WRITES the allocation
+        number; it can't move money or expose data.
+    """
+    import json
+    try:
+        payload = request.get_json(silent=True) or {}
+        # Some YeshInvoice events POST the body raw without JSON
+        # content-type; fall back to parsing request.data manually.
+        if not payload and request.data:
+            try:
+                payload = json.loads(request.data.decode('utf-8'))
+            except (ValueError, UnicodeDecodeError):
+                payload = {}
+
+        logger.info(f'YeshInvoice webhook received: {json.dumps(payload)[:1500]}')
+
+        rv = payload.get('ReturnValue') or payload  # support both wrapped + flat
+        doc_number = str(rv.get('docNumber') or rv.get('DocNumber') or '').strip()
+        law_number = str(
+            rv.get('lawnumber')
+            or rv.get('lawNumber')
+            or rv.get('LawNumber')
+            or rv.get('taxApprovalNumber')
+            or rv.get('TaxApprovalNumber')
+            or ''
+        ).strip()
+
+        if not doc_number:
+            logger.warning('YeshInvoice webhook had no docNumber — ignoring')
+            return jsonify({'status': 'ignored', 'reason': 'no docNumber'}), 200
+
+        donation = Donation.query.filter_by(yeshinvoice_doc_number=doc_number).first()
+        if not donation:
+            logger.warning(f'YeshInvoice webhook docNumber {doc_number} did not match any donation')
+            return jsonify({'status': 'no_match', 'docNumber': doc_number}), 200
+
+        if law_number and donation.yeshinvoice_allocation_number != law_number:
+            donation.yeshinvoice_allocation_number = law_number
+            db.session.commit()
+            logger.info(f'Stored allocation {law_number} on donation {donation.id} (docNumber {doc_number})')
+            return jsonify({'status': 'updated', 'donation_id': donation.id, 'allocation': law_number}), 200
+
+        return jsonify({'status': 'noop', 'donation_id': donation.id}), 200
+
+    except Exception as e:
+        logger.error(f'YeshInvoice webhook error: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+
 def handle_activetrail_contact_change(data):
     """Handle ActiveTrail contact change events."""
     email = data.get('email') or data.get('contact', {}).get('email')

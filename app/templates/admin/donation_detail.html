@@ -335,6 +335,14 @@
                 <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #eee;">
                     <h4 style="margin: 0 0 8px 0; font-size: 14px;">YeshInvoice (קבלה ישראלית)</h4>
                     {% if donation.yeshinvoice_doc_number and donation.yeshinvoice_pdf_url %}
+                    <div style="font-size: 13px; margin-bottom: 8px;">
+                        <div>Receipt #: <strong>{{ donation.yeshinvoice_doc_number }}</strong></div>
+                        {% if donation.yeshinvoice_allocation_number %}
+                        <div>הקצאה: <strong>{{ donation.yeshinvoice_allocation_number }}</strong></div>
+                        {% else %}
+                        <div style="color: #999; font-size: 11px;">הקצאה pending (webhook from YeshInvoice)</div>
+                        {% endif %}
+                    </div>
                     <a href="{{ url_for('admin.yeshinvoice_pdf_proxy', id=donation.id) }}" target="_blank" rel="noopener" class="btn btn-primary" style="font-size: 13px; padding: 8px 12px; background: #16a085;">
                         Open Receipt {{ donation.yeshinvoice_doc_number }} 📄
                     </a>

@@ -42,6 +42,11 @@ class Donation(db.Model):
     yeshinvoice_doc_id = db.Column(db.String(255), nullable=True)
     yeshinvoice_doc_number = db.Column(db.String(100), nullable=True)
     yeshinvoice_pdf_url = db.Column(db.String(500), nullable=True)
+    # הקצאה / law number / tax-authority approval number — populated by
+    # the YeshInvoice webhook callback after רשות המסים allocates a
+    # number for the document. NOT available in the createDocument
+    # response; only delivered via the /webhooks/yeshinvoice endpoint.
+    yeshinvoice_allocation_number = db.Column(db.String(50), nullable=True, index=True)
 
     # DAF (Donor-Advised Fund) fields
     is_daf_donation = db.Column(db.Boolean, default=False)  # True for DAF/charity card donations
