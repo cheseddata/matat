@@ -115,6 +115,31 @@
                     </div>
                 </div>
 
+                <div class="form-section">
+                    <h3>{{ t('user_profile.preferences') }}</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div class="form-group">
+                            <label>{{ t('user_profile.language') }}</label>
+                            {% set ulang = salesperson.language_pref if salesperson else 'en' %}
+                            <select name="language_pref">
+                                <option value="en" {{ 'selected' if ulang == 'en' }}>English</option>
+                                <option value="he" {{ 'selected' if ulang == 'he' }}>עברית</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ t('user_profile.date_format') }}</label>
+                            {% set udf = (salesperson.date_format if salesperson else 'auto') or 'auto' %}
+                            <select name="date_format">
+                                <option value="auto"        {{ 'selected' if udf == 'auto' }}>{{ t('date_format.auto') }}</option>
+                                <option value="mm/dd/yyyy"  {{ 'selected' if udf == 'mm/dd/yyyy' }}>{{ t('date_format.us') }}</option>
+                                <option value="dd/mm/yyyy"  {{ 'selected' if udf == 'dd/mm/yyyy' }}>{{ t('date_format.il') }}</option>
+                                <option value="yyyy-mm-dd"  {{ 'selected' if udf == 'yyyy-mm-dd' }}>{{ t('date_format.iso') }}</option>
+                            </select>
+                            <div style="font-size:11px; color:#888; margin-top:4px;">{{ t('user_profile.date_format_hint') }}</div>
+                        </div>
+                    </div>
+                </div>
+
                 {% if processors %}
                 <div class="form-section">
                     <h3>Payment Processor Access</h3>

@@ -98,6 +98,18 @@
     "save": "Save",
     "hebrew_date": "Hebrew Date"
   },
+  "user_profile": {
+    "preferences": "Display Preferences",
+    "language": "Interface language",
+    "date_format": "Date format",
+    "date_format_hint": "How dates appear on every page (donations, receipts, reports). \"Auto\" follows the interface language."
+  },
+  "date_format": {
+    "auto": "Auto (follow language)",
+    "us": "MM/DD/YYYY (US)",
+    "il": "DD/MM/YYYY (Israel / Europe)",
+    "iso": "YYYY-MM-DD (ISO)"
+  },
   "donation_permissions": {
     "title": "Donation Permissions",
     "intro": "Tick \"View all\" to let a salesperson see the entire /admin/donations list (not just their own donations). Optionally restrict which processor tabs they see by ticking specific processors — leaving every box unchecked means \"all processors\".",

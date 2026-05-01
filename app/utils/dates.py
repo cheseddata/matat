@@ -6,25 +6,55 @@ injected by `app.utils.i18n.inject_i18n`.
 from datetime import date, datetime
 
 
-def format_date_locale(d, lang='en', with_time=False):
-    """Format a date/datetime per locale convention.
+# Map of stored preference values → strftime patterns. The keys are
+# what gets persisted to User.date_format / what the salesperson form
+# sends; the values are the actual format strings.
+_DATE_PATTERNS = {
+    'mm/dd/yyyy': '%m/%d/%Y',   # US
+    'dd/mm/yyyy': '%d/%m/%Y',   # Israeli / European
+    'yyyy-mm-dd': '%Y-%m-%d',   # ISO
+    'mm-dd-yyyy': '%m-%d-%Y',
+    'dd-mm-yyyy': '%d-%m-%Y',
+}
 
-    - English (and anything non-Hebrew): MM/DD/YYYY (US convention)
-    - Hebrew: DD/MM/YYYY (Israeli convention)
+
+def _resolve_pattern(user_format, lang):
+    """Pick a strftime pattern: explicit user preference wins; 'auto' or
+    unknown values fall back to the language-based default (US for
+    English, Israeli for Hebrew)."""
+    pat = _DATE_PATTERNS.get((user_format or '').lower())
+    if pat:
+        return pat
+    return '%d/%m/%Y' if (lang or 'en').lower() == 'he' else '%m/%d/%Y'
+
+
+def format_date_locale(d, lang='en', with_time=False, user_format='auto'):
+    """Format a date/datetime per user preference, falling back to locale.
+
+    Resolution order:
+      1. Explicit user_format ('mm/dd/yyyy' / 'dd/mm/yyyy' / 'yyyy-mm-dd'…)
+      2. lang ('he' → DD/MM/YYYY, else MM/DD/YYYY)
 
     Returns empty string for None/falsy inputs.
     """
     if not d:
         return ''
+    pattern = _resolve_pattern(user_format, lang)
     if isinstance(d, datetime):
-        if (lang or 'en').lower() == 'he':
-            return d.strftime('%d/%m/%Y %H:%M') if with_time else d.strftime('%d/%m/%Y')
-        return d.strftime('%m/%d/%Y %H:%M') if with_time else d.strftime('%m/%d/%Y')
+        return d.strftime(pattern + (' %H:%M' if with_time else ''))
     if isinstance(d, date):
-        if (lang or 'en').lower() == 'he':
-            return d.strftime('%d/%m/%Y')
-        return d.strftime('%m/%d/%Y')
+        return d.strftime(pattern)
     return str(d)
+
+
+# Public list for the salesperson form's dropdown — order matters
+# (most-common first). Each entry: (stored_value, display_label_key).
+DATE_FORMAT_CHOICES = [
+    ('auto',        'date_format.auto'),
+    ('mm/dd/yyyy',  'date_format.us'),
+    ('dd/mm/yyyy',  'date_format.il'),
+    ('yyyy-mm-dd',  'date_format.iso'),
+]
 
 
 def hebrew_date_str(d):

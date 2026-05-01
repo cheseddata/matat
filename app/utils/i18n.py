@@ -157,11 +157,22 @@ def init_i18n(app):
 
         # Locale-aware date helpers + Hebrew-calendar conversion. Bound
         # late so the lang variable is captured per-request.
+        # Per-user date-format preference (explicit setting wins over
+        # the lang-based default). Falls back to 'auto' for anonymous /
+        # logged-out requests.
         from .dates import format_date_locale, hebrew_date_str
+        try:
+            from flask_login import current_user
+            user_date_fmt = (getattr(current_user, 'date_format', None)
+                             if current_user.is_authenticated else None) or 'auto'
+        except Exception:
+            user_date_fmt = 'auto'
         def _fmt_date(d, with_time=False):
-            return format_date_locale(d, lang=lang, with_time=with_time)
+            return format_date_locale(d, lang=lang, with_time=with_time,
+                                      user_format=user_date_fmt)
         def _fmt_datetime(d):
-            return format_date_locale(d, lang=lang, with_time=True)
+            return format_date_locale(d, lang=lang, with_time=True,
+                                      user_format=user_date_fmt)
 
         return {
             't': t,

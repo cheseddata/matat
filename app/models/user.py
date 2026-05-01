@@ -22,6 +22,11 @@ class User(UserMixin, db.Model):
     commission_rate = db.Column(db.Numeric(10, 2), nullable=True)
     commission_tiers = db.Column(db.JSON, nullable=True)  # For tiered rates
     language_pref = db.Column(db.String(5), default='en')  # en/he
+    # Per-user date format preference. 'auto' → follow language_pref
+    # (US-style for English, Israeli for Hebrew). Explicit values stored
+    # as their literal strftime patterns so the helper can use them
+    # directly: 'mm/dd/yyyy', 'dd/mm/yyyy', 'yyyy-mm-dd'.
+    date_format = db.Column(db.String(20), default='auto', nullable=False, server_default='auto')
     active = db.Column(db.Boolean, default=True)
     # Processor permission: null/empty = all processors allowed; else list of processor codes
     allowed_processors = db.Column(MutableList.as_mutable(db.JSON), nullable=True)

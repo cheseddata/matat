@@ -298,6 +298,8 @@ def create_salesperson():
             commission_type=commission_type if commission_type else None,
             commission_rate=Decimal(commission_rate) if commission_rate else None,
             allowed_processors=request.form.getlist('allowed_processors') or None,
+            language_pref=(request.form.get('language_pref') or 'en').strip().lower(),
+            date_format=(request.form.get('date_format') or 'auto').strip().lower(),
             active=True
         )
         db.session.add(user)
@@ -334,6 +336,10 @@ def edit_salesperson(id):
         salesperson.commission_type = commission_type if commission_type else None
         salesperson.commission_rate = Decimal(commission_rate) if commission_rate else None
         salesperson.allowed_processors = request.form.getlist('allowed_processors') or None
+        if request.form.get('language_pref'):
+            salesperson.language_pref = request.form.get('language_pref').strip().lower()
+        if request.form.get('date_format'):
+            salesperson.date_format = request.form.get('date_format').strip().lower()
 
         db.session.commit()
         flash('Salesperson updated successfully.', 'success')
