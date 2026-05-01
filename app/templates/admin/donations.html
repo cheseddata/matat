@@ -307,30 +307,22 @@
     </div>
     {% endif %}
 
-    {# Charity tab strip — distinct fund/Groupe values. Horizontally
-       scrollable when there are more tabs than the row width. Each tab
-       links back to /admin/donations preserving the active status +
-       processor filters. #}
-    {% if charity_rows or untagged_count %}
-    <div class="filters charity-strip" style="overflow-x: auto; flex-wrap: nowrap; white-space: nowrap; gap: 6px;">
+    {# Charity tab strip — only renders when the user has opted in to
+       specific charities via /admin/donation-permissions. Empty list =
+       no strip (default). Donations that match each chosen charity show
+       as a single-click filter; everything else stays in the table
+       column below. #}
+    {% if charity_rows %}
+    <div class="filters charity-strip" style="flex-wrap: wrap; gap: 6px;">
         <a href="{{ url_for('admin.donations', status=status_filter, processor=processor_filter, charity='all') }}"
-           class="filter-btn {{ 'active' if charity_filter == 'all' else '' }}"
-           title="All charities / funds">{{ t('common.all') }}</a>
+           class="filter-btn {{ 'active' if charity_filter == 'all' else '' }}">{{ t('common.all') }}</a>
         {% for name, n in charity_rows %}
         <a href="{{ url_for('admin.donations', status=status_filter, processor=processor_filter, charity=name) }}"
            class="filter-btn {{ 'active' if charity_filter == name else '' }}"
-           title="{{ name }} ({{ n }})"
-           style="max-width: 260px; overflow: hidden; text-overflow: ellipsis;">
+           title="{{ name }} ({{ n }})">
             {{ name }} <span style="opacity:.6; font-weight:400;">({{ n }})</span>
         </a>
         {% endfor %}
-        {% if untagged_count %}
-        <a href="{{ url_for('admin.donations', status=status_filter, processor=processor_filter, charity='untagged') }}"
-           class="filter-btn {{ 'active' if charity_filter == 'untagged' else '' }}"
-           title="Donations with no charity tag">
-           {{ t('common.untagged') }} <span style="opacity:.6; font-weight:400;">({{ untagged_count }})</span>
-        </a>
-        {% endif %}
     </div>
     {% endif %}
 
@@ -340,6 +332,7 @@
             <tr>
                 <th>{{ t('common.date') }}</th>
                 <th>{{ t('my_links.donor') }}</th>
+                <th>{{ t('common.campaign') }}</th>
                 <th>{{ t('common.amount') }}</th>
                 <th>{{ t('common.processor') }}</th>
                 <th>{{ t('common.type') }}</th>
@@ -359,6 +352,13 @@
                     <br><span style="font-size: 12px; color: #666;">{{ donation.donor.email }}</span>
                     {% else %}
                     <span style="color: #999;">{{ t('common.unknown') }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if donation.charity %}
+                    <span style="font-size: 12px; color: #555;" dir="auto">{{ donation.charity }}</span>
+                    {% else %}
+                    <span style="color: #ccc;">—</span>
                     {% endif %}
                 </td>
                 <td>

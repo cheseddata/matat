@@ -42,11 +42,14 @@
             <table class="perms-table">
                 <thead>
                     <tr>
-                        <th style="width: 24%;">User</th>
-                        <th style="width: 9%;">Role</th>
-                        <th style="width: 11%; text-align: center;">View<br>all donations</th>
-                        <th>Processor tabs visible<br>
+                        <th style="width: 18%;">User</th>
+                        <th style="width: 8%;">Role</th>
+                        <th style="width: 10%; text-align: center;">View<br>all donations</th>
+                        <th style="width: 28%;">Processor tabs visible<br>
                             <span style="font-weight: 400; color:#888; font-size: 11px;">(none ticked = all)</span>
+                        </th>
+                        <th>Charity tabs visible / שם קמפיין<br>
+                            <span style="font-weight: 400; color:#888; font-size: 11px;">(none ticked = no charity strip)</span>
                         </th>
                     </tr>
                 </thead>
@@ -55,6 +58,7 @@
                     {% set is_admin = u.role == 'admin' %}
                     {% set view_all = is_admin or u.can_view_all_donations %}
                     {% set allowed = u.allowed_processors or [] %}
+                    {% set vis_charities = u.visible_charities or [] %}
                     <tr>
                         <td>
                             <strong>{{ u.full_name }}</strong>
@@ -76,6 +80,17 @@
                                     <input type="checkbox" name="processors_{{ u.id }}" value="{{ p.code }}"
                                            {{ 'checked' if p.code in allowed else '' }}>
                                     {{ p.name }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td>
+                            <div class="proc-grid" style="max-height: 220px; overflow-y: auto;">
+                                {% for c in charity_options %}
+                                <label dir="auto" style="display: block; margin: 2px 0;">
+                                    <input type="checkbox" name="charities_{{ u.id }}" value="{{ c }}"
+                                           {{ 'checked' if c in vis_charities else '' }}>
+                                    {{ c }}
                                 </label>
                                 {% endfor %}
                             </div>

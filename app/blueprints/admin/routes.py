@@ -1361,20 +1361,26 @@ def donations():
     elif charity != 'all':
         query = query.filter(Donation.charity == charity)
 
-    # Distinct charity list for the tab strip — sorted by row count desc
-    # so the highest-volume tabs come first.
-    from sqlalchemy import func as _f
-    charity_rows = (db.session.query(Donation.charity, _f.count(Donation.id))
-                    .filter(Donation.deleted_at.is_(None),
-                            Donation.charity.isnot(None),
-                            Donation.charity != '')
-                    .group_by(Donation.charity)
-                    .order_by(_f.count(Donation.id).desc())
-                    .all())
-    untagged_count = (Donation.query
-                      .filter(Donation.deleted_at.is_(None),
-                              (Donation.charity.is_(None)) | (Donation.charity == ''))
-                      .count())
+    # Charity tabs — only the ones the current user explicitly opted into
+    # via /admin/donation-permissions are surfaced as tabs. By default
+    # users have visible_charities=NULL → no charity strip rendered (just
+    # the underlying table column). Keeps the page clean for users who
+    # don't track charities (e.g., Gittle is stripe-only and doesn't
+    # work with Nedarim campaigns at all).
+    user_visible = list(current_user.visible_charities or [])
+    if user_visible:
+        from sqlalchemy import func as _f
+        rows = (db.session.query(Donation.charity, _f.count(Donation.id))
+                .filter(Donation.deleted_at.is_(None),
+                        Donation.charity.in_(user_visible))
+                .group_by(Donation.charity).all())
+        counts = {c: n for c, n in rows}
+        # Preserve the operator's chosen ordering even when a tab has 0
+        # rows so far.
+        charity_rows = [(c, counts.get(c, 0)) for c in user_visible]
+    else:
+        charity_rows = []
+    untagged_count = 0  # untagged tab removed with the auto-strip
 
     donations = query.order_by(Donation.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
@@ -2040,14 +2046,28 @@ def donation_permissions():
              .order_by(User.role.desc(), User.username)
              .all())
 
+    # Distinct charities currently in the donations table — used to
+    # populate the per-user charity-tab checkbox group.
+    from sqlalchemy import func as _f
+    charity_options = [c for (c,) in (db.session.query(Donation.charity)
+                                       .filter(Donation.deleted_at.is_(None),
+                                               Donation.charity.isnot(None),
+                                               Donation.charity != '')
+                                       .group_by(Donation.charity)
+                                       .order_by(_f.count(Donation.id).desc())
+                                       .all())]
+
     if request.method == 'POST':
         view_all_ids = set(int(x) for x in request.form.getlist('view_all_user_id') if x.isdigit())
         for u in users:
-            if u.role == 'admin':
-                continue  # admin always sees everything
-            u.can_view_all_donations = (u.id in view_all_ids)
-            allowed = request.form.getlist(f'processors_{u.id}')
-            u.allowed_processors = allowed or None
+            if u.role != 'admin':
+                u.can_view_all_donations = (u.id in view_all_ids)
+                allowed = request.form.getlist(f'processors_{u.id}')
+                u.allowed_processors = allowed or None
+            # Charity tabs apply to everyone (including admins) since
+            # this is a personal display preference, not a permission.
+            chars = request.form.getlist(f'charities_{u.id}')
+            u.visible_charities = chars or None
         db.session.commit()
         flash('Donation permissions updated.', 'success')
         return redirect(url_for('admin.donation_permissions'))
@@ -2056,6 +2076,7 @@ def donation_permissions():
         'admin/donation_permissions.html',
         users=users,
         processors=processors,
+        charity_options=charity_options,
     )
 
 

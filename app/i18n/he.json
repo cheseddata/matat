@@ -91,7 +91,8 @@
     "one_time": "חד פעמי",
     "recurring": "חוזר",
     "none_dash": "— ללא —",
-    "untagged": "(ללא תיוג)"
+    "untagged": "(ללא תיוג)",
+    "campaign": "שם קמפיין"
   },
   "processor": {
     "stripe": "Stripe",

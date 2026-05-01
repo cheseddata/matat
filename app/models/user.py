@@ -28,6 +28,11 @@ class User(UserMixin, db.Model):
     # When True a salesperson sees the full /admin/donations list (not just their own).
     # Admins are always treated as True regardless of this flag.
     can_view_all_donations = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+    # Charity tabs the user wants surfaced on /admin/donations as quick
+    # filter buttons. Empty / null = no charity tab strip rendered (the
+    # default — keeps the page clean for users who don't track charities).
+    # Operator picks which charities to show via /admin/donation-permissions.
+    visible_charities = db.Column(MutableList.as_mutable(db.JSON), nullable=True)
     deleted_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     claude_notes = db.Column(db.Text, nullable=True)  # Context for Claude about this user
