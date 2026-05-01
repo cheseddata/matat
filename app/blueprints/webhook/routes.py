@@ -826,38 +826,50 @@ def activetrail_webhook():
         return jsonify({'error': str(e)}), 500
 
 
-@webhook_bp.route('/yeshinvoice/webhook', methods=['POST'])
-@csrf.exempt
-def yeshinvoice_webhook():
-    """Receive YeshInvoice document / tax-allocation callbacks.
+def _forward_to_swiftech(target_url, payload, original_body):
+    """Best-effort fan-out to the legacy Swiftech endpoint.
 
-    YeshInvoice posts here twice per receipt:
-      1. document creation event (`/yesh/haesh/doc` in their config)
-      2. tax-allocation event   (`/yesh/haesh/tax` in their config)
+    Forwards the YeshInvoice webhook payload onward so the legacy
+    seq.swiftech.co.il consumer keeps receiving events after we
+    take over the primary webhook URL on YeshInvoice's side.
 
-    Both bodies wrap the payload in {Success, ErrorMessage, ReturnValue}.
-    The ReturnValue carries — among other fields — `docNumber` (the
-    receipt sequence number we already store as
-    Donation.yeshinvoice_doc_number) and `lawnumber` (the הקצאה /
-    tax-authority allocation number we want to capture).
+    Failures are logged but never propagated — Matat's donation update
+    succeeds first; the forward is purely additive logging for the
+    legacy system. Short timeout so a slow Swiftech can't make us
+    return 200 to YeshInvoice late (which would trigger their retry).
+    """
+    import requests
+    try:
+        r = requests.post(target_url, data=original_body,
+                          headers={'Content-Type': 'application/json'},
+                          timeout=5)
+        logger.info(f'Forwarded YeshInvoice webhook to {target_url}: status={r.status_code}')
+    except Exception as e:
+        logger.warning(f'YeshInvoice webhook forward to {target_url} failed: {e}')
 
-    `lawnumber` is the ONLY field we can't get back any other way
-    through the public API; it's stamped after רשות המסים allocates a
-    number for the issued document and is never returned by the
-    createDocument endpoint we call.
 
-    The endpoint is unauthenticated by design — YeshInvoice does not
-    sign its webhook payloads. We rely on:
-      - the docNumber lookup (a wrong / random number simply won't
-        match a donation row), and
-      - the fact that this endpoint only ever WRITES the allocation
-        number; it can't move money or expose data.
+def _handle_yeshinvoice_webhook(forward_url=None):
+    """Shared handler for both YeshInvoice webhook event paths.
+
+    YeshInvoice posts twice per receipt — once for document creation
+    and once for tax allocation. Both bodies share the same envelope
+    ({Success, ErrorMessage, ReturnValue}); the routing path is the
+    only event-type signal.
+
+    The ReturnValue carries `docNumber` (already stored on the
+    donation as yeshinvoice_doc_number) and `lawnumber` (the
+    הקצאה / tax-authority allocation number — the only field that's
+    not retrievable through any other API call we have).
+
+    Unauthenticated by design (YeshInvoice does not sign payloads).
+    Mitigated by:
+      - docNumber lookup — a random number simply won't match anything
+      - this endpoint's only mutation is setting allocation_number;
+        it can't move money or expose data
     """
     import json
     try:
         payload = request.get_json(silent=True) or {}
-        # Some YeshInvoice events POST the body raw without JSON
-        # content-type; fall back to parsing request.data manually.
         if not payload and request.data:
             try:
                 payload = json.loads(request.data.decode('utf-8'))
@@ -866,7 +878,7 @@ def yeshinvoice_webhook():
 
         logger.info(f'YeshInvoice webhook received: {json.dumps(payload)[:1500]}')
 
-        rv = payload.get('ReturnValue') or payload  # support both wrapped + flat
+        rv = payload.get('ReturnValue') or payload  # support wrapped + flat
         doc_number = str(rv.get('docNumber') or rv.get('DocNumber') or '').strip()
         law_number = str(
             rv.get('lawnumber')
@@ -877,26 +889,60 @@ def yeshinvoice_webhook():
             or ''
         ).strip()
 
-        if not doc_number:
-            logger.warning('YeshInvoice webhook had no docNumber — ignoring')
-            return jsonify({'status': 'ignored', 'reason': 'no docNumber'}), 200
+        if doc_number:
+            donation = Donation.query.filter_by(yeshinvoice_doc_number=doc_number).first()
+            if donation and law_number and donation.yeshinvoice_allocation_number != law_number:
+                donation.yeshinvoice_allocation_number = law_number
+                db.session.commit()
+                logger.info(f'Stored allocation {law_number} on donation {donation.id} (docNumber {doc_number})')
+            elif not donation:
+                logger.warning(f'YeshInvoice webhook docNumber {doc_number} did not match any donation')
+        else:
+            logger.warning('YeshInvoice webhook had no docNumber — DB update skipped')
 
-        donation = Donation.query.filter_by(yeshinvoice_doc_number=doc_number).first()
-        if not donation:
-            logger.warning(f'YeshInvoice webhook docNumber {doc_number} did not match any donation')
-            return jsonify({'status': 'no_match', 'docNumber': doc_number}), 200
+        # Fan-out to legacy Swiftech consumer (Option B in the migration plan).
+        if forward_url:
+            _forward_to_swiftech(forward_url, payload, request.data or json.dumps(payload).encode('utf-8'))
 
-        if law_number and donation.yeshinvoice_allocation_number != law_number:
-            donation.yeshinvoice_allocation_number = law_number
-            db.session.commit()
-            logger.info(f'Stored allocation {law_number} on donation {donation.id} (docNumber {doc_number})')
-            return jsonify({'status': 'updated', 'donation_id': donation.id, 'allocation': law_number}), 200
-
-        return jsonify({'status': 'noop', 'donation_id': donation.id}), 200
+        return jsonify({'status': 'ok'}), 200
 
     except Exception as e:
         logger.error(f'YeshInvoice webhook error: {str(e)}')
         return jsonify({'error': str(e)}), 500
+
+
+@webhook_bp.route('/yeshinvoice/webhook/doc', methods=['POST'])
+@csrf.exempt
+def yeshinvoice_webhook_doc():
+    """YeshInvoice 'יצירת מסמך' (document-creation) callback.
+
+    Register at: https://matatmordechai.org/api/yeshinvoice/webhook/doc
+    Forwards a copy to the legacy seq.swiftech.co.il/yesh/mm/doc URL.
+    """
+    return _handle_yeshinvoice_webhook(forward_url='https://seq.swiftech.co.il/yesh/mm/doc')
+
+
+@webhook_bp.route('/yeshinvoice/webhook/tax', methods=['POST'])
+@csrf.exempt
+def yeshinvoice_webhook_tax():
+    """YeshInvoice 'התראה על קבלת הקצאה' (tax-allocation) callback.
+
+    Register at: https://matatmordechai.org/api/yeshinvoice/webhook/tax
+    Forwards a copy to the legacy seq.swiftech.co.il/yesh/mm/tax URL.
+    This is the event that carries the הקצאה (allocation) number we
+    store on the donation.
+    """
+    return _handle_yeshinvoice_webhook(forward_url='https://seq.swiftech.co.il/yesh/mm/tax')
+
+
+@webhook_bp.route('/yeshinvoice/webhook', methods=['POST'])
+@csrf.exempt
+def yeshinvoice_webhook():
+    """Generic YeshInvoice webhook (no fan-out forward).
+
+    Useful for testing or for accounts where we own the only consumer.
+    """
+    return _handle_yeshinvoice_webhook(forward_url=None)
 
 
 def handle_activetrail_contact_change(data):
