@@ -47,6 +47,12 @@ class Donation(db.Model):
     # number for the document. NOT available in the createDocument
     # response; only delivered via the /webhooks/yeshinvoice endpoint.
     yeshinvoice_allocation_number = db.Column(db.String(50), nullable=True, index=True)
+    # Full webhook payload — every field YeshInvoice sent us about this
+    # receipt (customer contact, line items, payments breakdown, fields[],
+    # etc.). Powers the custom invoice template — when we render our
+    # own PDF instead of YeshInvoice's, we read everything from here so
+    # we don't need extra API calls and can re-render any time.
+    yeshinvoice_webhook_data = db.Column(db.JSON, nullable=True)
 
     # DAF (Donor-Advised Fund) fields
     is_daf_donation = db.Column(db.Boolean, default=False)  # True for DAF/charity card donations

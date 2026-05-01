@@ -891,11 +891,21 @@ def _handle_yeshinvoice_webhook(forward_url=None):
 
         if doc_number:
             donation = Donation.query.filter_by(yeshinvoice_doc_number=doc_number).first()
-            if donation and law_number and donation.yeshinvoice_allocation_number != law_number:
-                donation.yeshinvoice_allocation_number = law_number
+            if donation:
+                # Merge the new payload into whatever's already stored —
+                # /doc and /tax events carry overlapping data; later
+                # writes win on field conflicts so the most recent
+                # snapshot is what gets rendered on our own invoice.
+                merged = dict(donation.yeshinvoice_webhook_data or {})
+                merged.update(rv)
+                donation.yeshinvoice_webhook_data = merged
+
+                if law_number and donation.yeshinvoice_allocation_number != law_number:
+                    donation.yeshinvoice_allocation_number = law_number
+                    logger.info(f'Stored allocation {law_number} on donation {donation.id} (docNumber {doc_number})')
+
                 db.session.commit()
-                logger.info(f'Stored allocation {law_number} on donation {donation.id} (docNumber {doc_number})')
-            elif not donation:
+            else:
                 logger.warning(f'YeshInvoice webhook docNumber {doc_number} did not match any donation')
         else:
             logger.warning('YeshInvoice webhook had no docNumber — DB update skipped')
