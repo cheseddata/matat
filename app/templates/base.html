@@ -176,9 +176,9 @@
                 <span class="nav-link">{{ t('nav.settings') }} <span class="arrow">&#9662;</span></span>
                 <div class="dropdown-menu">
                     <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
-                    <a href="{{ url_for('admin.payment_processors') }}">Payment Processors</a>
-                    <a href="{{ url_for('admin.donation_permissions') }}">Donation Permissions</a>
-                    <a href="{{ url_for('admin.email_templates') }}">Email Templates</a>
+                    <a href="{{ url_for('admin.payment_processors') }}">{{ t('nav.payment_processors') }}</a>
+                    <a href="{{ url_for('admin.donation_permissions') }}">{{ t('nav.donation_permissions') }}</a>
+                    <a href="{{ url_for('admin.email_templates') }}">{{ t('nav.email_templates') }}</a>
                     <div class="menu-divider"></div>
                     <a href="{{ url_for('admin.screenshots') }}">Screenshots</a>
                     <a href="{{ url_for('claude.chat_admin') }}">User Chats</a>

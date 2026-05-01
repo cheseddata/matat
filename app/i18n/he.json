@@ -92,7 +92,26 @@
     "recurring": "חוזר",
     "none_dash": "— ללא —",
     "untagged": "(ללא תיוג)",
-    "campaign": "שם קמפיין"
+    "campaign": "שם קמפיין",
+    "user": "משתמש",
+    "role": "תפקיד",
+    "save": "שמור"
+  },
+  "donation_permissions": {
+    "title": "הרשאות תרומות",
+    "intro": "סמן \"צפה בהכל\" כדי לאפשר לאיש מכירות לראות את כל רשימת התרומות (/admin/donations) ולא רק את שלו. ניתן להגביל אילו לשוניות מעבדים יראה על ידי סימון מעבדים מסוימים — אם לא מסומן כלום, יראה את כל המעבדים.",
+    "view_all_donations": "צפה בכל\nהתרומות",
+    "processor_tabs_visible": "לשוניות מעבדים",
+    "processor_tabs_hint": "(ללא סימון = הכל)",
+    "charity_tabs_visible": "לשוניות קמפיינים",
+    "charity_tabs_hint": "(ללא סימון = אין שורת קמפיינים)",
+    "admin_always_all_title": "מנהלים תמיד רואים את כל התרומות.",
+    "save_btn": "שמור הרשאות",
+    "back_btn": "חזרה לתרומות",
+    "footer_note": "למנהלים תמיד יש גישה מלאה — השורה שלהם מוצגת לשקיפות בלבד. שינויים מתעדכנים מיד בטעינת הדף הבאה של המשתמש (אין צורך להתנתק).",
+    "role_admin": "מנהל",
+    "role_salesperson": "איש מכירות",
+    "role_gemach_user": "משתמש גמ\"ח"
   },
   "processor": {
     "stripe": "Stripe",
@@ -135,7 +154,10 @@
     "reports": "דוחות",
     "receipts": "קבלות",
     "switch_to_hebrew": "עברית",
-    "switch_to_english": "English"
+    "switch_to_english": "English",
+    "payment_processors": "מעבדי תשלום",
+    "donation_permissions": "הרשאות תרומות",
+    "email_templates": "תבניות אימייל"
   },
   "dashboard": {
     "title": "לוח בקרה",

@@ -92,7 +92,26 @@
     "recurring": "Recurring",
     "none_dash": "— None —",
     "untagged": "(untagged)",
-    "campaign": "Campaign"
+    "campaign": "Campaign",
+    "user": "User",
+    "role": "Role",
+    "save": "Save"
+  },
+  "donation_permissions": {
+    "title": "Donation Permissions",
+    "intro": "Tick \"View all\" to let a salesperson see the entire /admin/donations list (not just their own donations). Optionally restrict which processor tabs they see by ticking specific processors — leaving every box unchecked means \"all processors\".",
+    "view_all_donations": "View all donations",
+    "processor_tabs_visible": "Processor tabs visible",
+    "processor_tabs_hint": "(none ticked = all)",
+    "charity_tabs_visible": "Charity tabs visible",
+    "charity_tabs_hint": "(none ticked = no charity strip)",
+    "admin_always_all_title": "Admins always see all donations.",
+    "save_btn": "Save permissions",
+    "back_btn": "Back to Donations",
+    "footer_note": "Admins always have full access — their row is shown for transparency only. Per-user changes take effect immediately on the user's next page load (no need for them to log out).",
+    "role_admin": "Admin",
+    "role_salesperson": "Salesperson",
+    "role_gemach_user": "Gemach User"
   },
   "processor": {
     "stripe": "Stripe",
@@ -135,7 +154,10 @@
     "reports": "Reports",
     "receipts": "Receipts",
     "switch_to_hebrew": "עברית",
-    "switch_to_english": "English"
+    "switch_to_english": "English",
+    "payment_processors": "Payment Processors",
+    "donation_permissions": "Donation Permissions",
+    "email_templates": "Email Templates"
   },
   "dashboard": {
     "title": "Dashboard",
