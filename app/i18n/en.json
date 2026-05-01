@@ -95,7 +95,8 @@
     "campaign": "Campaign",
     "user": "User",
     "role": "Role",
-    "save": "Save"
+    "save": "Save",
+    "hebrew_date": "Hebrew Date"
   },
   "donation_permissions": {
     "title": "Donation Permissions",

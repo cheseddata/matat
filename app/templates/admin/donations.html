@@ -331,6 +331,7 @@
         <thead>
             <tr>
                 <th>{{ t('common.date') }}</th>
+                {% if lang == 'he' %}<th style="font-size:11px; color:#666; white-space:nowrap;">{{ t('common.hebrew_date') }}</th>{% endif %}
                 <th>{{ t('my_links.donor') }}</th>
                 <th>{{ t('common.campaign') }}</th>
                 <th>{{ t('common.amount') }}</th>
@@ -345,7 +346,8 @@
         <tbody>
             {% for donation in donations.items %}
             <tr>
-                <td>{{ donation.created_at.strftime('%m/%d/%Y %H:%M') }}</td>
+                <td>{{ format_datetime(donation.created_at) }}</td>
+                {% if lang == 'he' %}<td style="font-size:11px; color:#444; white-space:nowrap; direction:rtl;">{{ hebrew_date(donation.created_at) }}</td>{% endif %}
                 <td>
                     {% if donation.donor %}
                     <strong>{{ donation.donor.full_name }}</strong>

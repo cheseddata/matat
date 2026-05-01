@@ -22,3 +22,5 @@ openpyxl==3.*
 # Reads password-protected Access MDBs for the ZTorm sync.
 access-parser==0.0.*
 num2words
+# Hebrew-calendar conversion for the Hebrew-date column on donation lists.
+pyluach==2.*

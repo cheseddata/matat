@@ -155,6 +155,14 @@ def init_i18n(app):
         except Exception:
             nav_processors = []
 
+        # Locale-aware date helpers + Hebrew-calendar conversion. Bound
+        # late so the lang variable is captured per-request.
+        from .dates import format_date_locale, hebrew_date_str
+        def _fmt_date(d, with_time=False):
+            return format_date_locale(d, lang=lang, with_time=with_time)
+        def _fmt_datetime(d):
+            return format_date_locale(d, lang=lang, with_time=True)
+
         return {
             't': t,
             'lang': lang,
@@ -162,4 +170,7 @@ def init_i18n(app):
             'text_dir': 'rtl' if is_rtl(lang) else 'ltr',
             'sandbox_mode': sbx,
             'nav_processors': nav_processors,
+            'format_date': _fmt_date,
+            'format_datetime': _fmt_datetime,
+            'hebrew_date': hebrew_date_str,
         }

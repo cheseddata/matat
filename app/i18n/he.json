@@ -95,7 +95,8 @@
     "campaign": "שם קמפיין",
     "user": "משתמש",
     "role": "תפקיד",
-    "save": "שמור"
+    "save": "שמור",
+    "hebrew_date": "תאריך עברי"
   },
   "donation_permissions": {
     "title": "הרשאות תרומות",
