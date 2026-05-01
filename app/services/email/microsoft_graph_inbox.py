@@ -288,9 +288,14 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             return {'success': False, 'error': token_resp['error'], 'attachments': []}
 
         headers = {'Authorization': f'Bearer {token_resp["access_token"]}'}
+        # NB: $select can't include `contentId` on the base attachment
+        # type (it only exists on the fileAttachment subtype). The
+        # field still comes back in the default response when present;
+        # it's just not selectable. We grab everything and pick what
+        # we care about.
         url = (f'{GRAPH_BASE_URL}/users/{self._mailbox()}'
                f'/messages/{message_remote_id}/attachments'
-               f'?$select=id,name,contentType,size,isInline,contentId')
+               f'?$select=id,name,contentType,size,isInline')
         try:
             r = requests.get(url, headers=headers, timeout=30)
         except requests.exceptions.RequestException as e:
