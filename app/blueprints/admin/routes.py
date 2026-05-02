@@ -3622,7 +3622,7 @@ def inbox():
             EmailMessage.body_preview.ilike(like),
         ))
 
-    pagination = query.order_by(EmailMessage.received_at.desc().nullslast()).paginate(
+    pagination = query.order_by(EmailMessage.received_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
 

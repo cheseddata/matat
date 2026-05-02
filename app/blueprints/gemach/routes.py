@@ -102,7 +102,7 @@ def member_detail(member_id):
     tab = request.args.get('tab', '1')  # Access-style: 1/2/3/4/5
 
     # Tab 3 (הו״ק): loans grid
-    loans = member.loans.order_by(GemachLoan.start_date.desc().nullslast()).all()
+    loans = member.loans.order_by(GemachLoan.start_date.desc()).all()
 
     # Tab 4 (תנועות): general transactions, oldest first within the last 200
     transactions = list(reversed(
@@ -191,7 +191,7 @@ def loans():
             GemachLoan.gmach_num_hork == digits,
             GemachLoan.account_number.ilike(pat),
         ))
-    q = q.order_by(GemachLoan.start_date.desc().nullslast())
+    q = q.order_by(GemachLoan.start_date.desc())
 
     paged = q.paginate(page=page, per_page=50)
     institutions = GemachInstitution.query.order_by(GemachInstitution.name).all()

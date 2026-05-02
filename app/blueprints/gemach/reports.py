@@ -73,7 +73,7 @@ def report_loans():
         q = q.filter(GemachLoan.status == status)
     if institution_id:
         q = q.filter(GemachLoan.institution_id == institution_id)
-    q = q.order_by(GemachLoan.start_date.desc().nullslast())
+    q = q.order_by(GemachLoan.start_date.desc())
     loans = q.all()
 
     status_label = {'p': 'פעיל', 's': 'הושלם', 'b': 'בוטל', '': 'הכל'}.get(status, status)
@@ -512,7 +512,9 @@ def masav_prep():
     """
     # Pick active loans whose charge_day falls in the next 30 days.
     due_loans = GemachLoan.query.filter_by(status='p').order_by(
-        GemachLoan.charge_day.nullslast()).limit(500).all()
+        GemachLoan.charge_day.is_(None).asc(),
+        GemachLoan.charge_day.asc(),
+    ).limit(500).all()
 
     if request.method == 'POST':
         # Build the batch
