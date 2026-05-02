@@ -45,6 +45,13 @@ class EmailMessage(db.Model):
     importance = db.Column(db.String(20), nullable=True)           # 'low'|'normal'|'high'
     has_attachments = db.Column(db.Boolean, default=False)
 
+    # Folder placement on the upstream mailbox (Inbox / Sent Items / a
+    # custom folder like "Donations"). parent_folder_id is the
+    # backend's stable id; folder_name is the display name resolved
+    # from a separate folder lookup at sync time.
+    parent_folder_id = db.Column(db.String(500), nullable=True, index=True)
+    folder_name = db.Column(db.String(255), nullable=True, index=True)
+
     # Per-mailbox state
     is_read = db.Column(db.Boolean, default=False, index=True)
     is_archived = db.Column(db.Boolean, default=False, index=True) # portal-side archive

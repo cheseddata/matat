@@ -111,12 +111,11 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             return {'success': False, 'error': f'HTTP {r.status_code}: {r.text[:300]}'}
 
     # Fields we ask Graph for on every message — keeps the page payload
-    # small and predictable. Note: $select is NOT supported on /delta
-    # for messages, so we apply select only on the initial backfill.
+    # small and predictable.
     MESSAGE_FIELDS = (
         'id,subject,from,toRecipients,ccRecipients,bccRecipients,'
         'receivedDateTime,bodyPreview,body,hasAttachments,isRead,'
-        'importance,conversationId,internetMessageId'
+        'importance,conversationId,internetMessageId,parentFolderId'
     )
 
     def _parse_recipients(self, recipients):
@@ -129,7 +128,7 @@ class MicrosoftGraphInbox(BaseInboxProvider):
                 out.append(addr)
         return out
 
-    def _normalize_message(self, m):
+    def _normalize_message(self, m, folder_name_map=None):
         from datetime import datetime as _dt
         sender = (m.get('from') or {}).get('emailAddress') or {}
         received_iso = m.get('receivedDateTime')
@@ -141,6 +140,10 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             except (ValueError, TypeError):
                 pass
         body = m.get('body') or {}
+        parent_folder_id = m.get('parentFolderId')
+        folder_name = None
+        if parent_folder_id and folder_name_map:
+            folder_name = folder_name_map.get(parent_folder_id)
         return {
             'remote_id':           m.get('id'),
             'internet_message_id': m.get('internetMessageId'),
@@ -158,19 +161,68 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             'importance':          m.get('importance'),
             'has_attachments':     bool(m.get('hasAttachments')),
             'is_read':             bool(m.get('isRead')),
+            'parent_folder_id':    parent_folder_id,
+            'folder_name':         folder_name,
         }
+
+    def _load_folder_name_map(self, headers):
+        """Build {folder_id: display_name} for every folder in the mailbox.
+
+        Walks top-level folders + their direct children. Two levels covers
+        Inbox/Sent Items/Drafts/Archive/custom folders plus user-created
+        sub-folders inside them. Anything deeper falls back to id-only
+        (folder_name=None on the message), which is fine — the inbox UI
+        groups by id and just shows the leaf id when it can't resolve a
+        name.
+
+        Best-effort: any failure (network, 404, empty response) returns
+        whatever we built so far, so a folder lookup hiccup doesn't
+        break the whole sync.
+        """
+        name_map = {}
+
+        def fetch(url):
+            try:
+                r = requests.get(url, headers=headers, timeout=15)
+            except requests.exceptions.RequestException:
+                return []
+            if r.status_code != 200:
+                return []
+            return (r.json() or {}).get('value') or []
+
+        base = f'{GRAPH_BASE_URL}/users/{self._mailbox()}/mailFolders'
+        top_url = f'{base}?$top=100&$select=id,displayName,childFolderCount'
+        for top in fetch(top_url):
+            fid = top.get('id')
+            fname = top.get('displayName') or ''
+            if not fid:
+                continue
+            name_map[fid] = fname
+            if (top.get('childFolderCount') or 0) > 0:
+                child_url = f'{base}/{fid}/childFolders?$top=100&$select=id,displayName'
+                for child in fetch(child_url):
+                    cid = child.get('id')
+                    cname = child.get('displayName') or ''
+                    if cid:
+                        name_map[cid] = f'{fname} / {cname}' if fname else cname
+
+        return name_map
 
     def fetch_new_messages(self, limit=500):
         """Pull new messages since last sync using Graph delta queries.
 
         Strategy:
-          - First run ever: walk /mailFolders/inbox/messages/delta from
-            the start, paginate via @odata.nextLink, yield messages.
-            Save the final @odata.deltaLink as our cursor.
+          - First run ever: walk /messages/delta (account-wide — covers
+            Inbox, Sent Items, Archive, Drafts, custom folders) from the
+            start, paginate via @odata.nextLink, yield messages. Save
+            the final @odata.deltaLink as our cursor.
           - Subsequent runs: GET the saved deltaLink — Graph returns
             only messages added/changed since.
           - If Graph returns 410 (deltaLink expired, happens after ~30
             days of inactivity), reset and full-resync.
+
+        We resolve folder display names once per call from /mailFolders
+        and tag each message with `parent_folder_id` + `folder_name`.
 
         Caps at `limit` per call so a stuck queue can't run forever.
         """
@@ -185,12 +237,16 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             'Prefer': 'odata.maxpagesize=50',
         }
 
+        # Resolve folder display names once per sync — every message we
+        # normalize uses this map to fill folder_name from parentFolderId.
+        folder_name_map = self._load_folder_name_map(headers)
+
         delta_token = self.provider.last_delta_token
         if delta_token:
             url = delta_token
         else:
             url = (f'{GRAPH_BASE_URL}/users/{self._mailbox()}'
-                   f'/mailFolders/inbox/messages/delta?$select={self.MESSAGE_FIELDS}')
+                   f'/messages/delta?$select={self.MESSAGE_FIELDS}')
 
         messages = []
         next_link = url
@@ -223,7 +279,7 @@ class MicrosoftGraphInbox(BaseInboxProvider):
                 # keep historical mail even if user deletes upstream).
                 if '@removed' in m:
                     continue
-                normalized = self._normalize_message(m)
+                normalized = self._normalize_message(m, folder_name_map)
                 if normalized.get('remote_id'):
                     messages.append(normalized)
 

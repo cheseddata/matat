@@ -48,6 +48,8 @@ def _persist_message(provider, msg, handler):
     em.importance = msg.get('importance')
     em.has_attachments = bool(msg.get('has_attachments'))
     em.is_read = bool(msg.get('is_read'))
+    em.parent_folder_id = msg.get('parent_folder_id')
+    em.folder_name = msg.get('folder_name')
 
     # Auto-link donor by from_address — only on create so a donor
     # match learned later doesn't clobber an operator's manual override.
