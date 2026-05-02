@@ -211,20 +211,28 @@ class MicrosoftGraphInbox(BaseInboxProvider):
     def fetch_new_messages(self, limit=500):
         """Pull new messages since last sync using Graph delta queries.
 
-        Strategy:
-          - First run ever: walk /messages/delta (account-wide — covers
-            Inbox, Sent Items, Archive, Drafts, custom folders) from the
-            start, paginate via @odata.nextLink, yield messages. Save
-            the final @odata.deltaLink as our cursor.
-          - Subsequent runs: GET the saved deltaLink — Graph returns
+        Graph's /messages/delta is folder-scoped — there is no
+        account-wide variant ("Change tracking is not supported against
+        microsoft.graph.message"). So we iterate every folder we
+        discover and keep a separate delta cursor per folder, all
+        serialized into provider.last_delta_token as a JSON dict
+        keyed by folder id.
+
+        Strategy per folder:
+          - First sync of a folder: walk
+            /mailFolders/{id}/messages/delta from the start, paginate
+            via @odata.nextLink, save the final @odata.deltaLink.
+          - Subsequent syncs: GET the saved deltaLink — Graph returns
             only messages added/changed since.
-          - If Graph returns 410 (deltaLink expired, happens after ~30
-            days of inactivity), reset and full-resync.
+          - 410 on a folder's deltaLink: drop that folder's cursor;
+            next sync re-backfills it from scratch.
 
         We resolve folder display names once per call from /mailFolders
         and tag each message with `parent_folder_id` + `folder_name`.
 
-        Caps at `limit` per call so a stuck queue can't run forever.
+        Caps at `limit` total messages per call (across all folders) so
+        a stuck queue can't run forever; sets has_more=True if any
+        folder had unfetched pages when we hit the cap.
         """
         if not self._mailbox():
             return {'success': False, 'error': 'No mailbox configured', 'messages': []}
@@ -237,64 +245,105 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             'Prefer': 'odata.maxpagesize=50',
         }
 
-        # Resolve folder display names once per sync — every message we
-        # normalize uses this map to fill folder_name from parentFolderId.
+        # Resolve folder display names + discover the folder ids to sync.
         folder_name_map = self._load_folder_name_map(headers)
+        if not folder_name_map:
+            return {'success': False, 'error': 'No folders discovered for mailbox.', 'messages': []}
 
-        delta_token = self.provider.last_delta_token
-        if delta_token:
-            url = delta_token
-        else:
-            url = (f'{GRAPH_BASE_URL}/users/{self._mailbox()}'
-                   f'/messages/delta?$select={self.MESSAGE_FIELDS}')
+        # Per-folder delta cursors — serialized as JSON in last_delta_token.
+        # If the column was last written by an older revision (single URL
+        # string for the inbox), ignore it and start fresh; the resync
+        # cost is bounded by `limit`.
+        import json as _json
+        raw = self.provider.last_delta_token
+        try:
+            delta_tokens = _json.loads(raw) if raw else {}
+            if not isinstance(delta_tokens, dict):
+                delta_tokens = {}
+        except (ValueError, TypeError):
+            delta_tokens = {}
 
         messages = []
-        next_link = url
-        new_delta = None
-        pages = 0
-        max_pages = max(1, (limit + 49) // 50)
+        new_tokens = dict(delta_tokens)
+        has_more = False
 
-        while next_link and pages < max_pages and len(messages) < limit:
-            try:
-                r = requests.get(next_link, headers=headers, timeout=30)
-            except requests.exceptions.RequestException as e:
-                return {'success': False, 'error': f'Network: {e}', 'messages': messages}
+        for folder_id, folder_label in folder_name_map.items():
+            if len(messages) >= limit:
+                has_more = True
+                break
 
-            if r.status_code == 410:
-                # Delta token expired — reset and let next run start over.
-                self.provider.last_delta_token = None
-                return {'success': False, 'error': 'Delta token expired (410). Resetting cursor; next sync will backfill.', 'messages': []}
-            if r.status_code != 200:
+            cursor = delta_tokens.get(folder_id)
+            if cursor:
+                next_link = cursor
+            else:
+                next_link = (f'{GRAPH_BASE_URL}/users/{self._mailbox()}'
+                             f'/mailFolders/{folder_id}/messages/delta'
+                             f'?$select={self.MESSAGE_FIELDS}')
+
+            folder_delta = None
+            folder_pages = 0
+            # Per-folder page cap — 50 pages * 50 msgs/page = 2500 ceiling
+            # for any single folder's first backfill. The outer `limit`
+            # check stops us earlier in practice.
+            max_folder_pages = 50
+
+            while next_link and folder_pages < max_folder_pages and len(messages) < limit:
                 try:
-                    err = r.json().get('error', {})
-                    msg = err.get('message', r.text[:300])
-                except ValueError:
-                    msg = f'HTTP {r.status_code}: {r.text[:300]}'
-                return {'success': False, 'error': msg, 'messages': messages}
+                    r = requests.get(next_link, headers=headers, timeout=30)
+                except requests.exceptions.RequestException as e:
+                    logger.warning(f'Folder {folder_label!r} fetch network error: {e}')
+                    break
 
-            page = r.json() or {}
-            for m in page.get('value') or []:
-                # Deletions appear as {'@removed': {...}, 'id': '...'} —
-                # we ignore for now (portal-side archive is enough; we
-                # keep historical mail even if user deletes upstream).
-                if '@removed' in m:
-                    continue
-                normalized = self._normalize_message(m, folder_name_map)
-                if normalized.get('remote_id'):
-                    messages.append(normalized)
+                if r.status_code == 410:
+                    # Folder's delta token expired — drop cursor and let
+                    # the next sync rebackfill this folder from scratch.
+                    new_tokens.pop(folder_id, None)
+                    logger.info(f'Folder {folder_label!r} delta expired; will rebackfill next sync.')
+                    break
+                if r.status_code != 200:
+                    try:
+                        err_msg = r.json().get('error', {}).get('message', r.text[:200])
+                    except ValueError:
+                        err_msg = f'HTTP {r.status_code}'
+                    logger.warning(f'Folder {folder_label!r} fetch failed: {err_msg}')
+                    break
 
-            # Graph returns nextLink while paging through the current snapshot,
-            # then deltaLink at the end of the snapshot.
-            next_link = page.get('@odata.nextLink')
-            new_delta = page.get('@odata.deltaLink') or new_delta
-            pages += 1
+                page = r.json() or {}
+                for m in page.get('value') or []:
+                    # Deletions appear as {'@removed': {...}, 'id': '...'} —
+                    # we ignore for now (portal-side archive is enough; we
+                    # keep historical mail even if user deletes upstream).
+                    if '@removed' in m:
+                        continue
+                    normalized = self._normalize_message(m, folder_name_map)
+                    if normalized.get('remote_id'):
+                        messages.append(normalized)
+                        if len(messages) >= limit:
+                            break
+
+                # Graph returns nextLink while paging through the current snapshot,
+                # then deltaLink at the end of the snapshot.
+                next_link = page.get('@odata.nextLink')
+                folder_delta = page.get('@odata.deltaLink') or folder_delta
+                folder_pages += 1
+
+            if next_link:
+                # We stopped mid-snapshot (limit hit or page cap) — keep
+                # the old cursor so the next sync resumes correctly. If
+                # there was no old cursor, leave new_tokens as-is too;
+                # next sync will start the folder over from the top.
+                has_more = True
+            elif folder_delta:
+                new_tokens[folder_id] = folder_delta
+
+        # Serialize back to JSON for storage. None if everything's empty.
+        new_delta_serialized = _json.dumps(new_tokens) if new_tokens else None
 
         return {
             'success':       True,
             'messages':      messages,
-            'new_delta':     new_delta,
-            'has_more':      bool(next_link),  # true if we hit the limit cap mid-snapshot
-            'next_link':     next_link,
+            'new_delta':     new_delta_serialized,
+            'has_more':      has_more,
         }
 
     def download_attachment(self, message_remote_id, attachment_remote_id):
