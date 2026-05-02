@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Reply: {{ msg.subject or '(no subject)' }} - Inbox - Matat{% endblock %}
+
+{% block extra_css %}
+<style>
+    .admin-nav {
+        display: flex; gap: 10px; flex-wrap: wrap;
+        margin-bottom: 25px; padding: 15px; background: white;
+        border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .admin-nav a {
+        padding: 8px 16px; background: #ecf0f1; color: #2c3e50;
+        text-decoration: none; border-radius: 4px; font-size: 14px;
+    }
+    .admin-nav a.active { background: #3498db; color: white; }
+
+    .reply-card {
+        background: white; border-radius: 8px; padding: 24px 28px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 14px;
+    }
+    .reply-card h2 {
+        margin: 0 0 18px 0; font-size: 20px; color: #2c3e50;
+    }
+
+    .field-row {
+        display: grid; grid-template-columns: 90px 1fr;
+        align-items: center; gap: 10px; margin-bottom: 10px;
+    }
+    .field-row label {
+        font-weight: 600; color: #2c3e50; font-size: 14px;
+    }
+    .field-row input[type="text"], .field-row input[type="email"] {
+        padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px;
+        font-size: 14px; width: 100%;
+    }
+
+    .body-row { margin: 14px 0; }
+    .body-row label { display: block; font-weight: 600; color: #2c3e50; font-size: 14px; margin-bottom: 6px; }
+    .body-row textarea {
+        width: 100%; min-height: 280px; padding: 12px;
+        border: 1px solid #ddd; border-radius: 4px;
+        font-family: inherit; font-size: 14px; line-height: 1.5;
+        resize: vertical;
+    }
+
+    .attach-row {
+        margin: 14px 0; padding: 12px; background: #f8f9fa;
+        border: 1px dashed #ccc; border-radius: 4px;
+    }
+    .attach-row label { font-weight: 600; color: #2c3e50; font-size: 14px; }
+    .attach-row .hint { color: #888; font-size: 12px; margin-left: 8px; }
+    .attach-row input[type="file"] { display: block; margin-top: 8px; font-size: 13px; }
+
+    .actions { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-send {
+        background: #27ae60; color: white; border: none;
+        padding: 10px 22px; border-radius: 4px; font-size: 15px;
+        font-weight: 600; cursor: pointer;
+    }
+    .btn-send:hover { background: #229954; }
+    .btn-cancel {
+        background: white; color: #2c3e50; border: 1px solid #ddd;
+        padding: 10px 22px; border-radius: 4px; font-size: 15px;
+        text-decoration: none; display: inline-block;
+    }
+    .btn-cancel:hover { background: #ecf0f1; }
+
+    .flash { padding: 12px 16px; border-radius: 4px; margin-bottom: 14px; }
+    .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+    .original-meta {
+        font-size: 12px; color: #888; margin: 0 0 14px 0;
+        padding-bottom: 10px; border-bottom: 1px solid #eee;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="admin-nav">
+        <a href="{{ url_for('admin.dashboard') }}">{{ t('nav.dashboard') }}</a>
+        <a href="{{ url_for('admin.donations') }}">{{ t('nav.donations') }}</a>
+        <a href="{{ url_for('admin.donors') }}">{{ t('nav.donors') }}</a>
+        <a href="{{ url_for('admin.inbox') }}" class="active">Inbox</a>
+        <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, m in messages %}
+        <div class="flash {{ category }}">{{ m }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    <div class="reply-card">
+        <h2>Reply</h2>
+
+        <div class="original-meta">
+            Replying to <b>{{ msg.from_name or msg.from_address }}</b>
+            &middot; {{ msg.received_at.strftime('%Y-%m-%d %H:%M UTC') if msg.received_at else '' }}
+            &middot; from mailbox <b>{{ msg.provider.mailbox_address }}</b>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin.inbox_reply', id=msg.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="field-row">
+                <label for="to">To:</label>
+                <input type="text" name="to" id="to" value="{{ default_to }}" required
+                       placeholder="email1@example.com, email2@example.com">
+            </div>
+
+            <div class="field-row">
+                <label for="cc">Cc:</label>
+                <input type="text" name="cc" id="cc"
+                       placeholder="optional, comma separated">
+            </div>
+
+            <div class="field-row">
+                <label for="bcc">Bcc:</label>
+                <input type="text" name="bcc" id="bcc"
+                       placeholder="optional, comma separated">
+            </div>
+
+            <div class="field-row">
+                <label for="subject">Subject:</label>
+                <input type="text" name="subject" id="subject" value="{{ default_subject }}" required>
+            </div>
+
+            <div class="body-row">
+                <label for="body">Message:</label>
+                <textarea name="body" id="body" required>{{ default_body_html }}</textarea>
+                <p style="color:#888; font-size:12px; margin-top:4px;">
+                    HTML is allowed. The original message is quoted below your reply by default.
+                </p>
+            </div>
+
+            <div class="attach-row">
+                <label for="attachments">📎 Attachments:</label>
+                <span class="hint">(optional, max 3 MB total — Graph sendMail cap)</span>
+                <input type="file" name="attachments" id="attachments" multiple>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="btn-send">Send</button>
+                <a href="{{ url_for('admin.inbox_message', id=msg.id) }}" class="btn-cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

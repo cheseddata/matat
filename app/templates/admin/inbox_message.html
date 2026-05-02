@@ -94,6 +94,7 @@
 
     <div class="msg-actions">
         <a href="{{ url_for('admin.inbox') }}">← Back to inbox</a>
+        <a href="{{ url_for('admin.inbox_reply', id=msg.id) }}" style="background:#27ae60; color:white; border-color:#27ae60;">↩ Reply</a>
         <button onclick="markUnread({{ msg.id }})">Mark unread</button>
         <button class="danger" onclick="archive({{ msg.id }})">Archive</button>
     </div>

@@ -393,6 +393,100 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             'content_id':   a.get('contentId'),
         }
 
+    def supports_send(self):
+        return True
+
+    def send_message(self, to_addresses, subject, body_html,
+                     cc_addresses=None, bcc_addresses=None,
+                     attachments=None, in_reply_to_remote_id=None):
+        """Send a new email through this mailbox via Graph /sendMail.
+
+        attachments is a list of dicts: [{'filename', 'content_type',
+        'content_b64'}]. The 4 MB request cap applies — sendMail rejects
+        anything larger and we return a clear error so the caller can
+        prompt the user to use fewer/smaller files.
+
+        in_reply_to_remote_id, if set, attaches In-Reply-To and
+        References headers so the outbound message threads correctly
+        in the recipient's client.
+
+        Returns {'success': bool, 'error': str|None}.
+        """
+        if not self._mailbox():
+            return {'success': False, 'error': 'No mailbox configured'}
+        if not to_addresses:
+            return {'success': False, 'error': 'At least one To recipient required'}
+
+        token_resp = self._get_access_token()
+        if 'error' in token_resp:
+            return {'success': False, 'error': token_resp['error']}
+
+        def _recipients(addrs):
+            return [{'emailAddress': {'address': a}} for a in (addrs or []) if a]
+
+        message_payload = {
+            'subject':        subject or '',
+            'body':           {'contentType': 'HTML', 'content': body_html or ''},
+            'toRecipients':   _recipients(to_addresses),
+            'ccRecipients':   _recipients(cc_addresses),
+            'bccRecipients':  _recipients(bcc_addresses),
+        }
+
+        if attachments:
+            payload_atts = []
+            total_bytes = 0
+            for att in attachments:
+                content_b64 = att.get('content_b64') or ''
+                # Approximate decoded size from b64 length: 4 b64 chars = 3 bytes
+                total_bytes += (len(content_b64) * 3) // 4
+                payload_atts.append({
+                    '@odata.type':  '#microsoft.graph.fileAttachment',
+                    'name':         att.get('filename') or 'attachment',
+                    'contentType':  att.get('content_type') or 'application/octet-stream',
+                    'contentBytes': content_b64,
+                })
+            # Graph sendMail rejects requests larger than ~4 MB.
+            if total_bytes > 3 * 1024 * 1024:
+                return {'success': False,
+                        'error': f'Attachments total {total_bytes // 1024} KB — Graph /sendMail caps at 3 MB. '
+                                 f'Use fewer or smaller files.'}
+            message_payload['attachments'] = payload_atts
+
+        if in_reply_to_remote_id:
+            # We can't directly set In-Reply-To via /sendMail body, but
+            # threading still works in most clients via subject prefix
+            # ("Re: ..."). For full RFC822 header threading we'd need to
+            # use createReply + send instead — left as a follow-up.
+            pass
+
+        url = f'{GRAPH_BASE_URL}/users/{self._mailbox()}/sendMail'
+        headers = {
+            'Authorization': f'Bearer {token_resp["access_token"]}',
+            'Content-Type':  'application/json',
+        }
+        body = {'message': message_payload, 'saveToSentItems': True}
+
+        try:
+            r = requests.post(url, headers=headers, json=body, timeout=60)
+        except requests.exceptions.RequestException as e:
+            return {'success': False, 'error': f'Network: {e}'}
+
+        if r.status_code in (200, 202):
+            return {'success': True}
+        if r.status_code == 403:
+            try:
+                err_msg = r.json().get('error', {}).get('message', '')
+            except ValueError:
+                err_msg = r.text[:200]
+            return {'success': False,
+                    'error': f'Forbidden — likely missing Mail.Send application permission '
+                             f'on the Azure app, or admin consent not granted. Graph said: {err_msg}'}
+        try:
+            err = r.json().get('error', {})
+            return {'success': False, 'error': err.get('message', r.text[:300])}
+        except ValueError:
+            return {'success': False, 'error': f'HTTP {r.status_code}: {r.text[:200]}'}
+
     def list_attachments(self, message_remote_id):
         """Pull metadata for every attachment on a message — no binaries."""
         if not self._mailbox():

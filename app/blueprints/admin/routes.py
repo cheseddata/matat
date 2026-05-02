@@ -3704,6 +3704,109 @@ def inbox_message(id):
     )
 
 
+@admin_bp.route('/inbox/<int:id>/reply', methods=['GET', 'POST'])
+@admin_required
+def inbox_reply(id):
+    """Reply to an inbox message — To/Cc/Bcc/Subject/Body/Attach.
+
+    GET renders the form with sensible defaults (To = original sender,
+    Subject = "Re: ...", body includes the quoted original). POST
+    sends via the message's provider handler (Microsoft Graph for now)
+    and redirects back to the message on success.
+    """
+    import base64
+    from ...models.email_message import EmailMessage
+
+    msg = EmailMessage.query.get_or_404(id)
+
+    if request.method == 'GET':
+        original_subject = msg.subject or ''
+        if not original_subject.lower().startswith('re:'):
+            reply_subject = f'Re: {original_subject}'
+        else:
+            reply_subject = original_subject
+
+        # Quote the original body as a blockquote, plain-text fallback if no html.
+        from datetime import datetime as _dt
+        when = msg.received_at.strftime('%a, %b %d, %Y at %H:%M UTC') if msg.received_at else ''
+        sender_label = f'{msg.from_name or ""} <{msg.from_address or ""}>'.strip()
+        if msg.body_html:
+            quoted = (
+                f'<br><br><div style="border-left:3px solid #ccc; padding-left:10px; color:#555;">'
+                f'<p>On {when}, {sender_label} wrote:</p>'
+                f'{msg.body_html}'
+                f'</div>'
+            )
+        else:
+            quoted_text = (msg.body_text or '').replace('\n', '<br>')
+            quoted = (
+                f'<br><br><div style="border-left:3px solid #ccc; padding-left:10px; color:#555;">'
+                f'<p>On {when}, {sender_label} wrote:</p>'
+                f'<p>{quoted_text}</p>'
+                f'</div>'
+            )
+
+        return render_template(
+            'admin/inbox_reply.html',
+            msg=msg,
+            default_to=msg.from_address or '',
+            default_subject=reply_subject,
+            default_body_html=quoted,
+        )
+
+    # --- POST: send the reply ---
+    def _split_addrs(raw):
+        if not raw:
+            return []
+        return [a.strip() for a in raw.replace(';', ',').split(',') if a.strip()]
+
+    to_addresses  = _split_addrs(request.form.get('to'))
+    cc_addresses  = _split_addrs(request.form.get('cc'))
+    bcc_addresses = _split_addrs(request.form.get('bcc'))
+    subject       = (request.form.get('subject') or '').strip()
+    body_html     = request.form.get('body') or ''
+
+    if not to_addresses:
+        flash('At least one To recipient is required.', 'error')
+        return redirect(url_for('admin.inbox_reply', id=id))
+
+    # Read uploaded files into base64 attachments
+    attachments = []
+    for fileobj in request.files.getlist('attachments'):
+        if not fileobj or not fileobj.filename:
+            continue
+        data = fileobj.read()
+        if not data:
+            continue
+        attachments.append({
+            'filename':     fileobj.filename,
+            'content_type': fileobj.content_type or 'application/octet-stream',
+            'content_b64':  base64.b64encode(data).decode('ascii'),
+        })
+
+    handler = msg.provider.get_handler()
+    if not handler.supports_send():
+        flash(f'{handler.name} does not support sending.', 'error')
+        return redirect(url_for('admin.inbox_message', id=id))
+
+    result = handler.send_message(
+        to_addresses=to_addresses,
+        subject=subject,
+        body_html=body_html,
+        cc_addresses=cc_addresses,
+        bcc_addresses=bcc_addresses,
+        attachments=attachments,
+        in_reply_to_remote_id=msg.remote_id,
+    )
+
+    if result.get('success'):
+        flash('Reply sent.', 'success')
+        return redirect(url_for('admin.inbox_message', id=id))
+
+    flash(f'Send failed: {result.get("error", "unknown error")}', 'error')
+    return redirect(url_for('admin.inbox_reply', id=id))
+
+
 @admin_bp.route('/inbox/<int:id>/archive', methods=['POST'])
 @admin_required
 def inbox_archive(id):
