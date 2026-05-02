@@ -130,6 +130,7 @@ class MicrosoftGraphInbox(BaseInboxProvider):
 
     def _normalize_message(self, m, folder_name_map=None):
         from datetime import datetime as _dt
+        import re as _re
         sender = (m.get('from') or {}).get('emailAddress') or {}
         received_iso = m.get('receivedDateTime')
         received_dt = None
@@ -140,6 +141,13 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             except (ValueError, TypeError):
                 pass
         body = m.get('body') or {}
+        body_html = body.get('content') if (body.get('contentType') == 'html') else None
+        body_text = body.get('content') if (body.get('contentType') == 'text') else None
+        # Microsoft Graph reports `hasAttachments=false` for messages whose
+        # only attachments are inline images embedded via cid: references.
+        # Detect those so the persist step knows to fetch attachment
+        # metadata even when has_attachments is false.
+        has_inline_refs = bool(_re.search(r'cid:', body_html or '', _re.IGNORECASE))
         parent_folder_id = m.get('parentFolderId')
         folder_name = None
         if parent_folder_id and folder_name_map:
@@ -154,12 +162,13 @@ class MicrosoftGraphInbox(BaseInboxProvider):
             'cc_addresses':        self._parse_recipients(m.get('ccRecipients')),
             'bcc_addresses':       self._parse_recipients(m.get('bccRecipients')),
             'subject':             (m.get('subject') or '')[:990],
-            'body_text':           body.get('content') if (body.get('contentType') == 'text') else None,
-            'body_html':           body.get('content') if (body.get('contentType') == 'html') else None,
+            'body_text':           body_text,
+            'body_html':           body_html,
             'body_preview':        (m.get('bodyPreview') or '')[:495],
             'received_at':         received_dt,
             'importance':          m.get('importance'),
             'has_attachments':     bool(m.get('hasAttachments')),
+            'has_inline_refs':     has_inline_refs,
             'is_read':             bool(m.get('isRead')),
             'parent_folder_id':    parent_folder_id,
             'folder_name':         folder_name,

@@ -3640,6 +3640,38 @@ def inbox():
     )
 
 
+def _rewrite_inline_cids(body_html, attachments):
+    """Rewrite `cid:CONTENT_ID` references in email HTML to point at our
+    own attachment route, so inline images render in the inbox view.
+
+    Builds a content_id -> attachment.id map (case-insensitive, with
+    angle brackets stripped — Outlook/Exchange sometimes wraps the id),
+    then substitutes every cid:... occurrence whose value matches.
+    Unknown cid values are left alone (broken images, but no worse
+    than before).
+    """
+    if not body_html or not attachments:
+        return body_html
+    import re
+    cid_to_id = {}
+    for a in attachments:
+        if not a.content_id:
+            continue
+        key = a.content_id.strip().strip('<>').lower()
+        if key:
+            cid_to_id[key] = a.id
+
+    def repl(match):
+        raw = match.group(1).strip().strip('<>').lower()
+        att_id = cid_to_id.get(raw)
+        if att_id is None:
+            return match.group(0)
+        return f'/admin/inbox/attachment/{att_id}'
+
+    # Match cid:VALUE up to the next quote, whitespace, or angle bracket.
+    return re.sub(r'cid:([^"\'\s>]+)', repl, body_html, flags=re.IGNORECASE)
+
+
 @admin_bp.route('/inbox/<int:id>')
 @admin_required
 def inbox_message(id):
@@ -3660,7 +3692,16 @@ def inbox_message(id):
             conversation_id=msg.conversation_id
         ).order_by(EmailMessage.received_at.asc()).all()
 
-    return render_template('admin/inbox_message.html', msg=msg, thread=thread)
+    attachments = msg.attachments.all()
+    body_html_rendered = _rewrite_inline_cids(msg.body_html, attachments)
+
+    return render_template(
+        'admin/inbox_message.html',
+        msg=msg,
+        thread=thread,
+        attachments=attachments,
+        body_html_rendered=body_html_rendered,
+    )
 
 
 @admin_bp.route('/inbox/<int:id>/archive', methods=['POST'])

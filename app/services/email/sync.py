@@ -89,29 +89,38 @@ def _persist_message(provider, msg, handler):
             raise
         _apply_message_fields(em, msg)
 
-    # Attachment metadata — only on first ingest. The race winner does
-    # this; losers don't double-fetch. We also don't re-fetch on
-    # subsequent updates (read flags change a lot, attachments don't).
-    if is_create and em.has_attachments:
-        try:
-            att_resp = handler.list_attachments(msg['remote_id'])
-            if att_resp.get('success'):
-                for a in att_resp.get('attachments') or []:
-                    if not a.get('remote_id'):
-                        continue
-                    db.session.add(EmailAttachment(
-                        email_id=em.id,
-                        remote_id=a['remote_id'],
-                        filename=a.get('filename'),
-                        content_type=a.get('content_type'),
-                        size=a.get('size'),
-                        is_inline=bool(a.get('is_inline')),
-                        content_id=a.get('content_id'),
-                    ))
-            else:
-                logger.warning(f'list_attachments failed for msg {em.id}: {att_resp.get("error")}')
-        except Exception as e:
-            logger.warning(f'attachment metadata fetch failed for msg {em.id}: {e}')
+    # Attachment metadata — fetch when the message has explicit
+    # attachments OR contains cid: references (inline images, which
+    # Graph reports as hasAttachments=false). On race-loss / pre-existing
+    # rows we only fetch if attachments are MISSING — that catches
+    # backfill of messages that were ingested before this code shipped,
+    # without re-hitting Graph on every sync.
+    needs_attachments = em.has_attachments or msg.get('has_inline_refs')
+    if needs_attachments:
+        should_fetch = is_create
+        if not is_create:
+            existing_count = EmailAttachment.query.filter_by(email_id=em.id).count()
+            should_fetch = (existing_count == 0)
+        if should_fetch:
+            try:
+                att_resp = handler.list_attachments(msg['remote_id'])
+                if att_resp.get('success'):
+                    for a in att_resp.get('attachments') or []:
+                        if not a.get('remote_id'):
+                            continue
+                        db.session.add(EmailAttachment(
+                            email_id=em.id,
+                            remote_id=a['remote_id'],
+                            filename=a.get('filename'),
+                            content_type=a.get('content_type'),
+                            size=a.get('size'),
+                            is_inline=bool(a.get('is_inline')),
+                            content_id=a.get('content_id'),
+                        ))
+                else:
+                    logger.warning(f'list_attachments failed for msg {em.id}: {att_resp.get("error")}')
+            except Exception as e:
+                logger.warning(f'attachment metadata fetch failed for msg {em.id}: {e}')
 
     return is_create, em
 

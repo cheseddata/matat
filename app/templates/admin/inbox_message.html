@@ -113,8 +113,8 @@
     </div>
 
     <div class="msg-body">
-        {% if msg.body_html %}
-        <iframe sandbox="allow-same-origin" srcdoc="{{ msg.body_html|e }}" id="bodyFrame"></iframe>
+        {% if body_html_rendered %}
+        <iframe sandbox="allow-same-origin" srcdoc="{{ body_html_rendered|e }}" id="bodyFrame"></iframe>
         {% elif msg.body_text %}
         <pre>{{ msg.body_text }}</pre>
         {% else %}
@@ -122,11 +122,13 @@
         {% endif %}
     </div>
 
-    {% set atts = msg.attachments.all() %}
-    {% if atts %}
+    {# Only show non-inline attachments in the file list; inline images
+       are already rendered in the body via the cid: rewrite. #}
+    {% set file_atts = attachments | rejectattr('is_inline') | list %}
+    {% if file_atts %}
     <div class="attachments">
-        <h3>📎 Attachments ({{ atts|length }})</h3>
-        {% for a in atts %}
+        <h3>📎 Attachments ({{ file_atts|length }})</h3>
+        {% for a in file_atts %}
         <a href="{{ url_for('admin.inbox_attachment', id=a.id) }}" target="_blank" rel="noopener">
             {{ a.filename or '(unnamed)' }}
             <span class="size">{{ '%.0f KB' % (a.size / 1024.0) if a.size else '' }}</span>
