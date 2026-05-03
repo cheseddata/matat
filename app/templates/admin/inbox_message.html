@@ -98,7 +98,25 @@
         <a href="{{ url_for('admin.inbox_reply_all', id=msg.id) }}" style="background:#27ae60; color:white; border-color:#27ae60;">↩↩ Reply All</a>
         <a href="{{ url_for('admin.inbox_forward', id=msg.id) }}" style="background:#3498db; color:white; border-color:#3498db;">↪ Forward</a>
         <button onclick="markUnread({{ msg.id }})">Mark unread</button>
-        <button class="danger" onclick="archive({{ msg.id }})">Archive</button>
+        <button onclick="archive({{ msg.id }})">Archive (portal only)</button>
+        <button class="danger" onclick="del({{ msg.id }})">🗑 Delete</button>
+    </div>
+
+    <div style="background:white; border-radius:8px; padding:12px 18px; box-shadow:0 2px 4px rgba(0,0,0,0.1); margin-bottom:14px;">
+        <form method="POST" action="{{ url_for('admin.inbox_assign', id=msg.id) }}" style="display:flex; align-items:center; gap:10px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="assignSelect" style="font-weight:600; color:#2c3e50; font-size:14px;">Assigned to:</label>
+            <select name="user_id" id="assignSelect" style="padding:6px 10px; border:1px solid #ddd; border-radius:4px; font-size:14px;">
+                <option value="0" {% if not msg.assigned_to_user_id %}selected{% endif %}>— Unassigned —</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" {% if msg.assigned_to_user_id == u.id %}selected{% endif %}>{{ u.full_name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" style="padding:6px 14px; background:#3498db; color:white; border:none; border-radius:4px; font-size:13px; cursor:pointer;">Save</button>
+            {% if msg.assigned_to_user_id and msg.assigned_to %}
+            <span style="color:#1e7e34; font-size:13px;">Currently: <b>{{ msg.assigned_to.full_name }}</b></span>
+            {% endif %}
+        </form>
     </div>
 
     <div class="msg-card">
@@ -179,6 +197,18 @@ function archive(id) {
         method: 'POST',
         headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
     }).then(() => { window.location.href = '{{ url_for("admin.inbox") }}'; });
+}
+
+function del(id) {
+    if (!confirm('Delete this message? It will be moved to Deleted Items in the real mailbox.')) return;
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/admin/inbox/${id}/delete`;
+    const t = document.createElement('input');
+    t.type = 'hidden'; t.name = 'csrf_token'; t.value = '{{ csrf_token() }}';
+    form.appendChild(t);
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 {% endblock %}

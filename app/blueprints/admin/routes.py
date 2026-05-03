@@ -3598,21 +3598,42 @@ def _admin_charge_shva():
 @admin_bp.route('/inbox')
 @admin_required
 def inbox():
-    """Inbox portal — list view of ingested email messages."""
+    """Inbox portal — list view of ingested email messages.
+
+    Supports filters: unread, attachments, assignment scope (mine /
+    unassigned / user_id / all), folder name, and free-text search.
+    """
     from ...models.email_message import EmailMessage
     from ...models.email_inbox_provider import EmailInboxProvider
+    from ...models.user import User
+    from flask_login import current_user
 
     page = int(request.args.get('page', 1))
     per_page = 50
     filter_unread = request.args.get('unread') == '1'
     filter_attachments = request.args.get('attachments') == '1'
     q = (request.args.get('q') or '').strip()
+    # Assignment scope: 'mine' | 'unassigned' | 'all' | '<user_id>'
+    assigned = (request.args.get('assigned') or 'all').strip()
+    folder = (request.args.get('folder') or '').strip()
 
     query = EmailMessage.query.filter(EmailMessage.is_archived == False)
     if filter_unread:
         query = query.filter(EmailMessage.is_read == False)
     if filter_attachments:
         query = query.filter(EmailMessage.has_attachments == True)
+    if folder:
+        query = query.filter(EmailMessage.folder_name == folder)
+    if assigned == 'mine':
+        query = query.filter(EmailMessage.assigned_to_user_id == current_user.id)
+    elif assigned == 'unassigned':
+        query = query.filter(EmailMessage.assigned_to_user_id.is_(None))
+    elif assigned and assigned != 'all':
+        try:
+            uid = int(assigned)
+            query = query.filter(EmailMessage.assigned_to_user_id == uid)
+        except ValueError:
+            pass
     if q:
         like = f'%{q}%'
         query = query.filter(db.or_(
@@ -3627,16 +3648,33 @@ def inbox():
     )
 
     unread_count = EmailMessage.query.filter_by(is_read=False, is_archived=False).count()
+    mine_count = EmailMessage.query.filter_by(
+        is_archived=False, assigned_to_user_id=current_user.id
+    ).count()
+    unassigned_count = EmailMessage.query.filter(
+        EmailMessage.is_archived == False,
+        EmailMessage.assigned_to_user_id.is_(None),
+    ).count()
     providers = EmailInboxProvider.query_active().all()
+    users = User.query_active().filter_by(active=True).order_by(User.username).all()
+    folders = [f[0] for f in db.session.query(EmailMessage.folder_name)
+               .filter(EmailMessage.folder_name.isnot(None))
+               .distinct().order_by(EmailMessage.folder_name).all()]
 
     return render_template(
         'admin/inbox_list.html',
         messages=pagination,
         unread_count=unread_count,
+        mine_count=mine_count,
+        unassigned_count=unassigned_count,
         filter_unread=filter_unread,
         filter_attachments=filter_attachments,
+        assigned=assigned,
+        folder=folder,
         q=q,
         providers=providers,
+        users=users,
+        folders=folders,
     )
 
 
@@ -3695,12 +3733,17 @@ def inbox_message(id):
     attachments = msg.attachments.all()
     body_html_rendered = _rewrite_inline_cids(msg.body_html, attachments)
 
+    # User list for the assignment dropdown
+    from ...models.user import User
+    users = User.query_active().filter_by(active=True).order_by(User.username).all()
+
     return render_template(
         'admin/inbox_message.html',
         msg=msg,
         thread=thread,
         attachments=attachments,
         body_html_rendered=body_html_rendered,
+        users=users,
     )
 
 
@@ -3887,6 +3930,134 @@ def _inbox_compose(id, mode):
 
     flash(f'Send failed: {result.get("error", "unknown error")}', 'error')
     return redirect(url_for(endpoint, id=id))
+
+
+@admin_bp.route('/inbox/compose', methods=['GET', 'POST'])
+@admin_required
+def inbox_compose_new():
+    """Compose a brand-new email (not a reply or forward).
+
+    Sends from the first enabled inbox provider's mailbox — for now
+    that's support@matatmordechai.org. If multiple providers are
+    enabled in the future we'd add a From dropdown.
+    """
+    import base64
+    from ...models.email_inbox_provider import EmailInboxProvider
+
+    providers = EmailInboxProvider.get_enabled()
+    if not providers:
+        flash('No enabled inbox providers configured — can\'t send.', 'error')
+        return redirect(url_for('admin.inbox'))
+    provider = providers[0]
+
+    if request.method == 'GET':
+        return render_template(
+            'admin/inbox_reply.html',
+            msg=None,
+            mode='new',
+            action_label='New Message',
+            default_to='',
+            default_cc='',
+            default_subject='',
+            default_body_html='',
+            sending_mailbox=provider.mailbox_address,
+        )
+
+    def _split_addrs(raw):
+        if not raw:
+            return []
+        return [a.strip() for a in raw.replace(';', ',').split(',') if a.strip()]
+
+    to_addresses  = _split_addrs(request.form.get('to'))
+    cc_addresses  = _split_addrs(request.form.get('cc'))
+    bcc_addresses = _split_addrs(request.form.get('bcc'))
+    subject       = (request.form.get('subject') or '').strip()
+    body_html     = request.form.get('body') or ''
+
+    if not to_addresses:
+        flash('At least one To recipient is required.', 'error')
+        return redirect(url_for('admin.inbox_compose_new'))
+
+    attachments = []
+    for fileobj in request.files.getlist('attachments'):
+        if not fileobj or not fileobj.filename:
+            continue
+        data = fileobj.read()
+        if not data:
+            continue
+        attachments.append({
+            'filename':     fileobj.filename,
+            'content_type': fileobj.content_type or 'application/octet-stream',
+            'content_b64':  base64.b64encode(data).decode('ascii'),
+        })
+
+    handler = provider.get_handler()
+    if not handler.supports_send():
+        flash(f'{handler.name} does not support sending.', 'error')
+        return redirect(url_for('admin.inbox'))
+
+    result = handler.send_message(
+        to_addresses=to_addresses,
+        subject=subject,
+        body_html=body_html,
+        cc_addresses=cc_addresses,
+        bcc_addresses=bcc_addresses,
+        attachments=attachments,
+    )
+
+    if result.get('success'):
+        flash('Message sent.', 'success')
+        return redirect(url_for('admin.inbox'))
+
+    flash(f'Send failed: {result.get("error", "unknown error")}', 'error')
+    return redirect(url_for('admin.inbox_compose_new'))
+
+
+@admin_bp.route('/inbox/<int:id>/delete', methods=['POST'])
+@admin_required
+def inbox_delete(id):
+    """Move a message to the upstream Deleted Items folder via Graph,
+    then archive locally so it disappears from the portal view."""
+    from ...models.email_message import EmailMessage
+    msg = EmailMessage.query.get_or_404(id)
+    handler = msg.provider.get_handler()
+    result = handler.move_to_folder(msg.remote_id, 'deleteditems')
+    if not result.get('success'):
+        flash(f'Delete failed: {result.get("error", "unknown error")}', 'error')
+        return redirect(url_for('admin.inbox_message', id=id))
+    # Update remote_id if Graph reassigned it on move
+    new_id = result.get('new_id')
+    if new_id:
+        msg.remote_id = new_id
+    msg.is_archived = True
+    db.session.commit()
+    flash('Message deleted (moved to Deleted Items).', 'success')
+    return redirect(url_for('admin.inbox'))
+
+
+@admin_bp.route('/inbox/<int:id>/assign', methods=['POST'])
+@admin_required
+def inbox_assign(id):
+    """Assign / unassign / reassign an email to an operator."""
+    from ...models.email_message import EmailMessage
+    from ...models.user import User
+    msg = EmailMessage.query.get_or_404(id)
+    raw = (request.form.get('user_id') or '').strip()
+    if not raw or raw == '0':
+        msg.assigned_to_user_id = None
+    else:
+        try:
+            uid = int(raw)
+        except ValueError:
+            flash('Invalid user id.', 'error')
+            return redirect(url_for('admin.inbox_message', id=id))
+        user = User.query_active().filter_by(id=uid, active=True).first()
+        if not user:
+            flash('User not found or inactive.', 'error')
+            return redirect(url_for('admin.inbox_message', id=id))
+        msg.assigned_to_user_id = user.id
+    db.session.commit()
+    return redirect(url_for('admin.inbox_message', id=id))
 
 
 @admin_bp.route('/inbox/<int:id>/archive', methods=['POST'])

@@ -61,12 +61,21 @@ class EmailMessage(db.Model):
     # that, but the auto-match handles 95% of inbound mail.
     donor_id = db.Column(db.Integer, db.ForeignKey('donors.id'), nullable=True, index=True)
 
+    # Operator assignment — which user owns following up on this email.
+    # NULL = unassigned (shows in everyone's "Unassigned" filter).
+    assigned_to_user_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                                    nullable=True, index=True)
+    # Free-text notes between operators about this email — never shown
+    # to the original sender.
+    internal_notes = db.Column(db.Text, nullable=True)
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     provider = db.relationship('EmailInboxProvider', backref='messages')
     donor = db.relationship('Donor', backref='emails', foreign_keys=[donor_id])
+    assigned_to = db.relationship('User', foreign_keys=[assigned_to_user_id])
     attachments = db.relationship('EmailAttachment', backref='message',
                                   cascade='all, delete-orphan', lazy='dynamic')
 

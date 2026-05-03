@@ -82,6 +82,10 @@
 <div class="container">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1 style="margin: 0;">Inbox <small style="color:#888; font-size: 16px;">({{ unread_count }} unread)</small></h1>
+        <a href="{{ url_for('admin.inbox_compose_new') }}"
+           style="background:#27ae60; color:white; padding:10px 18px; border-radius:5px; text-decoration:none; font-weight:600;">
+            ✎ New Message
+        </a>
     </div>
 
     <div class="admin-nav">
@@ -104,10 +108,33 @@
     </div>
     {% endfor %}
 
+    <div class="inbox-toolbar" style="margin-bottom: 8px;">
+        <a href="{{ url_for('admin.inbox') }}" class="filter-btn {% if assigned == 'all' %}active{% endif %}">All</a>
+        <a href="{{ url_for('admin.inbox', assigned='mine') }}" class="filter-btn {% if assigned == 'mine' %}active{% endif %}">My inbox ({{ mine_count }})</a>
+        <a href="{{ url_for('admin.inbox', assigned='unassigned') }}" class="filter-btn {% if assigned == 'unassigned' %}active{% endif %}">Unassigned ({{ unassigned_count }})</a>
+        {% for u in users %}
+            {% if assigned == u.id|string %}
+            <a href="{{ url_for('admin.inbox') }}" class="filter-btn active">{{ u.full_name }} ✕</a>
+            {% endif %}
+        {% endfor %}
+        {% if folders %}
+        <select onchange="if(this.value){window.location.href=this.value;}else{window.location.href='{{ url_for('admin.inbox') }}'}"
+                class="filter-btn" style="cursor:pointer;">
+            <option value="">All folders</option>
+            {% for f in folders %}
+            <option value="{{ url_for('admin.inbox', folder=f, assigned=assigned if assigned != 'all' else None) }}"
+                    {% if folder == f %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+    </div>
+
     <form method="get" class="inbox-toolbar">
-        <a href="{{ url_for('admin.inbox') }}" class="filter-btn {% if not filter_unread and not filter_attachments and not q %}active{% endif %}">All</a>
-        <a href="{{ url_for('admin.inbox', unread='1') }}" class="filter-btn {% if filter_unread %}active{% endif %}">Unread</a>
-        <a href="{{ url_for('admin.inbox', attachments='1') }}" class="filter-btn {% if filter_attachments %}active{% endif %}">With attachments</a>
+        {% if assigned and assigned != 'all' %}<input type="hidden" name="assigned" value="{{ assigned }}">{% endif %}
+        {% if folder %}<input type="hidden" name="folder" value="{{ folder }}">{% endif %}
+        <a href="{{ url_for('admin.inbox', assigned=assigned if assigned != 'all' else None, folder=folder or None) }}" class="filter-btn {% if not filter_unread and not filter_attachments and not q %}active{% endif %}">All mail</a>
+        <a href="{{ url_for('admin.inbox', unread='1', assigned=assigned if assigned != 'all' else None, folder=folder or None) }}" class="filter-btn {% if filter_unread %}active{% endif %}">Unread</a>
+        <a href="{{ url_for('admin.inbox', attachments='1', assigned=assigned if assigned != 'all' else None, folder=folder or None) }}" class="filter-btn {% if filter_attachments %}active{% endif %}">With attachments</a>
         <input type="search" name="q" placeholder="Search subject, sender, snippet..." value="{{ q }}">
         <button type="submit" class="filter-btn">Search</button>
         <button type="button" class="sync-btn" onclick="syncNow(this)">⟳ Sync now</button>

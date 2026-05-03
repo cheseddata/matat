@@ -487,6 +487,46 @@ class MicrosoftGraphInbox(BaseInboxProvider):
         except ValueError:
             return {'success': False, 'error': f'HTTP {r.status_code}: {r.text[:200]}'}
 
+    def move_to_folder(self, message_remote_id, well_known_folder):
+        """Move a message to a well-known folder (e.g. 'deleteditems').
+
+        Uses POST /messages/{id}/move with the destinationId set to a
+        Graph well-known folder name. Returns {'success', 'error',
+        'new_id'} — note Graph assigns a new message id post-move, so
+        the caller should update remote_id if it stores the returned
+        value.
+        """
+        if not self._mailbox():
+            return {'success': False, 'error': 'No mailbox configured'}
+        token_resp = self._get_access_token()
+        if 'error' in token_resp:
+            return {'success': False, 'error': token_resp['error']}
+
+        url = (f'{GRAPH_BASE_URL}/users/{self._mailbox()}'
+               f'/messages/{message_remote_id}/move')
+        headers = {
+            'Authorization': f'Bearer {token_resp["access_token"]}',
+            'Content-Type':  'application/json',
+        }
+        body = {'destinationId': well_known_folder}
+
+        try:
+            r = requests.post(url, headers=headers, json=body, timeout=30)
+        except requests.exceptions.RequestException as e:
+            return {'success': False, 'error': f'Network: {e}'}
+
+        if r.status_code in (200, 201):
+            try:
+                new_id = (r.json() or {}).get('id')
+            except ValueError:
+                new_id = None
+            return {'success': True, 'new_id': new_id}
+        try:
+            err = r.json().get('error', {})
+            return {'success': False, 'error': err.get('message', r.text[:300])}
+        except ValueError:
+            return {'success': False, 'error': f'HTTP {r.status_code}: {r.text[:200]}'}
+
     def list_attachments(self, message_remote_id):
         """Pull metadata for every attachment on a message — no binaries."""
         if not self._mailbox():
