@@ -1,5 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Reply: {{ msg.subject or '(no subject)' }} - Inbox - Matat{% endblock %}
+{% set page_label = action_label or 'Reply' %}
+{% set form_endpoint = {'reply':'admin.inbox_reply','reply_all':'admin.inbox_reply_all','forward':'admin.inbox_forward'}.get(mode, 'admin.inbox_reply') %}
+{% block title %}{{ page_label }}: {{ msg.subject or '(no subject)' }} - Inbox - Matat{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -93,15 +95,15 @@
     {% endwith %}
 
     <div class="reply-card">
-        <h2>Reply</h2>
+        <h2>{{ page_label }}</h2>
 
         <div class="original-meta">
-            Replying to <b>{{ msg.from_name or msg.from_address }}</b>
-            &middot; {{ msg.received_at.strftime('%Y-%m-%d %H:%M UTC') if msg.received_at else '' }}
+            {% if mode == 'forward' %}Forwarding{% else %}Replying to <b>{{ msg.from_name or msg.from_address }}</b>{% endif %}
+            &middot; original received {{ msg.received_at.strftime('%Y-%m-%d %H:%M UTC') if msg.received_at else '' }}
             &middot; from mailbox <b>{{ msg.provider.mailbox_address }}</b>
         </div>
 
-        <form method="POST" enctype="multipart/form-data" action="{{ url_for('admin.inbox_reply', id=msg.id) }}">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for(form_endpoint, id=msg.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="field-row">
@@ -112,7 +114,7 @@
 
             <div class="field-row">
                 <label for="cc">Cc:</label>
-                <input type="text" name="cc" id="cc"
+                <input type="text" name="cc" id="cc" value="{{ default_cc or '' }}"
                        placeholder="optional, comma separated">
             </div>
 
