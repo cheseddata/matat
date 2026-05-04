@@ -2421,42 +2421,34 @@ def create_email_template():
             subject=subject,
             body=body,
             is_global=is_global,
-            created_by=current_user.id
+            created_by=current_user.id,
+            attachments=[],
         )
 
-        # Handle file upload
-        if 'attachment' in request.files:
-            file = request.files['attachment']
-            if file and file.filename:
-                # Validate file size (10MB max)
-                file.seek(0, 2)  # Seek to end
-                file_size = file.tell()
-                file.seek(0)  # Seek back to start
-
-                if file_size > 10 * 1024 * 1024:  # 10MB
-                    flash('Attachment too large. Maximum size is 10MB.', 'error')
-                    return redirect(url_for('admin.create_email_template'))
-
-                # Save file
-                filename = secure_filename(file.filename)
-                # Add timestamp to avoid collisions
-                import time
-                timestamp = int(time.time())
-                filename = f"{timestamp}_{filename}"
-
-                upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'uploads', 'email_attachments')
-                os.makedirs(upload_dir, exist_ok=True)
-
-                file_path = os.path.join(upload_dir, filename)
-                file.save(file_path)
-
-                template.attachment_path = file_path
-                template.attachment_name = request.files['attachment'].filename
+        # Multi-file upload: name="attachment" with multiple selected,
+        # or name="attachments" — accept either. Each file ≤10 MB.
+        files = request.files.getlist('attachment') + request.files.getlist('attachments')
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'uploads', 'email_attachments')
+        os.makedirs(upload_dir, exist_ok=True)
+        import time
+        for file in files:
+            if not file or not file.filename:
+                continue
+            file.seek(0, 2); size = file.tell(); file.seek(0)
+            if size > 10 * 1024 * 1024:
+                flash(f'Attachment "{file.filename}" too large (>10 MB) — skipped.', 'error')
+                continue
+            safe = secure_filename(file.filename)
+            stamped = f'{int(time.time() * 1000)}_{safe}'
+            file_path = os.path.join(upload_dir, stamped)
+            file.save(file_path)
+            template.attachments.append({'path': file_path, 'name': file.filename})
 
         db.session.add(template)
         db.session.commit()
 
-        logger.info(f'[email_templates] Created template "{name}" by admin {current_user.id}')
+        logger.info(f'[email_templates] Created template "{name}" by admin {current_user.id} '
+                    f'with {len(template.attachments or [])} attachment(s)')
         flash('Template created successfully.', 'success')
         return redirect(url_for('admin.email_templates'))
 
@@ -2487,53 +2479,56 @@ def edit_email_template(id):
             flash('Name, subject, and body are required.', 'error')
             return redirect(url_for('admin.edit_email_template', id=id))
 
-        # Handle attachment removal
-        if request.form.get('remove_attachment') == 'true':
-            if template.attachment_path and os.path.exists(template.attachment_path):
-                try:
-                    os.remove(template.attachment_path)
-                except:
-                    pass
+        # Per-file removal: form submits remove_attachment=<path> for any
+        # attachment the operator clicked the X on. Multiple values
+        # supported — getlist handles them.
+        if template.attachments is None:
+            template.attachments = []
+        # Migrate the legacy single-attachment into the list once, on
+        # first edit, so removal/UI is uniform.
+        if template.attachment_path and not any(
+            (a or {}).get('path') == template.attachment_path for a in template.attachments
+        ):
+            template.attachments.append({
+                'path': template.attachment_path,
+                'name': template.attachment_name or os.path.basename(template.attachment_path),
+            })
             template.attachment_path = None
             template.attachment_name = None
 
-        # Handle new file upload
-        if 'attachment' in request.files:
-            file = request.files['attachment']
-            if file and file.filename:
-                # Validate file size (10MB max)
-                file.seek(0, 2)  # Seek to end
-                file_size = file.tell()
-                file.seek(0)  # Seek back to start
+        to_remove = set(request.form.getlist('remove_attachment'))
+        if to_remove:
+            kept = []
+            for a in template.attachments:
+                if (a or {}).get('path') in to_remove:
+                    if a.get('path') and os.path.exists(a['path']):
+                        try: os.remove(a['path'])
+                        except OSError: pass
+                else:
+                    kept.append(a)
+            template.attachments = kept
 
-                if file_size > 10 * 1024 * 1024:  # 10MB
-                    flash('Attachment too large. Maximum size is 10MB.', 'error')
-                    return redirect(url_for('admin.edit_email_template', id=id))
-
-                # Remove old file if exists
-                if template.attachment_path and os.path.exists(template.attachment_path):
-                    try:
-                        os.remove(template.attachment_path)
-                    except:
-                        pass
-
-                # Save new file
-                filename = secure_filename(file.filename)
-                import time
-                timestamp = int(time.time())
-                filename = f"{timestamp}_{filename}"
-
-                upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'uploads', 'email_attachments')
-                os.makedirs(upload_dir, exist_ok=True)
-
-                file_path = os.path.join(upload_dir, filename)
-                file.save(file_path)
-
-                template.attachment_path = file_path
-                template.attachment_name = request.files['attachment'].filename
+        # Handle new uploads (multi-file).
+        files = request.files.getlist('attachment') + request.files.getlist('attachments')
+        upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), 'uploads', 'email_attachments')
+        os.makedirs(upload_dir, exist_ok=True)
+        import time
+        for file in files:
+            if not file or not file.filename:
+                continue
+            file.seek(0, 2); size = file.tell(); file.seek(0)
+            if size > 10 * 1024 * 1024:
+                flash(f'Attachment "{file.filename}" too large (>10 MB) — skipped.', 'error')
+                continue
+            safe = secure_filename(file.filename)
+            stamped = f'{int(time.time() * 1000)}_{safe}'
+            file_path = os.path.join(upload_dir, stamped)
+            file.save(file_path)
+            template.attachments.append({'path': file_path, 'name': file.filename})
 
         db.session.commit()
-        logger.info(f'[email_templates] Updated template {id} by admin {current_user.id}')
+        logger.info(f'[email_templates] Updated template {id} by admin {current_user.id} — '
+                    f'{len(template.attachments or [])} attachment(s)')
         flash('Template updated successfully.', 'success')
         return redirect(url_for('admin.email_templates'))
 

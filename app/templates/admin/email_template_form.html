@@ -296,26 +296,32 @@
                 <div class="help-text">Use {greeting} for personalized greeting and {amount} for the pledged amount.</div>
             </div>
 
-            <!-- Attachment Section -->
+            <!-- Attachments — multi-file. Operator can attach as many
+                 files as they want; each ≤10 MB. -->
             <div class="form-group">
-                <label>Attachment (optional)</label>
-                {% if template and template.attachment_name %}
-                <div class="current-attachment" id="current-attachment">
-                    <span class="file-icon">&#x1F4CE;</span>
-                    <div class="file-info">
-                        <div class="file-name">{{ template.attachment_name }}</div>
-                        <div class="file-size">Current attachment</div>
+                <label>Attachments (optional)</label>
+                {% if template and template.all_attachments %}
+                <div id="existing-attachments">
+                    {% for a in template.all_attachments %}
+                    <div class="current-attachment" data-path="{{ a.path }}">
+                        <span class="file-icon">&#x1F4CE;</span>
+                        <div class="file-info">
+                            <div class="file-name">{{ a.name }}</div>
+                            <div class="file-size">Saved attachment</div>
+                        </div>
+                        <button type="button" class="btn-remove"
+                                onclick="markAttachmentForRemoval(this, '{{ a.path|replace("'", "\\'") }}')">Remove</button>
                     </div>
-                    <button type="button" class="btn-remove" onclick="removeAttachment()">Remove</button>
+                    {% endfor %}
                 </div>
-                <input type="hidden" name="remove_attachment" id="remove_attachment" value="">
                 {% endif %}
                 <div class="file-upload-area" id="file-upload-area" onclick="document.getElementById('attachment').click()">
                     <div class="file-upload-icon">&#x1F4C1;</div>
-                    <div class="file-upload-text" id="upload-text">Click to upload or drag and drop</div>
-                    <div class="file-upload-hint">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10MB)</div>
-                    <input type="file" id="attachment" name="attachment" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                    <div class="file-upload-text" id="upload-text">Click to upload — hold Ctrl/Cmd to pick multiple files</div>
+                    <div class="file-upload-hint">PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max 10 MB per file)</div>
+                    <input type="file" id="attachment" name="attachment" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
                 </div>
+                <div id="newly-selected" style="margin-top:8px;"></div>
             </div>
 
             <div class="form-group">
@@ -336,43 +342,47 @@
 
 {% block extra_js %}
 <script>
-// File upload preview
-document.getElementById('attachment').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    const uploadArea = document.getElementById('file-upload-area');
-    const uploadText = document.getElementById('upload-text');
-
-    if (file) {
-        uploadArea.classList.add('has-file');
-        uploadText.textContent = file.name + ' (' + formatFileSize(file.size) + ')';
-    } else {
-        uploadArea.classList.remove('has-file');
-        uploadText.textContent = 'Click to upload or drag and drop';
-    }
-});
-
-// Drag and drop
+// Multi-file picker preview
+const fileInput = document.getElementById('attachment');
 const uploadArea = document.getElementById('file-upload-area');
+const uploadText = document.getElementById('upload-text');
+const newlySelected = document.getElementById('newly-selected');
 
-uploadArea.addEventListener('dragover', function(e) {
-    e.preventDefault();
-    this.classList.add('has-file');
-});
+fileInput.addEventListener('change', renderSelectedFiles);
 
-uploadArea.addEventListener('dragleave', function(e) {
-    e.preventDefault();
-    if (!document.getElementById('attachment').files.length) {
-        this.classList.remove('has-file');
+function renderSelectedFiles() {
+    const files = Array.from(fileInput.files || []);
+    if (!files.length) {
+        uploadArea.classList.remove('has-file');
+        uploadText.textContent = 'Click to upload — hold Ctrl/Cmd to pick multiple files';
+        newlySelected.innerHTML = '';
+        return;
     }
-});
+    uploadArea.classList.add('has-file');
+    uploadText.textContent = files.length + ' file' + (files.length === 1 ? '' : 's') + ' selected';
+    newlySelected.innerHTML = files.map(f =>
+        `<div class="current-attachment" style="background:#f0fff4;">
+           <span class="file-icon">&#x1F4CE;</span>
+           <div class="file-info">
+             <div class="file-name">${escapeHtml(f.name)}</div>
+             <div class="file-size">${formatFileSize(f.size)} (new)</div>
+           </div>
+         </div>`
+    ).join('');
+}
 
-uploadArea.addEventListener('drop', function(e) {
+// Drag and drop — append (don't overwrite) so the operator can drop in
+// batches.
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('has-file'); });
+uploadArea.addEventListener('dragleave', e => { e.preventDefault(); });
+uploadArea.addEventListener('drop', e => {
     e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files.length) {
-        document.getElementById('attachment').files = files;
-        document.getElementById('attachment').dispatchEvent(new Event('change'));
-    }
+    if (!e.dataTransfer.files.length) return;
+    const dt = new DataTransfer();
+    Array.from(fileInput.files || []).forEach(f => dt.items.add(f));
+    Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+    fileInput.files = dt.files;
+    renderSelectedFiles();
 });
 
 function formatFileSize(bytes) {
@@ -382,10 +392,21 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+function escapeHtml(s) { return s.replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
 
-function removeAttachment() {
-    document.getElementById('remove_attachment').value = 'true';
-    document.getElementById('current-attachment').style.display = 'none';
+// Per-existing-attachment removal: hide the row visually + add a hidden
+// <input name="remove_attachment" value="<path>"> so the server knows
+// which to delete on submit.
+function markAttachmentForRemoval(btn, path) {
+    const row = btn.closest('.current-attachment');
+    if (row) row.style.display = 'none';
+    const form = btn.closest('form');
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'remove_attachment';
+    hidden.value = path;
+    form.appendChild(hidden);
 }
 </script>
 {% endblock %}

@@ -1,4 +1,5 @@
 from datetime import datetime
+from sqlalchemy.ext.mutable import MutableList
 from ..extensions import db
 
 
@@ -12,9 +13,17 @@ class EmailTemplate(db.Model):
     subject = db.Column(db.String(255), nullable=False)
     body = db.Column(db.Text, nullable=False)
 
-    # Attachment support
-    attachment_path = db.Column(db.String(500), nullable=True)  # File path to attachment
-    attachment_name = db.Column(db.String(255), nullable=True)  # Original filename for display
+    # Legacy single-attachment fields — kept for back-compat reading.
+    # New attachments go into `attachments` (list) below.
+    attachment_path = db.Column(db.String(500), nullable=True)
+    attachment_name = db.Column(db.String(255), nullable=True)
+    # Multi-attachment list: [{"path": "/var/www/matat/uploads/...",
+    #                         "name": "donor-letter.pdf"}, ...]
+    # Mrs. Rosen needs to attach >1 file per template (PDF + DOCX +
+    # an image are typical). The `MutableList.as_mutable` makes
+    # SQLAlchemy notice in-place mutations so we don't have to
+    # reassign the whole list on every edit.
+    attachments = db.Column(MutableList.as_mutable(db.JSON), nullable=True)
 
     # Who created it - if null, it's a system template
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -33,3 +42,23 @@ class EmailTemplate(db.Model):
 
     def __repr__(self):
         return f'<EmailTemplate {self.name} ({self.language})>'
+
+    @property
+    def all_attachments(self):
+        """Unified list of {path, name} for every attachment on this
+        template — pulls in the legacy single-attachment fields too so
+        callers don't need to special-case old vs new templates.
+        """
+        items = []
+        for a in (self.attachments or []):
+            if isinstance(a, dict) and a.get('path'):
+                items.append({'path': a['path'], 'name': a.get('name') or a['path'].rsplit('/', 1)[-1]})
+        if self.attachment_path and self.attachment_path not in {a['path'] for a in items}:
+            items.append({'path': self.attachment_path,
+                          'name': self.attachment_name or self.attachment_path.rsplit('/', 1)[-1]})
+        return items
+
+    @property
+    def attachment_paths(self):
+        """Just the filesystem paths — convenient for the email-sender."""
+        return [a['path'] for a in self.all_attachments if a.get('path')]

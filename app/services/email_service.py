@@ -167,6 +167,8 @@ def send_email(to, subject, html_body, text_body=None, attachments=None,
             success = _send_smtp(to, subject, html_body, text_body, attachments, email_config, extra_bcc=extra_bcc)
         elif provider == 'sendgrid':
             success = _send_sendgrid(to, subject, html_body, text_body, attachments, extra_bcc=extra_bcc)
+        elif provider == 'msgraph':
+            success = _send_msgraph(to, subject, html_body, text_body, attachments, extra_bcc=extra_bcc)
         else:
             success = False
 
@@ -388,6 +390,69 @@ def _add_to_activetrail_group(email, group_id, config):
             logger.warning(f'ActiveTrail: Failed to add {email} to group: {response.text}')
     except Exception as e:
         logger.warning(f'ActiveTrail: Error adding to group: {e}')
+
+
+def _send_msgraph(to, subject, html_body, text_body=None, attachments=None, extra_bcc=None):
+    """Send email via the Microsoft Graph mailbox configured in
+    `email_inbox_providers` (one row, code='msgraph').
+
+    All app email goes out from that mailbox — currently
+    support@matatmordechai.org. Requires Mail.Send application
+    permission with admin consent on the Azure app.
+
+    Attachments are filesystem paths in the same shape every other
+    provider expects; we b64-encode each before handing off to Graph
+    /sendMail. Graph's per-request body cap is ~4 MB total — the
+    provider class enforces 3 MB to leave headroom and surfaces a
+    clear error if we exceed it.
+    """
+    import base64, mimetypes, os
+    from ..models.email_inbox_provider import EmailInboxProvider
+    from .email.microsoft_graph_inbox import MicrosoftGraphInbox
+
+    row = (EmailInboxProvider.query
+           .filter_by(code='msgraph', enabled=True, deleted_at=None)
+           .first())
+    if not row:
+        logger.error('_send_msgraph: no enabled email_inbox_providers row with code="msgraph"')
+        return False
+
+    inbox = MicrosoftGraphInbox(row)
+
+    # Build the bcc list — auto-CC support@matatmordechai.org, dedup
+    # against to/extra_bcc and self-mailbox to avoid Graph rejecting.
+    bcc = list(extra_bcc or [])
+    audit = 'support@matatmordechai.org'
+    if audit not in bcc and audit != to and audit != row.mailbox_address:
+        bcc.append(audit)
+    bcc = [a for a in bcc if a and a != to]
+
+    # Convert attachment paths → Graph attachment dicts.
+    graph_attachments = []
+    for path in (attachments or []):
+        if not path or not os.path.exists(path):
+            continue
+        with open(path, 'rb') as f:
+            content_b64 = base64.b64encode(f.read()).decode('ascii')
+        content_type, _ = mimetypes.guess_type(path)
+        graph_attachments.append({
+            'filename':     os.path.basename(path),
+            'content_type': content_type or 'application/octet-stream',
+            'content_b64':  content_b64,
+        })
+
+    result = inbox.send_message(
+        to_addresses=[to],
+        subject=subject,
+        body_html=html_body or text_body or '',
+        bcc_addresses=bcc or None,
+        attachments=graph_attachments or None,
+    )
+    if not result.get('success'):
+        logger.error(f'_send_msgraph: Graph rejected — {result.get("error")}')
+        return False
+    logger.info(f'_send_msgraph: sent to {to} via {row.mailbox_address}')
+    return True
 
 
 def _send_activetrail(to, subject, html_body, text_body=None, attachments=None, config=None, internal_message_id=None, extra_bcc=None):
