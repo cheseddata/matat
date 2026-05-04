@@ -646,8 +646,19 @@ def send_donation_link_email(donor_email, donor_name, link, salesperson=None, la
     )
 
 
-def send_custom_donation_link_email(donor_email, subject, body_text, link, language='en', attachment_path=None):
-    """Send donation link email with custom content and optional attachment."""
+def send_custom_donation_link_email(donor_email, subject, body_text, link, language='en',
+                                    attachment_path=None, attachment_paths=None,
+                                    extra_bcc=None):
+    """Send donation link email with custom content, optional attachments,
+    and optional BCC recipients.
+
+    Accepts either ``attachment_path=`` (legacy single file) or
+    ``attachment_paths=`` (list). The two are merged so older callers
+    keep working unchanged.
+
+    ``extra_bcc`` is a list of email addresses BCC'd in addition to the
+    fixed support@matatmordechai.org audit copy.
+    """
     # Convert plain text body to HTML with proper formatting
     # Escape HTML and convert newlines to <br>
     import html
@@ -716,10 +727,19 @@ def send_custom_donation_link_email(donor_email, subject, body_text, link, langu
 </body>
 </html>'''
 
-    # Build attachments list
-    attachments = None
-    if attachment_path and os.path.exists(attachment_path):
-        attachments = [attachment_path]
+    # Merge legacy single-path arg with the new list arg, dedupe, and
+    # filter to only files that actually exist on disk.
+    candidates = list(attachment_paths or [])
+    if attachment_path:
+        candidates.append(attachment_path)
+    seen = set()
+    attachments = []
+    for p in candidates:
+        if not p or p in seen or not os.path.exists(p):
+            continue
+        seen.add(p)
+        attachments.append(p)
+    attachments = attachments or None
 
     return send_email(
         to=donor_email,
@@ -728,7 +748,8 @@ def send_custom_donation_link_email(donor_email, subject, body_text, link, langu
         text_body=body_text,
         attachments=attachments,
         message_type='donation_link',
-        related_link_id=link.id
+        related_link_id=link.id,
+        extra_bcc=extra_bcc,
     )
 
 

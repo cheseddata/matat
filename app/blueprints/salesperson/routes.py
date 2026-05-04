@@ -115,6 +115,13 @@ def send_link():
         email_subject = request.form.get('email_subject', '').strip()
         email_body = request.form.get('email_body', '').strip()
         template_id = request.form.get('template_id', '').strip()
+        # BCC: comma- or semicolon-separated. Invalid entries silently
+        # dropped; the audit BCC to support@matatmordechai.org is added
+        # automatically inside send_email() so callers don't add it.
+        bcc_raw = (request.form.get('email_bcc') or '').strip()
+        import re as _re
+        extra_bcc = [b.strip() for b in _re.split(r'[,;\s]+', bcc_raw)
+                     if b.strip() and '@' in b]
 
         logger.info(f'send_link: email={donor_email}, subject={email_subject[:50] if email_subject else "default"}')
 
@@ -142,24 +149,34 @@ def send_link():
 
         logger.info(f'Donation link created: {link.short_code}, URL: {link.full_url}')
 
-        # Get attachment: uploaded file takes priority, then template attachment
-        attachment_path = None
-        uploaded_file = request.files.get('attachment')
-        if uploaded_file and uploaded_file.filename:
-            import os, uuid
-            from werkzeug.utils import secure_filename
-            upload_dir = '/var/www/matat/uploads/email_attachments'
-            os.makedirs(upload_dir, exist_ok=True)
-            ext = uploaded_file.filename.rsplit('.', 1)[1].lower() if '.' in uploaded_file.filename else 'bin'
+        # Collect attachments — uploaded files take priority, otherwise
+        # fall back to whatever the picked template carries. Multi-file
+        # supported on both inputs ("attachment" is the visible picker,
+        # "submit_attachment" is the JS-cloned hidden copy used at form
+        # submit time, "attachments" supports drag-drop append).
+        attachment_paths = []
+        import os, uuid
+        upload_dir = '/var/www/matat/uploads/email_attachments'
+        os.makedirs(upload_dir, exist_ok=True)
+        uploaded_files = (request.files.getlist('attachment')
+                          + request.files.getlist('attachments')
+                          + request.files.getlist('submit_attachment'))
+        seen = set()
+        for f in uploaded_files:
+            if not f or not f.filename or f.filename in seen:
+                continue
+            seen.add(f.filename)
+            ext = f.filename.rsplit('.', 1)[1].lower() if '.' in f.filename else 'bin'
             filename = f'{uuid.uuid4().hex}.{ext}'
             filepath = os.path.join(upload_dir, filename)
-            uploaded_file.save(filepath)
-            attachment_path = filepath
-            logger.info(f'send_link: attachment uploaded: {uploaded_file.filename} -> {filepath}')
-        elif template_id:
+            f.save(filepath)
+            attachment_paths.append(filepath)
+            logger.info(f'send_link: attachment uploaded: {f.filename} -> {filepath}')
+
+        if not attachment_paths and template_id:
             template = EmailTemplate.query.get(int(template_id))
-            if template and template.attachment_path:
-                attachment_path = template.attachment_path
+            if template:
+                attachment_paths = list(template.attachment_paths)
 
         # Send the email with custom content
         if email_subject and email_body:
@@ -169,7 +186,8 @@ def send_link():
                 body_text=email_body,
                 link=link,
                 language=language,
-                attachment_path=attachment_path
+                attachment_paths=attachment_paths,
+                extra_bcc=extra_bcc or None,
             )
         else:
             # Fallback to default email

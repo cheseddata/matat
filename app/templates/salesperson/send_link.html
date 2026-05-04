@@ -427,11 +427,20 @@
             </div>
 
             <div class="email-field" style="margin-top: 15px;">
-                <label for="email_attachment">Attach Document (PDF, DOC, image, etc.)</label>
-                <input type="file" id="email_attachment" name="attachment"
+                <label for="email_attachment">Attach Documents (PDF, DOC, image, etc.)</label>
+                <input type="file" id="email_attachment" name="attachment" multiple
                        accept=".pdf,.doc,.docx,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.gif,.txt"
                        style="padding:8px; border:1px dashed #ccc; border-radius:6px; width:100%; cursor:pointer;">
-                <small style="color:#999;">Max 10MB. Leave empty for no attachment.</small>
+                <small style="color:#999;">Max 10MB per file. Hold Ctrl/Cmd to pick multiple. Leave empty for no attachment.</small>
+                <div id="selectedFilesList" style="margin-top:8px; font-size:12px; color:#444;"></div>
+            </div>
+
+            <div class="email-field" style="margin-top: 15px;">
+                <label for="email_bcc">BCC (optional)</label>
+                <input type="text" id="email_bcc" name="email_bcc"
+                       placeholder="another@example.com, third@example.com"
+                       style="padding:8px; border:1px solid #ddd; border-radius:6px; width:100%;">
+                <small style="color:#999;">Comma-separated. <code>support@matatmordechai.org</code> is BCC'd automatically — no need to add it here.</small>
             </div>
 
             <div id="attachmentInfo" style="display: none; margin-top: 10px; padding: 10px 15px; background: #e8f4f8; border-radius: 6px; font-size: 13px;">
@@ -462,7 +471,8 @@
     <input type="hidden" name="email_subject" id="submit_email_subject">
     <input type="hidden" name="email_body" id="submit_email_body">
     <input type="hidden" name="template_id" id="submit_template_id">
-    <input type="file" name="attachment" id="submit_attachment" style="display:none;">
+    <input type="hidden" name="email_bcc" id="submit_email_bcc">
+    <input type="file" name="attachment" id="submit_attachment" multiple style="display:none;">
 </form>
 {% endblock %}
 
@@ -851,12 +861,15 @@ function sendEmail() {
     document.getElementById('submit_email_subject').value = subject;
     document.getElementById('submit_email_body').value = body;
     document.getElementById('submit_template_id').value = selectedTemplateId || '';
+    document.getElementById('submit_email_bcc').value = (document.getElementById('email_bcc') || {}).value || '';
 
-    // Copy file attachment to hidden form
+    // Copy ALL selected files into the hidden submit form (multi).
     var fileInput = document.getElementById('email_attachment');
     if (fileInput.files.length > 0) {
         var dt = new DataTransfer();
-        dt.items.add(fileInput.files[0]);
+        for (var i = 0; i < fileInput.files.length; i++) {
+            dt.items.add(fileInput.files[i]);
+        }
         document.getElementById('submit_attachment').files = dt.files;
     }
 
@@ -895,5 +908,26 @@ document.getElementById('language').addEventListener('change', function() {
 
 // Load custom templates on page load
 loadCustomTemplates();
+
+// Multi-file preview: show every selected file's name + size below the
+// picker so the operator can confirm before clicking Send.
+(function() {
+    var picker = document.getElementById('email_attachment');
+    var listEl = document.getElementById('selectedFilesList');
+    if (!picker || !listEl) return;
+    function fmtSize(b) {
+        if (!b) return '0';
+        var k = 1024, units = ['B', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(b) / Math.log(k));
+        return (b / Math.pow(k, i)).toFixed(1) + ' ' + units[i];
+    }
+    picker.addEventListener('change', function() {
+        var files = Array.from(picker.files || []);
+        if (!files.length) { listEl.innerHTML = ''; return; }
+        listEl.innerHTML = '<strong>' + files.length + ' file' +
+            (files.length === 1 ? '' : 's') + ' attached:</strong> ' +
+            files.map(f => '📎 ' + f.name + ' (' + fmtSize(f.size) + ')').join(' &nbsp; ');
+    });
+})();
 </script>
 {% endblock %}
