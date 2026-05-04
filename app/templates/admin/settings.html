@@ -256,11 +256,13 @@
                 <div class="form-group">
                     <label>Active Email Provider</label>
                     <select name="email_provider" id="email_provider" onchange="toggleEmailProviders()">
-                        <option value="mailtrap" {{ 'selected' if config.email_provider == 'mailtrap' or not config.email_provider else '' }}>Mailtrap (Recommended)</option>
+                        <option value="msgraph"     {{ 'selected' if config.email_provider == 'msgraph' else '' }}>Microsoft Graph / Office 365 (support@matatmordechai.org)</option>
+                        <option value="mailtrap"    {{ 'selected' if config.email_provider == 'mailtrap' else '' }}>Mailtrap</option>
                         <option value="activetrail" {{ 'selected' if config.email_provider == 'activetrail' else '' }}>ActiveTrail</option>
-                        <option value="smtp" {{ 'selected' if config.email_provider == 'smtp' else '' }}>SMTP (Fallback)</option>
+                        <option value="smtp"        {{ 'selected' if config.email_provider == 'smtp' else '' }}>SMTP (Fallback)</option>
+                        <option value="sendgrid"    {{ 'selected' if config.email_provider == 'sendgrid' else '' }}>SendGrid</option>
                     </select>
-                    <p class="help-text">Email delivery will use the selected provider.</p>
+                    <p class="help-text">All outbound email — donation links, receipts, manual donations, etc. — uses the selected provider. Switch here if the active provider is having delivery issues.</p>
                 </div>
 
                 <div class="form-group">
@@ -283,6 +285,49 @@
                     <p class="help-text">Create custom email templates for donation link emails.</p>
                 </div>
             </div>
+
+            <!-- Microsoft Graph status -->
+            {% if msgraph_provider %}
+            <div class="settings-card" id="msgraph-settings" style="border: 2px solid #0078d4;">
+                <h2 style="color: #0078d4;">Microsoft Graph (Office 365)</h2>
+                <p class="help-text" style="margin-bottom: 15px;">
+                    Sends through the <strong>{{ msgraph_provider.mailbox_address }}</strong>
+                    Exchange mailbox via the Graph <code>sendMail</code> endpoint. Credentials
+                    (tenant id, client id, client secret) live encrypted on the
+                    <code>email_inbox_providers</code> row. To rotate or swap mailboxes,
+                    update that row directly.
+                </p>
+                <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="font-size:12px; color:#666;">Mailbox</label>
+                        <div style="font-family: monospace;">{{ msgraph_provider.mailbox_address or '—' }}</div>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#666;">Enabled</label>
+                        <div>{{ 'Yes' if msgraph_provider.enabled else 'No' }}</div>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#666;">Last sync</label>
+                        <div>{{ msgraph_provider.last_sync_at or '—' }}</div>
+                    </div>
+                    <div>
+                        <label style="font-size:12px; color:#666;">Last sync status</label>
+                        <div style="color: {{ '#27ae60' if msgraph_provider.last_sync_status == 'ok' else '#e74c3c' }};">
+                            {{ msgraph_provider.last_sync_status or '—' }}
+                        </div>
+                    </div>
+                </div>
+                {% if msgraph_provider.last_sync_error %}
+                <div style="margin-top: 10px; padding: 10px; background: #fdecea; color: #842029; border-radius: 6px; font-size: 12px;">
+                    Last error: {{ msgraph_provider.last_sync_error }}
+                </div>
+                {% endif %}
+                <div style="margin-top: 15px; font-size: 12px; color: #666;">
+                    No additional fields here — the rest of the Graph config is on the
+                    <code>email_inbox_providers</code> row, not in <code>config_settings</code>.
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Mailtrap Settings -->
             <div class="settings-card" id="mailtrap-settings">
@@ -711,27 +756,18 @@ function testYeshInvoice() {
 
 function toggleEmailProviders() {
     const provider = document.getElementById('email_provider').value;
-    const mailtrapCard = document.getElementById('mailtrap-settings');
-    const activetrailCard = document.getElementById('activetrail-settings');
-
-    // Show/hide based on selection
-    if (provider === 'mailtrap') {
-        mailtrapCard.style.display = 'block';
-        activetrailCard.style.display = 'block';
-        activetrailCard.style.opacity = '0.6';
-        mailtrapCard.style.opacity = '1';
-    } else if (provider === 'activetrail') {
-        mailtrapCard.style.display = 'block';
-        activetrailCard.style.display = 'block';
-        mailtrapCard.style.opacity = '0.6';
-        activetrailCard.style.opacity = '1';
-    } else {
-        // SMTP - show both at reduced opacity
-        mailtrapCard.style.display = 'block';
-        activetrailCard.style.display = 'block';
-        mailtrapCard.style.opacity = '0.6';
-        activetrailCard.style.opacity = '0.6';
-    }
+    const cards = {
+        msgraph:     document.getElementById('msgraph-settings'),
+        mailtrap:    document.getElementById('mailtrap-settings'),
+        activetrail: document.getElementById('activetrail-settings'),
+    };
+    // Highlight the active card; dim the rest. Don't hide — operator may
+    // want to peek at the inactive providers' creds when troubleshooting.
+    Object.entries(cards).forEach(([code, el]) => {
+        if (!el) return;
+        el.style.display = 'block';
+        el.style.opacity = (code === provider) ? '1' : '0.55';
+    });
 }
 </script>
 {% endblock %}

@@ -2172,7 +2172,15 @@ def settings():
         flash('Settings saved successfully.', 'success')
         return redirect(url_for('admin.settings'))
 
-    return render_template('admin/settings.html', config=config)
+    # Surface the configured Microsoft Graph mailbox (if any) so the
+    # settings page can show a status panel for it. Credentials live on
+    # the email_inbox_providers row, not in config_settings.
+    from ...models.email_inbox_provider import EmailInboxProvider
+    msgraph_provider = (EmailInboxProvider.query
+                        .filter_by(code='msgraph', deleted_at=None)
+                        .first())
+    return render_template('admin/settings.html', config=config,
+                           msgraph_provider=msgraph_provider)
 
 
 @admin_bp.route('/settings/clear-test-data', methods=['POST'])
