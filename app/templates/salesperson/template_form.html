@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Edit' if template else 'New' }} Email Template - Matat{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tpl-form-wrap { max-width: 760px; margin: 16px auto; padding: 0 16px; }
+    .tpl-form-card {
+        background: #fff; border-radius: 10px; padding: 24px 26px;
+        box-shadow: 0 2px 14px rgba(0,0,0,.06);
+    }
+    .tpl-form-card h1 { margin: 0 0 6px; }
+    .tpl-form-card .sub { color: #6b7280; font-size: 13px; margin: 0 0 16px; }
+    .placeholders {
+        background: #eff6ff; padding: 12px 14px; border-radius: 8px;
+        margin-bottom: 18px; font-size: 13px; color: #1e3a8a;
+    }
+    .placeholders code {
+        background: #fff; padding: 1px 6px; border-radius: 4px;
+        font-size: 12px;
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+        display: block; margin-bottom: 6px; font-weight: 600;
+        font-size: 13px; color: #374151;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+        width: 100%; padding: 10px 12px; border: 1px solid #d1d5db;
+        border-radius: 6px; font-size: 14px;
+    }
+    .form-group textarea { min-height: 200px; font-family: inherit; }
+    .form-row { display: flex; gap: 14px; }
+    .form-row .form-group { flex: 1; }
+    .att-row {
+        display: flex; align-items: center; gap: 10px;
+        padding: 8px 12px; background: #e8f4f8;
+        border-radius: 6px; margin-bottom: 6px;
+    }
+    .att-row .name { flex: 1; font-size: 13px; }
+    .att-row button {
+        padding: 4px 10px; background: #fee2e2; color: #991b1b;
+        border: 0; border-radius: 4px; font-size: 11px; cursor: pointer;
+        font-weight: 600;
+    }
+    .upload-zone {
+        border: 2px dashed #d1d5db; border-radius: 8px;
+        padding: 20px; text-align: center; cursor: pointer;
+        background: #fafafa;
+    }
+    .upload-zone.has-files { border-color: #10b981; background: #f0fff4; }
+    .upload-zone:hover { border-color: #2563eb; }
+    .actions {
+        display: flex; gap: 10px; margin-top: 18px;
+        padding-top: 16px; border-top: 1px solid #f1f5f9;
+    }
+    .actions button, .actions a {
+        padding: 10px 22px; border-radius: 6px; font-weight: 600;
+        text-decoration: none; cursor: pointer; border: 0; font-size: 14px;
+    }
+    .save-btn { background: #2563eb; color: #fff; }
+    .save-btn:hover { background: #1d4ed8; }
+    .cancel-btn { background: #f3f4f6; color: #374151; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tpl-form-wrap" {% if lang == 'he' %}dir="rtl"{% endif %}>
+    <div class="tpl-form-card">
+        <h1>{{ 'Edit' if template else 'New' }} Email Template</h1>
+        <p class="sub">
+            <a href="{{ url_for('salesperson.email_templates_list') }}">← Back to my templates</a>
+        </p>
+
+        <div class="placeholders">
+            <strong>Available placeholders</strong>:
+            <code>{greeting}</code> — personalized greeting (Dear John / שלום וברכה),
+            <code>{amount}</code> — pledged amount line if you set one. The donation
+            link button is added automatically below your message.
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Template name</label>
+                    <input type="text" name="name" required maxlength="100"
+                           value="{{ template.name if template else '' }}"
+                           placeholder="e.g., Wedding Appeal">
+                </div>
+                <div class="form-group" style="flex: 0 0 180px;">
+                    <label>Language</label>
+                    <select name="language">
+                        <option value="en" {{ 'selected' if not template or template.language == 'en' }}>English</option>
+                        <option value="he" {{ 'selected' if template and template.language == 'he' }}>עברית</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Subject</label>
+                <input type="text" name="subject" required maxlength="255"
+                       value="{{ template.subject if template else '' }}"
+                       placeholder="e.g., Your Support Makes a Difference">
+            </div>
+
+            <div class="form-group">
+                <label>Body</label>
+                <textarea name="body" required>{{ template.body if template else '' }}</textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Attachments (optional)</label>
+                {% if template and template.all_attachments %}
+                    <div id="existing-atts">
+                        {% for a in template.all_attachments %}
+                        <div class="att-row" data-path="{{ a.path }}">
+                            <span class="name">📎 {{ a.name }}</span>
+                            <button type="button" onclick="removeAtt(this, '{{ a.path|replace("'", "\\'") }}')">✕ remove</button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="upload-zone" id="upload-zone" onclick="document.getElementById('attachment').click()">
+                    📎 Click to add files (or drag &amp; drop). Hold Ctrl/Cmd to pick multiple.<br>
+                    <small style="color: #9ca3af;">10 MB per file. PDF, DOC, XLS, JPG, PNG, etc.</small>
+                    <input type="file" id="attachment" name="attachment" multiple style="display: none;"
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv">
+                </div>
+                <div id="new-atts" style="margin-top: 8px;"></div>
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="save-btn">{{ 'Save changes' if template else 'Create template' }}</button>
+                <a href="{{ url_for('salesperson.email_templates_list') }}" class="cancel-btn">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Per-existing-attachment removal: hide row + add a hidden
+// remove_attachment input so the server knows to delete on save.
+function removeAtt(btn, path) {
+    var row = btn.closest('.att-row');
+    if (row) row.style.display = 'none';
+    var form = btn.closest('form');
+    var hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'remove_attachment';
+    hidden.value = path;
+    form.appendChild(hidden);
+}
+
+// New-files preview + append-on-second-pick.
+(function() {
+    var input = document.getElementById('attachment');
+    var zone  = document.getElementById('upload-zone');
+    var list  = document.getElementById('new-atts');
+
+    function fmt(b) {
+        if (!b) return '0';
+        var k=1024, u=['B','KB','MB','GB'];
+        var i = Math.floor(Math.log(b) / Math.log(k));
+        return (b / Math.pow(k, i)).toFixed(1) + ' ' + u[i];
+    }
+    function render() {
+        var files = Array.from(input.files || []);
+        if (!files.length) {
+            zone.classList.remove('has-files');
+            list.innerHTML = '';
+            return;
+        }
+        zone.classList.add('has-files');
+        list.innerHTML = files.map(function(f, i) {
+            return '<div class="att-row" style="background:#f0fff4;">' +
+                   '<span class="name">📎 ' + escapeHtml(f.name) + ' <span style="color:#6b7280;">(' + fmt(f.size) + ' — new)</span></span>' +
+                   '<button type="button" data-i="' + i + '">✕ remove</button>' +
+                   '</div>';
+        }).join('');
+        Array.from(list.querySelectorAll('button[data-i]')).forEach(function(b) {
+            b.addEventListener('click', function() {
+                var idx = parseInt(b.dataset.i, 10);
+                var dt = new DataTransfer();
+                Array.from(input.files).forEach(function(f, j) { if (j !== idx) dt.items.add(f); });
+                input.files = dt.files;
+                render();
+            });
+        });
+    }
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, c =>
+            ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
+    }
+    input.addEventListener('change', function() {
+        // Append-on-second-pick: combine carried + new, dedupe.
+        var dt = new DataTransfer();
+        var seen = window.__tplSeen = window.__tplSeen || new Set();
+        Array.from(window.__tplCarried || []).forEach(function(f) { dt.items.add(f); });
+        Array.from(input.files || []).forEach(function(f) {
+            var key = f.name + '::' + f.size + '::' + (f.lastModified || 0);
+            if (seen.has(key)) return;
+            seen.add(key);
+            dt.items.add(f);
+        });
+        input.files = dt.files;
+        window.__tplCarried = Array.from(input.files);
+        render();
+    });
+    zone.addEventListener('dragover', function(e) { e.preventDefault(); zone.classList.add('has-files'); });
+    zone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        if (!e.dataTransfer.files.length) return;
+        var dt = new DataTransfer();
+        Array.from(input.files || []).forEach(function(f) { dt.items.add(f); });
+        Array.from(e.dataTransfer.files).forEach(function(f) { dt.items.add(f); });
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change'));
+    });
+})();
+</script>
+{% endblock %}

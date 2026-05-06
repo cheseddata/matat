@@ -402,7 +402,13 @@
             </div>
 
             <div class="email-field">
-                <label>Choose Template</label>
+                <label style="display: flex; align-items: center; justify-content: space-between;">
+                    <span>Choose Template</span>
+                    <a href="{{ url_for('salesperson.email_templates_list') }}" target="_blank"
+                       style="font-size: 12px; color: #2563eb; text-decoration: none; font-weight: 600;">
+                        📝 Manage my templates →
+                    </a>
+                </label>
                 <p class="template-hint">Select a template or customize the message below</p>
                 <div class="template-selector">
                     <button type="button" class="template-btn active" data-template="standard" onclick="selectTemplate('standard')">Standard</button>
@@ -451,9 +457,17 @@
                 <strong>Note:</strong> The donation link button will be automatically added below your message.
             </p>
         </div>
-        <div class="modal-footer">
+        <div class="modal-footer" style="justify-content: space-between;">
             <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
-            <button class="modal-btn send" onclick="sendEmail()">Send Email</button>
+            <div style="display: flex; gap: 8px;">
+                <button class="modal-btn" type="button"
+                        onclick="saveAsTemplate()"
+                        style="background:#10b981; color:#fff;"
+                        title="Save the subject + body + attachments as a new template you can reuse">
+                    💾 Save as template
+                </button>
+                <button class="modal-btn send" onclick="sendEmail()">Send Email</button>
+            </div>
         </div>
     </div>
 </div>
@@ -835,6 +849,50 @@ document.getElementById('emailModal').addEventListener('click', function(e) {
 });
 
 // Send email
+// Save the modal's current subject + body + selected attachments as a
+// new personal template. Keeps the modal open and toasts the result.
+function saveAsTemplate() {
+    var subject = document.getElementById('emailSubject').value.trim();
+    var body    = document.getElementById('emailBody').value.trim();
+    var lang    = document.getElementById('language').value || 'en';
+    if (!subject || !body) {
+        alert('Please fill in subject and body before saving as a template.');
+        return;
+    }
+    var name = window.prompt('Name for this template (e.g., "Holiday Appeal"):',
+                             subject.slice(0, 80));
+    if (!name) return;
+    name = name.trim();
+    if (!name) return;
+
+    var fd = new FormData();
+    fd.append('csrf_token', '{{ csrf_token() }}');
+    fd.append('name', name);
+    fd.append('subject', subject);
+    fd.append('body', body);
+    fd.append('language', lang);
+    var picker = document.getElementById('email_attachment');
+    if (picker && picker.files) {
+        for (var i = 0; i < picker.files.length; i++) {
+            fd.append('attachment', picker.files[i]);
+        }
+    }
+    fetch('{{ url_for("salesperson.save_template_from_modal") }}', {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin',
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+        if (j.success) {
+            alert('Template "' + j.name + '" saved! It will appear in the Choose Template list next time you open this modal.');
+        } else {
+            alert('Could not save template: ' + (j.error || 'unknown error'));
+        }
+    })
+    .catch(function(e) { alert('Network error saving template: ' + e); });
+}
+
 function sendEmail() {
     const email = document.getElementById('donor_email').value;
     const subject = document.getElementById('email_subject').value;

@@ -1007,3 +1007,183 @@ def donor_notes_list(id):
         })
 
     return jsonify({'notes': notes_data})
+
+
+# ============================================================
+# EMAIL TEMPLATES — salesperson-scoped management
+# Each salesperson sees:
+#   - global templates  (read-only — created by an admin)
+#   - their own templates (full CRUD)
+# Other salespersons' personal templates are NOT visible.
+# ============================================================
+@salesperson_bp.route('/templates')
+@salesperson_required
+def email_templates_list():
+    """List of templates the current user can pick from on send-link."""
+    from ...models.email_template import EmailTemplate
+    from sqlalchemy import or_
+    templates = (EmailTemplate.query
+                 .filter(EmailTemplate.deleted_at.is_(None))
+                 .filter(or_(EmailTemplate.is_global == True,
+                             EmailTemplate.created_by == current_user.id))
+                 .order_by(EmailTemplate.is_global.desc(), EmailTemplate.name)
+                 .all())
+    return render_template('salesperson/templates_list.html', templates=templates)
+
+
+def _save_template_attachments(template, files):
+    """Append every uploaded file (≤10 MB each) to template.attachments.
+    Bumps template.attachments to a list if it's NULL.
+    """
+    import os, time
+    from werkzeug.utils import secure_filename
+    if template.attachments is None:
+        template.attachments = []
+    upload_dir = '/var/www/matat/uploads/email_attachments'
+    os.makedirs(upload_dir, exist_ok=True)
+    for f in (files or []):
+        if not f or not f.filename:
+            continue
+        f.seek(0, 2); size = f.tell(); f.seek(0)
+        if size > 10 * 1024 * 1024:
+            flash(f'Attachment "{f.filename}" too large (>10 MB) — skipped.', 'warning')
+            continue
+        safe = secure_filename(f.filename)
+        stamped = f'{int(time.time() * 1000)}_{safe}'
+        path = os.path.join(upload_dir, stamped)
+        f.save(path)
+        template.attachments.append({'path': path, 'name': f.filename})
+
+
+@salesperson_bp.route('/templates/new', methods=['GET', 'POST'])
+@salesperson_required
+def email_template_new():
+    """Create a personal email template owned by current_user."""
+    from ...models.email_template import EmailTemplate
+    if request.method == 'POST':
+        name = (request.form.get('name') or '').strip()
+        language = (request.form.get('language') or 'en').strip()
+        subject = (request.form.get('subject') or '').strip()
+        body = (request.form.get('body') or '').strip()
+        if not name or not subject or not body:
+            flash('Name, subject, and body are required.', 'error')
+            return redirect(url_for('salesperson.email_template_new'))
+        template = EmailTemplate(
+            name=name, language=language, subject=subject, body=body,
+            is_global=False,                  # salespersons can't create globals
+            created_by=current_user.id,
+            attachments=[],
+        )
+        db.session.add(template)
+        # Save attachments. Both name="attachment" and "attachments"
+        # accepted so multi-file works the same as the send-link form.
+        files = (request.files.getlist('attachment')
+                 + request.files.getlist('attachments'))
+        _save_template_attachments(template, files)
+        db.session.commit()
+        flash(f'Template "{name}" saved.', 'success')
+        return redirect(url_for('salesperson.email_templates_list'))
+    return render_template('salesperson/template_form.html', template=None)
+
+
+@salesperson_bp.route('/templates/<int:id>/edit', methods=['GET', 'POST'])
+@salesperson_required
+def email_template_edit(id):
+    """Edit a template — only the user's own personal ones; globals
+    are read-only here (have the admin do those)."""
+    import os
+    from ...models.email_template import EmailTemplate
+    template = EmailTemplate.query.filter(
+        EmailTemplate.id == id,
+        EmailTemplate.deleted_at.is_(None),
+        EmailTemplate.created_by == current_user.id,    # ownership gate
+        EmailTemplate.is_global == False,
+    ).first_or_404()
+    if request.method == 'POST':
+        template.name    = (request.form.get('name') or '').strip() or template.name
+        template.language= (request.form.get('language') or template.language).strip()
+        template.subject = (request.form.get('subject') or '').strip() or template.subject
+        template.body    = (request.form.get('body') or '').strip() or template.body
+        # Per-file removal — same UI as admin form.
+        if template.attachments is None:
+            template.attachments = []
+        # Migrate the legacy single-attachment into the list once.
+        if template.attachment_path and not any(
+            (a or {}).get('path') == template.attachment_path for a in template.attachments
+        ):
+            template.attachments.append({
+                'path': template.attachment_path,
+                'name': template.attachment_name or os.path.basename(template.attachment_path),
+            })
+            template.attachment_path = None
+            template.attachment_name = None
+        to_remove = set(request.form.getlist('remove_attachment'))
+        if to_remove:
+            kept = []
+            for a in template.attachments:
+                if (a or {}).get('path') in to_remove:
+                    if a.get('path') and os.path.exists(a['path']):
+                        try: os.remove(a['path'])
+                        except OSError: pass
+                else:
+                    kept.append(a)
+            template.attachments = kept
+        # New uploads.
+        files = (request.files.getlist('attachment')
+                 + request.files.getlist('attachments'))
+        _save_template_attachments(template, files)
+        db.session.commit()
+        flash(f'Template "{template.name}" updated.', 'success')
+        return redirect(url_for('salesperson.email_templates_list'))
+    return render_template('salesperson/template_form.html', template=template)
+
+
+@salesperson_bp.route('/templates/<int:id>/delete', methods=['POST'])
+@salesperson_required
+def email_template_delete(id):
+    """Soft-delete one of the salesperson's own templates."""
+    from ...models.email_template import EmailTemplate
+    from datetime import datetime as _dt
+    template = EmailTemplate.query.filter(
+        EmailTemplate.id == id,
+        EmailTemplate.deleted_at.is_(None),
+        EmailTemplate.created_by == current_user.id,
+        EmailTemplate.is_global == False,
+    ).first_or_404()
+    template.deleted_at = _dt.utcnow()
+    db.session.commit()
+    flash(f'Template "{template.name}" deleted.', 'success')
+    return redirect(url_for('salesperson.email_templates_list'))
+
+
+@salesperson_bp.route('/templates/save-from-modal', methods=['POST'])
+@salesperson_required
+def save_template_from_modal():
+    """The send-link compose modal posts here when the user clicks
+    "Save as new template" — captures the subject, body, language,
+    and any uploaded attachments into a new personal template.
+
+    Returns JSON so the modal can stay open and just toast the result.
+    """
+    from ...models.email_template import EmailTemplate
+    name = (request.form.get('name') or '').strip()
+    subject = (request.form.get('subject') or '').strip()
+    body = (request.form.get('body') or '').strip()
+    language = (request.form.get('language') or 'en').strip()
+    if not name or not subject or not body:
+        return jsonify({'success': False,
+                        'error': 'Need a name, subject, and body to save a template.'}), 400
+    template = EmailTemplate(
+        name=name, language=language, subject=subject, body=body,
+        is_global=False,
+        created_by=current_user.id,
+        attachments=[],
+    )
+    db.session.add(template)
+    files = (request.files.getlist('attachment')
+             + request.files.getlist('attachments'))
+    _save_template_attachments(template, files)
+    db.session.commit()
+    logger.info(f'[templates] {current_user.username} saved template #{template.id} "{name}" '
+                f'with {len(template.attachments or [])} attachment(s)')
+    return jsonify({'success': True, 'template_id': template.id, 'name': name})

@@ -206,6 +206,7 @@
             <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             {% if current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" class="nav-direct" style="color: #90EE90; font-weight: bold;">💚 Gemach</a>{% endif %}
             <a href="{{ url_for('salesperson.my_links') }}" class="nav-direct">{{ t('nav.my_links') }}</a>
+            <a href="{{ url_for('salesperson.email_templates_list') }}" class="nav-direct">📝 {{ t('nav.my_templates') }}</a>
         </div>
         {% endif %}
         <div class="nav-right">

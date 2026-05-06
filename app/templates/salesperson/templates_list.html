@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}My Email Templates - Matat{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tpl-wrap { max-width: 980px; margin: 16px auto; padding: 0 16px; }
+    .tpl-toolbar {
+        display: flex; align-items: center; gap: 10px;
+        margin-bottom: 14px;
+    }
+    .tpl-toolbar .new-btn {
+        margin-inline-start: auto;
+        padding: 9px 16px; background: #2563eb; color: #fff;
+        border-radius: 6px; text-decoration: none; font-weight: 600;
+        font-size: 14px;
+    }
+    .tpl-toolbar .new-btn:hover { background: #1d4ed8; }
+    .tpl-list { background: #fff; border-radius: 10px;
+        box-shadow: 0 2px 14px rgba(0,0,0,.06); overflow: hidden; }
+    .tpl-row {
+        display: grid; grid-template-columns: 1fr 110px 90px 220px;
+        align-items: center; gap: 14px;
+        padding: 12px 18px; border-bottom: 1px solid #f1f5f9;
+    }
+    .tpl-row:last-child { border-bottom: 0; }
+    .tpl-row .name { font-weight: 600; color: #111827; }
+    .tpl-row .subject { font-size: 13px; color: #6b7280; margin-top: 2px; }
+    .tpl-row .pill {
+        display: inline-block; font-size: 11px; font-weight: 600;
+        padding: 2px 8px; border-radius: 999px;
+    }
+    .pill-global { background: #dbeafe; color: #1e40af; }
+    .pill-mine   { background: #d1fae5; color: #065f46; }
+    .pill-att    { background: #f3e8ff; color: #6b21a8; margin-inline-start: 6px; }
+    .tpl-row .actions { display: flex; gap: 6px; justify-content: flex-end; }
+    .tpl-row .actions a, .tpl-row .actions button {
+        padding: 5px 10px; border-radius: 6px; border: 0;
+        font-size: 12px; text-decoration: none; cursor: pointer;
+        font-weight: 600;
+    }
+    .btn-edit { background: #f59e0b; color: #fff; }
+    .btn-edit:hover { background: #d97706; color: #fff; }
+    .btn-del { background: #fee2e2; color: #991b1b; }
+    .btn-del:hover { background: #fecaca; }
+    .btn-view { background: #f3f4f6; color: #374151; }
+    .empty {
+        padding: 40px 20px; text-align: center; color: #9ca3af;
+        font-style: italic;
+    }
+    .lang-flag { font-size: 11px; color: #6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tpl-wrap" {% if lang == 'he' %}dir="rtl"{% endif %}>
+    <div class="tpl-toolbar">
+        <h1 style="margin: 0;">📝 My Email Templates</h1>
+        <a href="{{ url_for('salesperson.email_template_new') }}" class="new-btn">+ New template</a>
+    </div>
+
+    <p style="color: #6b7280; font-size: 13px; margin: 0 0 14px;">
+        Templates appear as quick-pick buttons in the Send-Link compose modal. You can edit
+        or delete templates you created. Global templates (created by an admin) are shown for
+        reference but only an admin can edit them.
+    </p>
+
+    <div class="tpl-list">
+        {% if templates %}
+            {% for t in templates %}
+            {% set is_mine = t.created_by == current_user.id %}
+            <div class="tpl-row">
+                <div>
+                    <div class="name">{{ t.name }}
+                        {% if t.is_global %}
+                            <span class="pill pill-global">global</span>
+                        {% else %}
+                            <span class="pill pill-mine">mine</span>
+                        {% endif %}
+                        {% if t.all_attachments %}
+                            <span class="pill pill-att">📎 {{ t.all_attachments|length }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="subject">{{ t.subject }}</div>
+                </div>
+                <div class="lang-flag">{% if t.language == 'he' %}עברית{% else %}English{% endif %}</div>
+                <div style="font-size: 11px; color: #6b7280;">
+                    {% if t.updated_at %}{{ t.updated_at.strftime('%d/%m/%Y') }}{% endif %}
+                </div>
+                <div class="actions">
+                    {% if is_mine and not t.is_global %}
+                        <a href="{{ url_for('salesperson.email_template_edit', id=t.id) }}" class="btn-edit">Edit</a>
+                        <form method="POST" action="{{ url_for('salesperson.email_template_delete', id=t.id) }}"
+                              style="display:inline;"
+                              onsubmit="return confirm('Delete template &quot;{{ t.name }}&quot;? This can\'t be undone.');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn-del">Delete</button>
+                        </form>
+                    {% else %}
+                        <span style="font-size: 11px; color: #9ca3af;">read-only (admin)</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty">
+                No templates yet. <a href="{{ url_for('salesperson.email_template_new') }}">Create your first one</a>,
+                or use the "Save as new template" button while composing on the
+                <a href="{{ url_for('salesperson.send_link') }}">Send Link</a> page.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
