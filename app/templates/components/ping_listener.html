@@ -1,0 +1,176 @@
+{# Real-time ping listener. Included on every authenticated page from
+   the three base templates. Polls /api/pings/check every 8 seconds.
+   When a ping arrives, surfaces a centered modal that requires
+   acknowledgement before dismissing.
+
+   No-op for unauthenticated requests. Visible to every role —
+   admins, salespersons, gemach users — anyone the admin can target. #}
+{% if current_user.is_authenticated %}
+<style>
+.ping-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 999999;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 20px;
+}
+.ping-overlay.show { display: flex; }
+.ping-modal {
+    background: #fff; border-radius: 12px;
+    width: 480px; max-width: 100%;
+    box-shadow: 0 24px 70px rgba(0,0,0,0.45);
+    overflow: hidden;
+    animation: ping-pop 0.18s ease-out;
+}
+@keyframes ping-pop {
+    from { transform: scale(0.92); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+}
+.ping-modal .head {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #fff; padding: 14px 20px;
+    font-size: 15px; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+}
+.ping-modal .head .icon { font-size: 22px; }
+.ping-modal .body { padding: 20px 22px; }
+.ping-modal .body .from {
+    font-size: 12px; color: #6b7280; margin-bottom: 8px;
+    text-transform: uppercase; letter-spacing: .04em; font-weight: 600;
+}
+.ping-modal .body .title {
+    font-size: 18px; font-weight: 700; color: #111827;
+    margin-bottom: 8px;
+}
+.ping-modal .body .msg {
+    font-size: 15px; color: #1f2937; line-height: 1.5;
+    white-space: pre-wrap;
+}
+.ping-modal .body .link-row { margin-top: 14px; }
+.ping-modal .body .link-row a {
+    color: #1d4ed8; font-weight: 600; text-decoration: none;
+    border-bottom: 1px solid #93c5fd;
+}
+.ping-modal .actions {
+    padding: 12px 22px 18px;
+    display: flex; gap: 10px; justify-content: flex-end;
+}
+.ping-modal .actions button {
+    padding: 9px 22px; border-radius: 6px;
+    border: 0; font-size: 14px; font-weight: 600;
+    cursor: pointer;
+}
+.ping-modal .actions .ack {
+    background: #2563eb; color: #fff;
+}
+.ping-modal .actions .ack:hover { background: #1d4ed8; }
+</style>
+
+<div class="ping-overlay" id="ping-overlay">
+    <div class="ping-modal" id="ping-modal">
+        <div class="head"><span class="icon">📣</span> <span id="ping-head-text">New message</span></div>
+        <div class="body">
+            <div class="from" id="ping-from"></div>
+            <div class="title" id="ping-title" style="display:none;"></div>
+            <div class="msg" id="ping-msg"></div>
+            <div class="link-row" id="ping-link-row" style="display:none;">
+                <a id="ping-link" href="#" target="_blank">Open link →</a>
+            </div>
+        </div>
+        <div class="actions">
+            <button class="ack" type="button" id="ping-ack">OK, got it</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var POLL_MS = 8000;
+    var queue = [];
+    var current = null;
+
+    var overlay = document.getElementById('ping-overlay');
+    var titleEl = document.getElementById('ping-title');
+    var msgEl   = document.getElementById('ping-msg');
+    var fromEl  = document.getElementById('ping-from');
+    var linkRow = document.getElementById('ping-link-row');
+    var linkA   = document.getElementById('ping-link');
+    var ackBtn  = document.getElementById('ping-ack');
+
+    function show(p) {
+        current = p;
+        fromEl.textContent = 'From ' + (p.sender_name || 'someone');
+        if (p.title) {
+            titleEl.style.display = '';
+            titleEl.textContent = p.title;
+        } else {
+            titleEl.style.display = 'none';
+        }
+        msgEl.textContent = p.message || '';
+        if (p.link) {
+            linkRow.style.display = '';
+            linkA.href = p.link;
+        } else {
+            linkRow.style.display = 'none';
+        }
+        overlay.classList.add('show');
+        // Soft beep so the user notices even when the tab is unfocused.
+        try { beep(); } catch (e) {}
+    }
+
+    function hide() {
+        overlay.classList.remove('show');
+        current = null;
+        if (queue.length) setTimeout(function() { show(queue.shift()); }, 250);
+    }
+
+    ackBtn.addEventListener('click', function() {
+        if (!current) { hide(); return; }
+        var pingId = current.id;
+        // Fire-and-forget — even if dismiss fails, hide the modal so
+        // the user isn't trapped. Server retries are idempotent.
+        fetch('/admin/api/pings/' + pingId + '/dismiss', { method: 'POST' })
+            .catch(function() {});
+        hide();
+    });
+
+    // Poll loop. Pause polling when the tab is hidden to avoid
+    // noisy network/cpu when the user has 50 tabs open.
+    function poll() {
+        if (document.hidden) return;
+        fetch('/admin/api/pings/check', { credentials: 'same-origin' })
+            .then(function(r) { return r.ok ? r.json() : { pings: [] }; })
+            .then(function(data) {
+                var seen = {};
+                if (current) seen[current.id] = true;
+                queue.forEach(function(q) { seen[q.id] = true; });
+                (data.pings || []).forEach(function(p) {
+                    if (!seen[p.id]) queue.push(p);
+                });
+                if (!current && queue.length) show(queue.shift());
+            })
+            .catch(function() {});
+    }
+    setInterval(poll, POLL_MS);
+    setTimeout(poll, 1500);  // first check shortly after page load
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) poll();
+    });
+
+    // Tiny sine beep — no audio file dependency.
+    function beep() {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        var ctx = new Ctx();
+        var o = ctx.createOscillator();
+        var g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 720;
+        g.gain.value = 0.06;
+        o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.18);
+        setTimeout(function() { ctx.close(); }, 250);
+    }
+})();
+</script>
+{% endif %}

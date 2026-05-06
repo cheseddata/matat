@@ -4185,3 +4185,101 @@ def inbox_sync_now():
         return jsonify({'success': True, 'results': results})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================
+# USER PINGS — admin → user real-time popup notifications
+# Lightweight in-app messaging; recipient's browser polls
+# /api/pings/check every ~8s and shows a centered modal for any
+# un-dismissed ping.
+# ============================================================
+from ...extensions import csrf as _csrf  # already imported via flask_wtf
+
+
+@admin_bp.route('/ping', methods=['GET', 'POST'])
+@admin_required
+def admin_ping():
+    """Compose + send a popup ping to a user."""
+    from ...models.user_ping import UserPing
+
+    if request.method == 'POST':
+        recipient_id = request.form.get('recipient_id', type=int)
+        message = (request.form.get('message') or '').strip()
+        title = (request.form.get('title') or '').strip() or None
+        link = (request.form.get('link') or '').strip() or None
+        if not recipient_id or not message:
+            flash('Pick a recipient and write a message.', 'error')
+            return redirect(url_for('admin.admin_ping'))
+        recipient = User.query.get_or_404(recipient_id)
+        ping = UserPing(
+            sender_id=current_user.id,
+            recipient_id=recipient.id,
+            title=title,
+            message=message,
+            link=link,
+        )
+        db.session.add(ping)
+        db.session.commit()
+        logger.info(f'[ping] #{ping.id} from {current_user.username} -> {recipient.username}: {message[:60]}')
+        flash(f'Ping #{ping.id} queued for {recipient.full_name}. They\'ll see it on their next page nav (or within ~8s if already polling).', 'success')
+        return redirect(url_for('admin.admin_ping'))
+
+    users = (User.query
+             .filter(User.deleted_at.is_(None), User.active.is_(True), User.id != current_user.id)
+             .order_by(User.role.desc(), User.first_name)
+             .all())
+    recent = (UserPing.query
+              .filter_by(sender_id=current_user.id)
+              .order_by(UserPing.created_at.desc())
+              .limit(15).all())
+    return render_template('admin/ping.html', users=users, recent_pings=recent)
+
+
+@admin_bp.route('/api/pings/check')
+def api_pings_check():
+    """Poll endpoint. Returns un-dismissed pings for current user.
+    Marks each as delivered the first time the recipient sees it.
+    No CSRF (read-only GET).
+    """
+    if not current_user.is_authenticated:
+        return jsonify({'pings': []})
+    from ...models.user_ping import UserPing
+    from datetime import datetime as _dt
+    pings = (UserPing.query
+             .filter_by(recipient_id=current_user.id, dismissed_at=None)
+             .order_by(UserPing.created_at.asc())
+             .all())
+    out = []
+    now = _dt.utcnow()
+    for p in pings:
+        if not p.delivered_at:
+            p.delivered_at = now
+        sender_name = p.sender.full_name if p.sender else 'Unknown'
+        out.append({
+            'id': p.id,
+            'title': p.title,
+            'message': p.message,
+            'link': p.link,
+            'sender_name': sender_name,
+            'created_at': p.created_at.isoformat() if p.created_at else None,
+        })
+    if out:
+        db.session.commit()
+    return jsonify({'pings': out})
+
+
+@admin_bp.route('/api/pings/<int:ping_id>/dismiss', methods=['POST'])
+@_csrf.exempt
+def api_pings_dismiss(ping_id):
+    """Recipient clicked OK on the modal. Mark dismissed."""
+    if not current_user.is_authenticated:
+        return jsonify({'success': False}), 401
+    from ...models.user_ping import UserPing
+    from datetime import datetime as _dt
+    ping = UserPing.query.get_or_404(ping_id)
+    if ping.recipient_id != current_user.id:
+        return jsonify({'success': False, 'error': 'not_recipient'}), 403
+    if not ping.dismissed_at:
+        ping.dismissed_at = _dt.utcnow()
+        db.session.commit()
+    return jsonify({'success': True})

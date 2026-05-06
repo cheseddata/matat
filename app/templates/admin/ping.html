@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Send Ping — Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ping-wrap { max-width: 720px; margin: 16px auto; padding: 0 16px; }
+    .ping-card {
+        background: #fff; border-radius: 10px;
+        box-shadow: 0 2px 14px rgba(0,0,0,.07);
+        padding: 22px 24px; margin-bottom: 16px;
+    }
+    .ping-card h1 { margin: 0 0 4px; }
+    .ping-card .sub { color: #666; font-size: 13px; margin: 0 0 18px; }
+    .ping-card label { display: block; margin: 14px 0 6px; font-weight: 600; color: #374151; font-size: 13px; }
+    .ping-card input[type="text"], .ping-card select, .ping-card textarea {
+        width: 100%; padding: 10px 12px; border: 1px solid #d1d5db;
+        border-radius: 6px; font-size: 14px;
+    }
+    .ping-card textarea { min-height: 100px; font-family: inherit; }
+    .ping-card button {
+        margin-top: 16px; padding: 10px 24px; background: #2563eb;
+        color: #fff; border: 0; border-radius: 6px; font-weight: 600;
+        cursor: pointer;
+    }
+    .ping-card button:hover { background: #1d4ed8; }
+    .recent-list { font-size: 13px; }
+    .recent-row {
+        padding: 10px 0; border-bottom: 1px solid #f1f5f9;
+        display: flex; align-items: flex-start; gap: 12px;
+    }
+    .recent-row:last-child { border-bottom: 0; }
+    .recent-pill {
+        flex-shrink: 0;
+        padding: 2px 8px; border-radius: 999px; font-size: 11px;
+        font-weight: 600;
+    }
+    .pill-pending { background: #fef3c7; color: #92400e; }
+    .pill-delivered { background: #dbeafe; color: #1e40af; }
+    .pill-dismissed { background: #d1fae5; color: #065f46; }
+    .recent-meta { color: #6b7280; font-size: 11px; margin-top: 3px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ping-wrap">
+    <div class="ping-card">
+        <h1>📣 Send Ping</h1>
+        <p class="sub">
+            Pops a centered modal on the recipient's screen the next time
+            their browser checks (every ~8 seconds when they have any
+            matat page open). Use for urgent in-the-moment messages —
+            "call me", "look at donation #X", etc. Their browser keeps
+            polling regardless of which page they're on.
+        </p>
+
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label for="recipient_id">Recipient</label>
+            <select name="recipient_id" id="recipient_id" required>
+                <option value="">— choose a user —</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">
+                    {{ u.full_name }}
+                    ({{ u.username }})
+                    {% if u.role == 'admin' %} — admin{% else %} — {{ u.role }}{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+
+            <label for="title">Title (optional)</label>
+            <input type="text" name="title" id="title" maxlength="200"
+                   placeholder="e.g., Call me now">
+
+            <label for="message">Message</label>
+            <textarea name="message" id="message" required maxlength="2000"
+                      placeholder="What do you want to tell them?"></textarea>
+
+            <label for="link">Link (optional)</label>
+            <input type="text" name="link" id="link" maxlength="500"
+                   placeholder="e.g., /admin/donations?status=pending">
+
+            <button type="submit">Send ping</button>
+        </form>
+    </div>
+
+    {% if recent_pings %}
+    <div class="ping-card">
+        <h2 style="margin: 0 0 4px; font-size: 16px;">Recent pings you sent</h2>
+        <p class="sub">Last 15.</p>
+        <div class="recent-list">
+            {% for p in recent_pings %}
+            {% if p.dismissed_at %}
+                {% set state = 'dismissed' %}
+            {% elif p.delivered_at %}
+                {% set state = 'delivered' %}
+            {% else %}
+                {% set state = 'pending' %}
+            {% endif %}
+            <div class="recent-row">
+                <span class="recent-pill pill-{{ state }}">{{ state }}</span>
+                <div style="flex: 1;">
+                    <div><strong>{{ p.recipient.full_name if p.recipient else '?' }}</strong></div>
+                    <div>{{ p.message[:120] }}{% if p.message|length > 120 %}…{% endif %}</div>
+                    <div class="recent-meta">
+                        sent {{ p.created_at.strftime('%H:%M %d/%m/%Y') if p.created_at else '?' }}
+                        {% if p.delivered_at %} · delivered {{ p.delivered_at.strftime('%H:%M') }}{% endif %}
+                        {% if p.dismissed_at %} · acknowledged {{ p.dismissed_at.strftime('%H:%M') }}{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

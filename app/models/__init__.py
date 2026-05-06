@@ -19,6 +19,7 @@ from .email_message import EmailMessage
 from .email_attachment import EmailAttachment
 from .donor_note import DonorNote
 from .wedding import Wedding
+from .user_ping import UserPing
 
 from .agreement import Agreement
 from .payment import Payment

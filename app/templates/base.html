@@ -179,6 +179,7 @@
                     <a href="{{ url_for('admin.settings') }}">{{ t('nav.settings') }}</a>
                     <a href="{{ url_for('admin.payment_processors') }}">{{ t('nav.payment_processors') }}</a>
                     <a href="{{ url_for('admin.donation_permissions') }}">{{ t('nav.donation_permissions') }}</a>
+                    <a href="{{ url_for('admin.admin_ping') }}">📣 Send Ping</a>
                     <a href="{{ url_for('admin.email_templates') }}">{{ t('nav.email_templates') }}</a>
                     <div class="menu-divider"></div>
                     <a href="{{ url_for('admin.screenshots') }}">Screenshots</a>
@@ -263,6 +264,7 @@
     {% if not sandbox_mode %}{% include 'components/claude_widget.html' %}{% endif %}
     {% include 'components/email_widget.html' %}
     {% include 'components/feedback_widget.html' %}
+    {% include 'components/ping_listener.html' %}
     {% endif %}
 </body>
 </html>
