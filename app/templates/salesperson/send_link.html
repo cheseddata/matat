@@ -967,24 +967,88 @@ document.getElementById('language').addEventListener('change', function() {
 // Load custom templates on page load
 loadCustomTemplates();
 
-// Multi-file preview: show every selected file's name + size below the
-// picker so the operator can confirm before clicking Send.
+// Multi-file preview + APPEND-on-second-pick + per-file remove.
+//
+// HTML's default behavior is to REPLACE the FileList every time the
+// user clicks the picker. Operators (mrosen reported this) pick file
+// 1, then click the picker to add file 2, and watch file 1 silently
+// disappear. Same fix we applied to /admin/inbox compose: keep an
+// internal accumulator and rebuild the FileList via DataTransfer on
+// every change so the second pick adds rather than replaces.
 (function() {
     var picker = document.getElementById('email_attachment');
     var listEl = document.getElementById('selectedFilesList');
     if (!picker || !listEl) return;
+
     function fmtSize(b) {
         if (!b) return '0';
         var k = 1024, units = ['B', 'KB', 'MB', 'GB'];
         var i = Math.floor(Math.log(b) / Math.log(k));
         return (b / Math.pow(k, i)).toFixed(1) + ' ' + units[i];
     }
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+        });
+    }
+
+    // True when the next change event is from APPENDING — we set this
+    // ourselves before mutating picker.files so we don't loop.
+    var rebuilding = false;
+    var carried = [];     // accumulator of every file across picks
+    var seen = new Set(); // de-dupe key (name + size + lastModified)
+
+    function render() {
+        if (!carried.length) {
+            listEl.innerHTML = '';
+            return;
+        }
+        listEl.innerHTML = '<strong>' + carried.length + ' file' +
+            (carried.length === 1 ? '' : 's') + ' attached:</strong>' +
+            '<div style="margin-top:6px; display:flex; flex-wrap:wrap; gap:6px;">' +
+            carried.map(function(f, i) {
+                return '<span style="display:inline-flex; align-items:center; gap:4px; ' +
+                       'padding:3px 8px; background:#e0f2fe; border-radius:4px;">' +
+                       '📎 ' + escapeHtml(f.name) + ' (' + fmtSize(f.size) + ')' +
+                       '<button type="button" data-i="' + i + '" ' +
+                       'style="margin-left:4px; padding:0 6px; background:#fee2e2; ' +
+                       'color:#991b1b; border:0; border-radius:3px; cursor:pointer; ' +
+                       'font-size:11px;">✕</button></span>';
+            }).join('') +
+            '</div>';
+        listEl.querySelectorAll('button[data-i]').forEach(function(b) {
+            b.addEventListener('click', function() {
+                var idx = parseInt(b.dataset.i, 10);
+                var f = carried[idx];
+                if (f) {
+                    var key = f.name + '::' + f.size + '::' + (f.lastModified || 0);
+                    seen.delete(key);
+                }
+                carried.splice(idx, 1);
+                syncToPicker();
+                render();
+            });
+        });
+    }
+
+    function syncToPicker() {
+        rebuilding = true;
+        var dt = new DataTransfer();
+        carried.forEach(function(f) { dt.items.add(f); });
+        picker.files = dt.files;
+        rebuilding = false;
+    }
+
     picker.addEventListener('change', function() {
-        var files = Array.from(picker.files || []);
-        if (!files.length) { listEl.innerHTML = ''; return; }
-        listEl.innerHTML = '<strong>' + files.length + ' file' +
-            (files.length === 1 ? '' : 's') + ' attached:</strong> ' +
-            files.map(f => '📎 ' + f.name + ' (' + fmtSize(f.size) + ')').join(' &nbsp; ');
+        if (rebuilding) return;  // we triggered this via syncToPicker; ignore
+        Array.from(picker.files || []).forEach(function(f) {
+            var key = f.name + '::' + f.size + '::' + (f.lastModified || 0);
+            if (seen.has(key)) return;
+            seen.add(key);
+            carried.push(f);
+        });
+        syncToPicker();
+        render();
     });
 })();
 </script>

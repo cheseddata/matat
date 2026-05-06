@@ -572,24 +572,39 @@ def edit_link(id):
 @salesperson_bp.route('/api/email-templates')
 @salesperson_required
 def api_email_templates():
-    """API to get email templates for the send_link page."""
+    """API to get email templates for the send_link page picker.
+
+    Returns global templates AND the current user's own personal
+    templates. Other salespersons' personal templates stay private.
+    Bug fix (May 2026): previously only globals came back, so
+    Mrs. Rosen's newly-created personal "Wedding appeal" template
+    didn't appear in the Choose Template list.
+    """
+    from sqlalchemy import or_
     from ...models.email_template import EmailTemplate
 
-    templates = EmailTemplate.query.filter(
-        EmailTemplate.deleted_at.is_(None),
-        EmailTemplate.is_global == True
-    ).order_by(EmailTemplate.name).all()
+    templates = (EmailTemplate.query
+                 .filter(EmailTemplate.deleted_at.is_(None))
+                 .filter(or_(EmailTemplate.is_global == True,
+                             EmailTemplate.created_by == current_user.id))
+                 .order_by(EmailTemplate.is_global.desc(),
+                           EmailTemplate.name)
+                 .all())
 
     result = []
     for t in templates:
+        atts = t.all_attachments  # merged: legacy single + new list
         result.append({
             'id': t.id,
             'name': t.name,
             'language': t.language,
             'subject': t.subject,
             'body': t.body,
-            'has_attachment': bool(t.attachment_path),
-            'attachment_name': t.attachment_name
+            'is_global': bool(t.is_global),
+            'is_mine': t.created_by == current_user.id,
+            'has_attachment': bool(atts),
+            'attachment_count': len(atts),
+            'attachment_name': (atts[0]['name'] if atts else None),
         })
 
     return jsonify(result)
