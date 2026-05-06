@@ -188,6 +188,8 @@ def send_link():
                 language=language,
                 attachment_paths=attachment_paths,
                 extra_bcc=extra_bcc or None,
+                donor_name=donor_name,
+                preset_amount=preset_amount,
             )
         else:
             # Fallback to default email

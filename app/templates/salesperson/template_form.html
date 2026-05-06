@@ -71,10 +71,23 @@
         </p>
 
         <div class="placeholders">
-            <strong>Available placeholders</strong>:
-            <code>{greeting}</code> — personalized greeting (Dear John / שלום וברכה),
-            <code>{amount}</code> — pledged amount line if you set one. The donation
-            link button is added automatically below your message.
+            <strong>Available placeholders</strong> — type these inside curly braces in
+            your subject or body. They get replaced with the donor's real info when the
+            email actually sends:
+            <ul style="margin: 8px 0 0 18px; padding: 0;">
+                <li><code>{first_name}</code> — donor's first name (e.g., <em>Sarah</em>)</li>
+                <li><code>{last_name}</code> — donor's last name (e.g., <em>Freidenberg</em>)</li>
+                <li><code>{name}</code> — full name (e.g., <em>Sarah Freidenberg</em>)</li>
+                <li><code>{greeting}</code> — full greeting line:
+                    <em>Dear Sarah</em> in English, <em>שלום וברכה Sarah Freidenberg</em> in Hebrew</li>
+                <li><code>{amount}</code> — pledged-amount line, only when you set a preset amount
+                    (renders as <em>Your pledge: $36</em> / <em>הסכום שהתחייבת: ₪100</em>)</li>
+                <li><code>{email}</code> — donor's email address</li>
+                <li><code>{link}</code> — the donation URL (the donate button below the message
+                    is added automatically — only use this if you want it inline too)</li>
+            </ul>
+            <p style="margin: 8px 0 0;">Anything you don't have data for collapses to empty —
+            the placeholder won't show up as raw text in the donor's inbox.</p>
         </div>
 
         <form method="POST" enctype="multipart/form-data">

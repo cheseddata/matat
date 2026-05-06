@@ -646,9 +646,57 @@ def send_donation_link_email(donor_email, donor_name, link, salesperson=None, la
     )
 
 
+def _substitute_template_placeholders(body, donor_name='', donor_email='',
+                                      preset_amount='', language='en', link_url=''):
+    """Substitute {first_name}, {last_name}, {name}, {greeting}, {amount},
+    {email}, {link} into the body. Used by both the salesperson send-link
+    flow and any future caller that wants placeholder support on a
+    template body.
+
+    Anything not provided collapses to empty string — never leaves a
+    raw '{first_name}' in the output.
+    """
+    name = (donor_name or '').strip()
+    parts = name.split(None, 1) if name else []
+    first = parts[0] if parts else ''
+    last  = parts[1] if len(parts) > 1 else ''
+
+    if (language or 'en').lower() == 'he':
+        greeting = f'שלום וברכה {name}'.strip() if name else 'שלום וברכה'
+    else:
+        greeting = f'Dear {first}' if first else 'Dear Friend'
+
+    amount_line = ''
+    if preset_amount:
+        amt_str = str(preset_amount).strip()
+        if amt_str:
+            if (language or 'en').lower() == 'he':
+                amount_line = f'הסכום שהתחייבת: ₪{amt_str}'
+            else:
+                amount_line = f'Your pledge: ${amt_str}'
+
+    subs = {
+        '{first_name}':  first,
+        '{last_name}':   last,
+        '{name}':        name,
+        '{full_name}':   name,
+        '{greeting}':    greeting,
+        '{amount}':      amount_line,
+        '{email}':       donor_email or '',
+        '{donor_email}': donor_email or '',
+        '{link}':        link_url or '',
+    }
+    out = body or ''
+    for k, v in subs.items():
+        if k in out:
+            out = out.replace(k, v)
+    return out
+
+
 def send_custom_donation_link_email(donor_email, subject, body_text, link, language='en',
                                     attachment_path=None, attachment_paths=None,
-                                    extra_bcc=None):
+                                    extra_bcc=None,
+                                    donor_name='', preset_amount=''):
     """Send donation link email with custom content, optional attachments,
     and optional BCC recipients.
 
@@ -658,7 +706,21 @@ def send_custom_donation_link_email(donor_email, subject, body_text, link, langu
 
     ``extra_bcc`` is a list of email addresses BCC'd in addition to the
     fixed support@matatmordechai.org audit copy.
+
+    ``donor_name`` and ``preset_amount`` are used to substitute the
+    {first_name} / {last_name} / {name} / {greeting} / {amount}
+    placeholders in subject + body before sending.
     """
+    body_text = _substitute_template_placeholders(
+        body_text, donor_name=donor_name, donor_email=donor_email,
+        preset_amount=preset_amount, language=language,
+        link_url=getattr(link, 'full_url', ''),
+    )
+    subject = _substitute_template_placeholders(
+        subject, donor_name=donor_name, donor_email=donor_email,
+        preset_amount=preset_amount, language=language,
+        link_url=getattr(link, 'full_url', ''),
+    )
     # Convert plain text body to HTML with proper formatting
     # Escape HTML and convert newlines to <br>
     import html
