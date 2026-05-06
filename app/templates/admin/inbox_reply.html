@@ -146,8 +146,10 @@
 
             <div class="attach-row">
                 <label for="attachments">📎 Attachments:</label>
-                <span class="hint">(optional, max 3 MB total — Graph sendMail cap)</span>
+                <span class="hint">(optional, max 3 MB total — Graph sendMail cap. Hold Ctrl/Cmd to pick multiple, or click the button again to add more.)</span>
                 <input type="file" name="attachments" id="attachments" multiple>
+                <div id="att-selected" style="margin-top: 8px;"></div>
+                <div id="att-total" style="margin-top: 4px; font-size: 12px; color: #6b7280;"></div>
             </div>
 
             <div class="actions">
@@ -161,4 +163,89 @@
         </form>
     </div>
 </div>
+
+<script>
+// Multi-file UX: by default a second click on the file picker REPLACES
+// the previous selection. Operators (especially Mrs. Rosen, on a
+// reply-with-multiple-attachments flow) hit this and lose their first
+// pick. Fix: keep an internal accumulator, append every new selection,
+// allow per-file removal, and show byte totals so the operator sees
+// when they're near the 3 MB Graph cap.
+(function() {
+    var input = document.getElementById('attachments');
+    if (!input) return;
+    var listEl  = document.getElementById('att-selected');
+    var totalEl = document.getElementById('att-total');
+    var BYTE_CAP = 3 * 1024 * 1024;
+
+    function fmt(b) {
+        if (!b) return '0';
+        var k = 1024, units = ['B', 'KB', 'MB', 'GB'];
+        var i = Math.floor(Math.log(b) / Math.log(k));
+        return (b / Math.pow(k, i)).toFixed(1) + ' ' + units[i];
+    }
+
+    function render() {
+        var files = Array.from(input.files || []);
+        if (!files.length) {
+            listEl.innerHTML = ''; totalEl.innerHTML = ''; return;
+        }
+        var total = files.reduce(function(s, f) { return s + f.size; }, 0);
+        var nearCap = total > BYTE_CAP * 0.9;
+        var overCap = total > BYTE_CAP;
+
+        listEl.innerHTML = files.map(function(f, i) {
+            return '<div style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px;">' +
+                   '<span>📎 ' + escapeHtml(f.name) + '</span>' +
+                   '<span style="color:#6b7280; font-size:12px;">' + fmt(f.size) + '</span>' +
+                   '<button type="button" data-i="' + i + '" ' +
+                       'style="margin-inline-start:auto; padding:2px 8px; background:#fee2e2; color:#991b1b; border:0; border-radius:4px; cursor:pointer; font-size:11px;">' +
+                       '✕ remove</button>' +
+                   '</div>';
+        }).join('');
+        Array.from(listEl.querySelectorAll('button[data-i]')).forEach(function(b) {
+            b.addEventListener('click', function() {
+                var idx = parseInt(b.dataset.i, 10);
+                var dt = new DataTransfer();
+                Array.from(input.files).forEach(function(f, j) { if (j !== idx) dt.items.add(f); });
+                input.files = dt.files;
+                render();
+            });
+        });
+
+        totalEl.innerHTML = '<strong>' + files.length + ' file' +
+            (files.length === 1 ? '' : 's') + '</strong> — total ' + fmt(total) +
+            (overCap ? ' <span style="color:#dc2626;">(over the 3 MB Graph cap — send will fail)</span>'
+             : nearCap ? ' <span style="color:#d97706;">(near the 3 MB cap)</span>'
+             : '');
+    }
+
+    function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function(c) {
+            return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+        });
+    }
+
+    input.addEventListener('change', function(ev) {
+        // Append new selections to the existing list rather than
+        // replacing — that's the whole point of this script.
+        var dt = new DataTransfer();
+        // Existing files (from previous changes).
+        Array.from(window.__attCarried || []).forEach(function(f) { dt.items.add(f); });
+        // Newly picked files.
+        Array.from(input.files || []).forEach(function(f) {
+            // De-dupe by (name + size + lastModified) so picking the
+            // same file twice doesn't double up.
+            var key = f.name + '::' + f.size + '::' + (f.lastModified || 0);
+            var seen = (window.__attSeen = window.__attSeen || new Set());
+            if (seen.has(key)) return;
+            seen.add(key);
+            dt.items.add(f);
+        });
+        input.files = dt.files;
+        window.__attCarried = Array.from(input.files);
+        render();
+    });
+})();
+</script>
 {% endblock %}
