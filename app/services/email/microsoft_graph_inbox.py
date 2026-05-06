@@ -487,6 +487,70 @@ class MicrosoftGraphInbox(BaseInboxProvider):
         except ValueError:
             return {'success': False, 'error': f'HTTP {r.status_code}: {r.text[:200]}'}
 
+    def list_inbox_rules(self):
+        """Return the operator's Exchange Inbox rules — read-only mirror.
+
+        Calls GET /users/{mailbox}/mailFolders/inbox/messageRules. Folder
+        IDs referenced in actions.moveToFolder / copyToFolder /
+        markImportance etc. are resolved to display names where we can
+        match them in the same mailbox. Conditions/actions/exceptions
+        come back as plain dicts; the route renders them.
+
+        Returns: {'success': bool, 'rules': [...], 'error': str|None}.
+        """
+        if not self._mailbox():
+            return {'success': False, 'error': 'No mailbox configured', 'rules': []}
+
+        token_resp = self._get_access_token()
+        if 'error' in token_resp:
+            return {'success': False, 'error': token_resp['error'], 'rules': []}
+
+        headers = {'Authorization': f'Bearer {token_resp["access_token"]}'}
+        url = f'{GRAPH_BASE_URL}/users/{self._mailbox()}/mailFolders/inbox/messageRules'
+
+        try:
+            r = requests.get(url, headers=headers, timeout=20)
+        except requests.exceptions.RequestException as e:
+            return {'success': False, 'error': f'Network: {e}', 'rules': []}
+
+        if r.status_code != 200:
+            try:
+                err = (r.json() or {}).get('error', {})
+                msg = err.get('message') or r.text[:200]
+            except ValueError:
+                msg = f'HTTP {r.status_code}: {r.text[:200]}'
+            # 403 Forbidden on /messageRules almost always means the
+            # Azure app registration is missing MailboxSettings.Read
+            # (or .ReadWrite) — the app permission Mail.Read is enough
+            # to read messages but doesn't cover rule definitions.
+            if r.status_code == 403:
+                msg = (
+                    'Forbidden. The Azure app registration backing this '
+                    'mailbox is missing the "MailboxSettings.Read" application '
+                    'permission required to list inbox rules. Have your tenant '
+                    'admin add it under API Permissions → Microsoft Graph → '
+                    'Application permissions → MailboxSettings.Read, then click '
+                    '"Grant admin consent". Graph said: ' + msg
+                )
+            return {'success': False, 'error': msg, 'rules': []}
+
+        rules = (r.json() or {}).get('value') or []
+
+        # Resolve folder IDs in actions.moveToFolder / copyToFolder to
+        # human-readable names.
+        folder_map = self._load_folder_name_map(headers)
+        for rule in rules:
+            actions = rule.get('actions') or {}
+            for key in ('moveToFolder', 'copyToFolder'):
+                fid = actions.get(key)
+                if fid and fid in folder_map:
+                    actions[f'{key}_name'] = folder_map[fid]
+
+        # Sort by sequence so the order matches Outlook's UI.
+        rules.sort(key=lambda r: (r.get('sequence') or 9999, (r.get('displayName') or '').lower()))
+
+        return {'success': True, 'rules': rules, 'error': None}
+
     def move_to_folder(self, message_remote_id, well_known_folder):
         """Move a message to a well-known folder (e.g. 'deleteditems').
 

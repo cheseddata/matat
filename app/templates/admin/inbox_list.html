@@ -127,6 +127,11 @@
             {% endfor %}
         </select>
         {% endif %}
+        <a href="{{ url_for('admin.inbox_rules') }}" class="filter-btn"
+           style="margin-inline-start: auto; background:#eef2ff; color:#3730a3;"
+           title="View Exchange / Outlook rules configured on the mailbox">
+            ⚙ Inbox rules
+        </a>
     </div>
 
     <form method="get" class="inbox-toolbar">

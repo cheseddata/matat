@@ -3713,6 +3713,40 @@ def _rewrite_inline_cids(body_html, attachments):
     return re.sub(r'cid:([^"\'\s>]+)', repl, body_html, flags=re.IGNORECASE)
 
 
+@admin_bp.route('/inbox/rules')
+@admin_required
+def inbox_rules():
+    """Read-only mirror of the Exchange Inbox rules on the active
+    Microsoft Graph mailbox. Pulled fresh from Graph each load (cheap —
+    one API call) so it always reflects what the operator actually has
+    configured in Outlook server-side.
+
+    No edit/create here — managing rules through Outlook is more capable
+    than anything we'd build, and rule logic runs on Exchange's side
+    regardless. This page is for visibility / audit only.
+    """
+    from ...models.email_inbox_provider import EmailInboxProvider
+    from ...services.email.microsoft_graph_inbox import MicrosoftGraphInbox
+
+    row = (EmailInboxProvider.query
+           .filter_by(code='msgraph', enabled=True, deleted_at=None)
+           .first())
+    if not row:
+        flash('No Microsoft Graph mailbox is configured.', 'warning')
+        return redirect(url_for('admin.inbox'))
+
+    inbox = MicrosoftGraphInbox(row)
+    result = inbox.list_inbox_rules()
+
+    return render_template(
+        'admin/inbox_rules.html',
+        mailbox=row.mailbox_address,
+        rules=result.get('rules') or [],
+        error=result.get('error'),
+        success=result.get('success'),
+    )
+
+
 @admin_bp.route('/inbox/<int:id>')
 @admin_required
 def inbox_message(id):

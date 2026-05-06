@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Inbox Rules — {{ mailbox }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rules-wrap { max-width: 1100px; margin: 16px auto; padding: 0 16px; }
+    .rules-wrap h1 { margin: 0 0 4px; }
+    .rules-wrap .sub { color: #666; font-size: 13px; margin: 0 0 18px; }
+
+    .rule-card {
+        background: #fff; border-radius: 10px;
+        box-shadow: 0 2px 14px rgba(0,0,0,.06);
+        padding: 16px 18px; margin-bottom: 12px;
+        border-left: 4px solid #2563eb;
+    }
+    .rule-card.disabled { opacity: .55; border-left-color: #cbd5e1; }
+    .rule-card .head {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 12px; margin-bottom: 10px;
+    }
+    .rule-card .head h3 { margin: 0; font-size: 16px; }
+    .rule-card .meta {
+        color: #6b7280; font-size: 12px;
+    }
+    .rule-card .pill {
+        display: inline-block; padding: 2px 8px; border-radius: 999px;
+        font-size: 11px; font-weight: 600; margin-inline-start: 6px;
+    }
+    .pill-on  { background: #d1fae5; color: #065f46; }
+    .pill-off { background: #f1f5f9; color: #64748b; }
+    .pill-seq { background: #e0e7ff; color: #312e81; }
+
+    .rule-section { margin-top: 6px; }
+    .rule-section h4 {
+        font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+        color: #6b7280; font-weight: 700; margin: 8px 0 4px;
+    }
+    .rule-section ul { list-style: none; padding: 0; margin: 0; }
+    .rule-section li {
+        padding: 4px 0; font-size: 13px; color: #1f2937;
+    }
+    .rule-section .field { color: #6b7280; font-weight: 500; min-width: 130px; display: inline-block; }
+    .rule-section .value { color: #111827; }
+    .rule-section code {
+        background: #f3f4f6; padding: 1px 6px; border-radius: 4px;
+        font-size: 12px;
+    }
+    .empty { color: #9ca3af; font-size: 12px; font-style: italic; }
+
+    .err-banner {
+        background: #fee2e2; color: #991b1b; padding: 12px 14px;
+        border-radius: 8px; margin-bottom: 14px; border: 1px solid #fecaca;
+    }
+    .info-banner {
+        background: #f0f9ff; color: #075985; padding: 10px 14px;
+        border-radius: 8px; margin-bottom: 14px; border: 1px solid #bae6fd;
+        font-size: 13px;
+    }
+    .actions-row { margin-top: 6px; }
+    .actions-row a {
+        display: inline-block; padding: 6px 12px; background: #f3f4f6;
+        color: #1f2937; text-decoration: none; border-radius: 6px;
+        font-size: 13px; margin-inline-end: 6px;
+    }
+    .actions-row a:hover { background: #e5e7eb; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="rules-wrap" {% if lang == 'he' %}dir="rtl"{% endif %}>
+    <h1>📬 Inbox Rules</h1>
+    <p class="sub">
+        Live read-only mirror of the Exchange / Outlook rules on
+        <code>{{ mailbox }}</code>.
+        These rules run server-side on Microsoft's end before messages
+        reach our sync — incoming mail is already filed by the time we
+        see it. To create or edit a rule, use Outlook on the web
+        (<a href="https://outlook.office365.com/mail/inbox/options/mail/rules" target="_blank">outlook.office365.com → Settings → Rules</a>).
+    </p>
+
+    <div class="actions-row">
+        <a href="{{ url_for('admin.inbox') }}">← Back to Inbox</a>
+        <a href="{{ request.url }}">↻ Refresh</a>
+    </div>
+
+    {% if error %}
+    <div class="err-banner">
+        <strong>Couldn't fetch rules from Graph:</strong><br>
+        {{ error }}
+    </div>
+    {% endif %}
+
+    {% if success and not rules %}
+    <div class="info-banner">
+        No inbox rules configured on this mailbox right now.
+    </div>
+    {% endif %}
+
+    {% for rule in rules %}
+    {% set actions = rule.get('actions') or {} %}
+    {% set conditions = rule.get('conditions') or {} %}
+    {% set exceptions = rule.get('exceptions') or {} %}
+    <div class="rule-card {{ '' if rule.get('isEnabled') else 'disabled' }}">
+        <div class="head">
+            <div>
+                <h3>
+                    {{ rule.get('displayName') or '(unnamed rule)' }}
+                    {% if rule.get('isEnabled') %}
+                        <span class="pill pill-on">enabled</span>
+                    {% else %}
+                        <span class="pill pill-off">disabled</span>
+                    {% endif %}
+                    {% if rule.get('sequence') %}
+                        <span class="pill pill-seq">priority {{ rule.get('sequence') }}</span>
+                    {% endif %}
+                </h3>
+                <div class="meta">id: <code>{{ rule.get('id', '')[:42] }}…</code></div>
+            </div>
+        </div>
+
+        <div class="rule-section">
+            <h4>When the message…</h4>
+            <ul>
+                {% set has_conditions = false %}
+                {% for k, v in conditions.items() %}
+                    {% if v %}
+                    {% set has_conditions = true %}
+                    <li>
+                        <span class="field">{{ k }}</span>
+                        <span class="value">
+                            {% if v is iterable and v is not string %}
+                                {% for item in v %}
+                                    {% if item is mapping %}
+                                        {{ item.get('emailAddress', {}).get('address') or item.get('name') or item }}{% if not loop.last %}, {% endif %}
+                                    {% else %}
+                                        {{ item }}{% if not loop.last %}, {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                {{ v }}
+                            {% endif %}
+                        </span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                {% if not has_conditions %}<li class="empty">— matches every incoming message —</li>{% endif %}
+            </ul>
+        </div>
+
+        <div class="rule-section">
+            <h4>Then…</h4>
+            <ul>
+                {% if actions.get('moveToFolder_name') %}
+                    <li><span class="field">Move to folder</span><span class="value">📁 {{ actions.moveToFolder_name }}</span></li>
+                {% elif actions.get('moveToFolder') %}
+                    <li><span class="field">Move to folder</span><span class="value"><code>{{ actions.moveToFolder[:30] }}…</code></span></li>
+                {% endif %}
+                {% if actions.get('copyToFolder_name') %}
+                    <li><span class="field">Copy to folder</span><span class="value">📁 {{ actions.copyToFolder_name }}</span></li>
+                {% elif actions.get('copyToFolder') %}
+                    <li><span class="field">Copy to folder</span><span class="value"><code>{{ actions.copyToFolder[:30] }}…</code></span></li>
+                {% endif %}
+                {% if actions.get('forwardTo') %}
+                    <li><span class="field">Forward to</span><span class="value">
+                        {% for r in actions.forwardTo %}{{ r.get('emailAddress', {}).get('address') }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </span></li>
+                {% endif %}
+                {% if actions.get('redirectTo') %}
+                    <li><span class="field">Redirect to</span><span class="value">
+                        {% for r in actions.redirectTo %}{{ r.get('emailAddress', {}).get('address') }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </span></li>
+                {% endif %}
+                {% if actions.get('markAsRead') %}<li><span class="field">Mark as read</span><span class="value">✓</span></li>{% endif %}
+                {% if actions.get('delete') %}<li><span class="field">Delete</span><span class="value">✓</span></li>{% endif %}
+                {% if actions.get('permanentDelete') %}<li><span class="field">Permanently delete</span><span class="value">✓</span></li>{% endif %}
+                {% if actions.get('markImportance') %}<li><span class="field">Mark importance</span><span class="value">{{ actions.markImportance }}</span></li>{% endif %}
+                {% if actions.get('assignCategories') %}<li><span class="field">Categories</span><span class="value">{{ actions.assignCategories|join(', ') }}</span></li>{% endif %}
+                {% if actions.get('stopProcessingRules') %}<li><span class="field">Stop processing further rules</span><span class="value">✓</span></li>{% endif %}
+                {% if not actions %}<li class="empty">— no actions configured —</li>{% endif %}
+            </ul>
+        </div>
+
+        {% if exceptions %}
+        <div class="rule-section">
+            <h4>…unless</h4>
+            <ul>
+                {% for k, v in exceptions.items() %}
+                    {% if v %}
+                    <li>
+                        <span class="field">{{ k }}</span>
+                        <span class="value">
+                            {% if v is iterable and v is not string %}
+                                {% for item in v %}
+                                    {% if item is mapping %}{{ item.get('emailAddress', {}).get('address') or item }}{% else %}{{ item }}{% endif %}{% if not loop.last %}, {% endif %}
+                                {% endfor %}
+                            {% else %}{{ v }}{% endif %}
+                        </span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
