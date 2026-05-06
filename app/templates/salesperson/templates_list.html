@@ -55,6 +55,12 @@
 <div class="tpl-wrap" {% if lang == 'he' %}dir="rtl"{% endif %}>
     <div class="tpl-toolbar">
         <h1 style="margin: 0;">📝 My Email Templates</h1>
+        <a href="{{ url_for('salesperson.email_template_placeholders_pdf') }}"
+           target="_blank" class="new-btn"
+           style="background: #6b7280; margin-inline-start: auto;"
+           title="Open a printable cheat-sheet of every placeholder. Ctrl/Cmd+P to print.">
+            🖨 Print placeholders
+        </a>
         <a href="{{ url_for('salesperson.email_template_new') }}" class="new-btn">+ New template</a>
     </div>
 

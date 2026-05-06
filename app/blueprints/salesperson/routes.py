@@ -1189,3 +1189,110 @@ def save_template_from_modal():
     logger.info(f'[templates] {current_user.username} saved template #{template.id} "{name}" '
                 f'with {len(template.attachments or [])} attachment(s)')
     return jsonify({'success': True, 'template_id': template.id, 'name': name})
+
+
+@salesperson_bp.route('/templates/placeholders.pdf')
+@salesperson_required
+def email_template_placeholders_pdf():
+    """Printable cheat-sheet of every placeholder available in
+    salesperson email templates. Clicked from the 🖨 button on the
+    template form. Streams the PDF inline so the browser shows it
+    in a new tab and the user can Ctrl+P from there.
+    """
+    from datetime import datetime as _dt
+    from flask import send_file
+    from weasyprint import HTML
+    import io
+
+    html = """<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<style>
+@page { size: Letter; margin: 18mm; }
+body { font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+       color: #1f2937; font-size: 11pt; line-height: 1.45; }
+h1   { color: #2563eb; margin: 0 0 4px; font-size: 22pt; }
+.sub { color: #6b7280; margin: 0 0 18px; font-size: 10pt; }
+.note { background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px;
+        padding:10px 14px; font-size:10pt; color:#1e3a8a;
+        margin: 14px 0 18px; }
+table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb;
+         text-align: left; vertical-align: top; }
+th { background: #f3f4f6; font-size: 10pt;
+     text-transform: uppercase; letter-spacing: .04em; color: #374151; }
+code { background: #f3f4f6; padding: 1px 6px; border-radius: 4px;
+       font-family: Menlo, Consolas, monospace; font-size: 10pt;
+       color: #1f2937; white-space: nowrap; }
+.example { color: #6b7280; font-size: 9.5pt; font-style: italic; }
+h2 { margin-top: 22px; font-size: 13pt; color: #111827; }
+.example-box { background: #f9fafb; border-left: 3px solid #2563eb;
+               padding: 10px 14px; margin: 8px 0; font-size: 10.5pt;
+               white-space: pre-wrap; line-height: 1.55; }
+.tip { color: #065f46; font-size: 10pt; margin-top: 14px; }
+.foot { margin-top: 28px; color: #9ca3af; font-size: 9pt; text-align: center;
+        border-top: 1px solid #e5e7eb; padding-top: 8px; }
+</style></head>
+<body>
+<h1>Email Template Placeholders</h1>
+<div class="sub">Quick reference for the Send Link compose modal and
+the My&nbsp;Templates form &mdash; Matat&nbsp;Mordechai</div>
+
+<div class="note"><strong>How they work:</strong> type any of these tokens
+(in curly braces) inside your subject or body. When you click <em>Send</em>,
+each token is replaced with the real donor's information. If you don't
+have the data for a token, it just becomes blank &mdash; donors never see
+raw <code>{first_name}</code>-style text in their inbox.</div>
+
+<table>
+<thead><tr><th>Placeholder</th><th>What it inserts</th><th>Example output</th></tr></thead>
+<tbody>
+<tr><td><code>{first_name}</code></td><td>Donor's first name</td>
+    <td class="example">Sarah</td></tr>
+<tr><td><code>{last_name}</code></td><td>Donor's last name</td>
+    <td class="example">Freidenberg</td></tr>
+<tr><td><code>{name}</code></td><td>Full name</td>
+    <td class="example">Sarah Freidenberg</td></tr>
+<tr><td><code>{greeting}</code></td>
+    <td>Full greeting &mdash; language-aware</td>
+    <td class="example">English: <em>Dear Sarah</em><br>Hebrew: <em>שלום וברכה Sarah Freidenberg</em></td></tr>
+<tr><td><code>{amount}</code></td>
+    <td>Pledge line, only when a preset amount is set</td>
+    <td class="example">English: <em>Your pledge: $36</em><br>Hebrew: <em>הסכום שהתחייבת: ₪100</em></td></tr>
+<tr><td><code>{email}</code></td><td>Donor's email address</td>
+    <td class="example">sarah@example.com</td></tr>
+<tr><td><code>{link}</code></td>
+    <td>Donation URL (the Donate button below your message<br>uses this
+        automatically &mdash; only insert here if you want it inline too)</td>
+    <td class="example">https://matatmordechai.org/d/abc123</td></tr>
+</tbody></table>
+
+<h2>Example template body</h2>
+<div class="example-box">{greeting},
+
+Thank you so much for your interest in our Hachnosas Kallah org.
+
+Your pledge ({amount}) goes directly to the Wedding Fund and helps a
+specific kallah with her wedding expenses.
+
+If you have any questions, reply to this email or call me anytime.
+
+Warm regards,
+Miriam Rosen</div>
+
+<p class="tip">&#x1F4A1; <strong>Tip:</strong> If you sometimes want a title
+(<em>Mrs.</em>, <em>Mr.</em>) and sometimes don't, write
+"<code>Dear Mrs. {last_name}</code>" &mdash; when the donor has no last
+name on file, you'll see "<em>Dear Mrs.</em>" which is a small fix
+to do by hand. For most cases, <code>{greeting}</code> on its own
+handles the whole salutation.</p>
+
+<div class="foot">Generated """ + _dt.utcnow().strftime('%Y-%m-%d') + """ &mdash; Matat Mordechai</div>
+</body></html>"""
+
+    pdf_bytes = HTML(string=html).write_pdf()
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype='application/pdf',
+        as_attachment=False,
+        download_name='matat-template-placeholders.pdf',
+    )

@@ -71,9 +71,20 @@
         </p>
 
         <div class="placeholders">
-            <strong>Available placeholders</strong> — type these inside curly braces in
-            your subject or body. They get replaced with the donor's real info when the
-            email actually sends:
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <strong>Available placeholders</strong>
+                <a href="{{ url_for('salesperson.email_template_placeholders_pdf') }}"
+                   target="_blank"
+                   title="Open a printable cheat-sheet of every placeholder. Press Ctrl/Cmd + P from there to send to your printer."
+                   style="display: inline-flex; align-items: center; gap: 6px;
+                          padding: 5px 12px; background: #2563eb; color: #fff;
+                          text-decoration: none; border-radius: 6px; font-size: 12px;
+                          font-weight: 600;">
+                    🖨 Print this reference
+                </a>
+            </div>
+            <p style="margin: 8px 0 0;">Type these inside curly braces in your subject or body.
+            They get replaced with the donor's real info when the email actually sends:</p>
             <ul style="margin: 8px 0 0 18px; padding: 0;">
                 <li><code>{first_name}</code> — donor's first name (e.g., <em>Sarah</em>)</li>
                 <li><code>{last_name}</code> — donor's last name (e.g., <em>Freidenberg</em>)</li>
