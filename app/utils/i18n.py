@@ -144,6 +144,10 @@ def init_i18n(app):
         # always-visible processor tab strip rendered under the nav bar in
         # base.html. Empty for unauthenticated requests.
         nav_processors = []
+        # Unread inbox count — surfaces a red dot on the floating email
+        # widget on every page so operators notice new mail without
+        # leaving whatever screen they're on.
+        inbox_unread_count = 0
         try:
             from flask_login import current_user
             if current_user.is_authenticated:
@@ -152,8 +156,14 @@ def init_i18n(app):
                     p for p in PaymentProcessor.get_enabled()
                     if current_user.can_view_processor(p.code)
                 ]
+                # Cheap — both columns are indexed.
+                from ..models.email_message import EmailMessage
+                inbox_unread_count = (EmailMessage.query
+                                       .filter_by(is_read=False, is_archived=False)
+                                       .count())
         except Exception:
             nav_processors = []
+            inbox_unread_count = 0
 
         # Locale-aware date helpers + Hebrew-calendar conversion. Bound
         # late so the lang variable is captured per-request.
@@ -181,6 +191,7 @@ def init_i18n(app):
             'text_dir': 'rtl' if is_rtl(lang) else 'ltr',
             'sandbox_mode': sbx,
             'nav_processors': nav_processors,
+            'inbox_unread_count': inbox_unread_count,
             'format_date': _fmt_date,
             'format_datetime': _fmt_datetime,
             'hebrew_date': hebrew_date_str,

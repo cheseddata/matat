@@ -289,6 +289,10 @@
     "js_stripe_init_error": "Stripe לא מוגדר. הגדר Publishable Key בהגדרות.",
     "js_shva_card_required": "יש למלא מספר כרטיס, תוקף ו-CVV עבור שב\"א."
   },
+  "email_widget": {
+    "title": "תיבת דואר",
+    "unread_n": "{n} לא נקראו"
+  },
   "claude_widget": {
     "name": "עוזר Claude",
     "status": "כאן לעזור!",

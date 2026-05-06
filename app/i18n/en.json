@@ -289,6 +289,10 @@
     "js_stripe_init_error": "Stripe is not configured. Set publishable key in Settings.",
     "js_shva_card_required": "Card number, expiry, and CVV are required for Shva."
   },
+  "email_widget": {
+    "title": "Inbox",
+    "unread_n": "{n} unread"
+  },
   "claude_widget": {
     "name": "Claude Assistant",
     "status": "Here to help!",

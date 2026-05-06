@@ -1,0 +1,85 @@
+{# Floating email widget — bottom-right, just above the Claude
+   assistant. Shows a red dot + unread count when there's new mail
+   in the shared inbox. Click → /admin/inbox.
+
+   Hidden for users who can't reach the inbox (only admins today),
+   to avoid clutter on a salesperson's screen with a button that
+   would just bounce them on click. #}
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+<style>
+.email-launcher {
+    position: fixed !important;
+    /* Stack above the Claude widget which sits at bottom:20 (~60-65px tall). */
+    bottom: 92px !important;
+    {% if is_rtl %}left: 20px !important; right: auto !important;{% else %}right: 20px !important; left: auto !important;{% endif %}
+    z-index: 99997 !important;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.40);
+    transition: transform .15s, box-shadow .15s;
+    text-decoration: none;
+    font-size: 26px;
+    line-height: 1;
+}
+.email-launcher:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(29, 78, 216, 0.55);
+    text-decoration: none; color: #fff;
+}
+.email-launcher .badge {
+    position: absolute;
+    top: -4px; right: -4px;
+    {% if is_rtl %}right: auto; left: -4px;{% endif %}
+    background: #dc2626;
+    color: #fff;
+    border-radius: 999px;
+    font-size: 11px; font-weight: 700;
+    min-width: 20px; height: 20px;
+    padding: 0 5px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 2px #fff;
+    line-height: 1;
+}
+.email-launcher .label-tip {
+    position: absolute;
+    {% if is_rtl %}left: 64px;{% else %}right: 64px;{% endif %}
+    top: 50%; transform: translateY(-50%);
+    background: #1f2937; color: #fff;
+    padding: 5px 10px; border-radius: 6px;
+    font-size: 12px; white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity .15s;
+}
+.email-launcher:hover .label-tip { opacity: 1; }
+
+/* Small viewport: tighten everything slightly. */
+@media (max-width: 600px) {
+    .email-launcher {
+        bottom: 82px !important;
+        {% if is_rtl %}left: 12px !important;{% else %}right: 12px !important;{% endif %}
+        width: 48px; height: 48px; font-size: 22px;
+    }
+    .email-launcher .label-tip { display: none; }
+}
+</style>
+<a href="{{ url_for('admin.inbox') }}" class="email-launcher"
+   title="{{ t('email_widget.title') }}"
+   aria-label="{{ t('email_widget.title') }}">
+    ✉
+    {% if inbox_unread_count and inbox_unread_count > 0 %}
+    <span class="badge">{{ inbox_unread_count if inbox_unread_count < 100 else '99+' }}</span>
+    {% endif %}
+    <span class="label-tip">
+        {% if inbox_unread_count and inbox_unread_count > 0 %}
+            {{ t('email_widget.unread_n').replace('{n}', inbox_unread_count|string) }}
+        {% else %}
+            {{ t('email_widget.title') }}
+        {% endif %}
+    </span>
+</a>
+{% endif %}
