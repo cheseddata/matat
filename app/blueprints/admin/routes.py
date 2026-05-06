@@ -3599,7 +3599,7 @@ def _admin_charge_shva():
 # =============================================================================
 
 @admin_bp.route('/inbox')
-@admin_required
+@login_required
 def inbox():
     """Inbox portal — list view of ingested email messages.
 
@@ -3714,7 +3714,7 @@ def _rewrite_inline_cids(body_html, attachments):
 
 
 @admin_bp.route('/inbox/rules')
-@admin_required
+@login_required
 def inbox_rules():
     """Read-only mirror of the Exchange Inbox rules on the active
     Microsoft Graph mailbox. Pulled fresh from Graph each load (cheap —
@@ -3748,7 +3748,7 @@ def inbox_rules():
 
 
 @admin_bp.route('/inbox/<int:id>')
-@admin_required
+@login_required
 def inbox_message(id):
     """Single email view — full body + attachment list."""
     from ...models.email_message import EmailMessage
@@ -3785,21 +3785,21 @@ def inbox_message(id):
 
 
 @admin_bp.route('/inbox/<int:id>/reply', methods=['GET', 'POST'])
-@admin_required
+@login_required
 def inbox_reply(id):
     """Reply to an inbox message — To prefilled with original sender."""
     return _inbox_compose(id, 'reply')
 
 
 @admin_bp.route('/inbox/<int:id>/reply-all', methods=['GET', 'POST'])
-@admin_required
+@login_required
 def inbox_reply_all(id):
     """Reply All — To = original sender, Cc = original recipients minus our mailbox."""
     return _inbox_compose(id, 'reply_all')
 
 
 @admin_bp.route('/inbox/<int:id>/forward', methods=['GET', 'POST'])
-@admin_required
+@login_required
 def inbox_forward(id):
     """Forward — To empty, body wraps original with full headers."""
     return _inbox_compose(id, 'forward')
@@ -3970,7 +3970,7 @@ def _inbox_compose(id, mode):
 
 
 @admin_bp.route('/inbox/compose', methods=['GET', 'POST'])
-@admin_required
+@login_required
 def inbox_compose_new():
     """Compose a brand-new email (not a reply or forward).
 
@@ -4051,7 +4051,7 @@ def inbox_compose_new():
 
 
 @admin_bp.route('/inbox/<int:id>/delete', methods=['POST'])
-@admin_required
+@login_required
 def inbox_delete(id):
     """Move a message to the upstream Deleted Items folder via Graph,
     then archive locally so it disappears from the portal view."""
@@ -4073,7 +4073,7 @@ def inbox_delete(id):
 
 
 @admin_bp.route('/inbox/<int:id>/assign', methods=['POST'])
-@admin_required
+@login_required
 def inbox_assign(id):
     """Assign / unassign / reassign an email to an operator."""
     from ...models.email_message import EmailMessage
@@ -4098,7 +4098,7 @@ def inbox_assign(id):
 
 
 @admin_bp.route('/inbox/<int:id>/archive', methods=['POST'])
-@admin_required
+@login_required
 def inbox_archive(id):
     """Mark a message archived in our portal (does not touch the upstream mailbox)."""
     from ...models.email_message import EmailMessage
@@ -4109,7 +4109,7 @@ def inbox_archive(id):
 
 
 @admin_bp.route('/inbox/<int:id>/mark-unread', methods=['POST'])
-@admin_required
+@login_required
 def inbox_mark_unread(id):
     """Force-mark a message as unread again (handy after accidental open)."""
     from ...models.email_message import EmailMessage
@@ -4120,7 +4120,7 @@ def inbox_mark_unread(id):
 
 
 @admin_bp.route('/inbox/attachment/<int:id>')
-@admin_required
+@login_required
 def inbox_attachment(id):
     """Download an attachment.
 
@@ -4176,7 +4176,7 @@ def inbox_attachment(id):
 
 
 @admin_bp.route('/inbox/sync-now', methods=['POST'])
-@admin_required
+@login_required
 def inbox_sync_now():
     """Trigger an inbox sync on demand (in addition to the cron timer)."""
     from ...services.email.sync import sync_all

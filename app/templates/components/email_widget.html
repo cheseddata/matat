@@ -1,11 +1,8 @@
 {# Floating email widget — bottom-right, just above the Claude
    assistant. Shows a red dot + unread count when there's new mail
-   in the shared inbox. Click → /admin/inbox.
-
-   Hidden for users who can't reach the inbox (only admins today),
-   to avoid clutter on a salesperson's screen with a button that
-   would just bounce them on click. #}
-{% if current_user.is_authenticated and current_user.role == 'admin' %}
+   in the shared inbox. Click → /admin/inbox (now login-gated, not
+   admin-only, so salespersons can see the same email program). #}
+{% if current_user.is_authenticated %}
 <style>
 .email-launcher {
     position: fixed !important;
