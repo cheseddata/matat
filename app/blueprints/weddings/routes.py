@@ -25,16 +25,21 @@ def _admin_or_salesperson_required():
 
 
 def _ordered_query(show_hidden=False):
-    """Oldest first by gregorian_date — undated rows fall to the bottom in
-    insertion order. If show_hidden is False (default), filter out
-    operator-hidden rows."""
+    """Sort by Hebrew (month, day) — Nissan(1) → Iyar(2) → ... → Elul(6)
+    → Tishrei(7) → ... → Adar(12) → Adar II(13). Earliest first within
+    a Jewish year. Anything we couldn't parse falls to the bottom in
+    insertion order. Per ticket #16 from Gittle Goldblum (May 2026):
+    a new wedding she added went to the bottom because gregorian_date
+    was empty; the right sort key is the Hebrew month + day parsed
+    from her free-text hebrew_date column."""
     q = Wedding.query_active()
     if not show_hidden:
         q = q.filter(Wedding.hidden.is_(False))
     return q.order_by(
         # MySQL has no NULLS LAST → emulate via is_null sort key.
-        Wedding.gregorian_date.is_(None).asc(),
-        Wedding.gregorian_date.asc(),
+        Wedding.hebrew_month.is_(None).asc(),
+        Wedding.hebrew_month.asc(),
+        Wedding.hebrew_day.asc(),
         Wedding.id.asc(),
     )
 
@@ -180,6 +185,18 @@ def _save(wedding):
 
     wedding.hebrew_date = hebrew_date
     wedding.gregorian_date = greg
+    # Parse the Hebrew date into (month, day) sort keys so the list
+    # orders correctly even when the operator didn't fill in the
+    # optional gregorian date. Ticket #16, May 2026.
+    from ...utils.dates import parse_hebrew_md
+    md = parse_hebrew_md(hebrew_date)
+    if md:
+        wedding.hebrew_month, wedding.hebrew_day = md
+    else:
+        # Unparseable string — leave NULL and the list will sort it
+        # to the bottom rather than guess.
+        wedding.hebrew_month = None
+        wedding.hebrew_day = None
     wedding.groom_name = groom
     wedding.bride_name = bride
     wedding.hall_name = (f.get('hall_name') or '').strip() or None

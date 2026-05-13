@@ -23,6 +23,14 @@ class Wedding(db.Model):
     # weddings on a calendar later.
     gregorian_date = db.Column(db.Date, nullable=True)
 
+    # Sort keys derived from hebrew_date — month (1=Nissan ... 13=Adar II)
+    # and day (1-30). Populated automatically on create/edit by parsing
+    # the hebrew_date string. Used as the primary sort on the list so a
+    # new wedding goes into the right Hebrew-calendar slot regardless
+    # of whether the gregorian_date was filled in.
+    hebrew_month = db.Column(db.Integer, nullable=True, index=True)
+    hebrew_day   = db.Column(db.Integer, nullable=True)
+
     # Names exactly as the operator types them — Hebrew, English, mix, all OK.
     groom_name = db.Column(db.String(120), nullable=False)
     bride_name = db.Column(db.String(120), nullable=False)
