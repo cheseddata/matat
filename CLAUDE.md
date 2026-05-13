@@ -265,6 +265,13 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-05-13 (fax_bank_hadoar.html: bigger signature, sticky add-row, auto-sort, auto-clear)
+- Standalone Bank-HaDoar fax-builder tool (operator's local HTML — runs from disk, no server). Four small operator-requested ergonomics fixes:
+  - **Signature too small on print**: the signoff block had `max-width: 300px` and the `.sig-img` was capped at `max-height: 110px`. Bumped to 460px / 220px so the base64 signature image renders roughly 2× larger in both screen and print views (still scales to fit, won't overflow).
+  - **Auto-sort by name**: `renderList()` now `.slice().sort()`s recipients via `localeCompare(name, 'he')` on every render. The list is alphabetized in Hebrew order every time the page opens, after every add/edit, and after every import.
+  - **Auto-clear amounts on open**: `DOMContentLoaded` now calls `clearAmounts()` at the end. The "amount" column and row checkboxes have always been session-only (never persisted to localStorage), but the operator wanted an explicit reset each open — done.
+  - **Sticky add-recipient card**: the "הוספת נמען חדש" form-card gets a new `.sticky-top` class (`position: sticky; top: 0; z-index: 50` + heavier shadow), so it stays pinned at the top of the page while scrolling through the recipients list. Plus a red **🧹 נקה סכומים** button in a new `.top-actions` strip above the page header, mirroring the existing toolbar button.
+
 ### 2026-04-30 (charge page: Hebrew translation + RTL — ticket #9)
 - Admin (logged in as `admin`) reported via ticket #9: *"this should all be in hebrew"* — the new `/admin/charge` page rendered fully in English. Root cause: brand-new template, no `charge.*` translation block existed yet.
 - **Added `charge.*` block (50 keys)** to both `app/i18n/en.json` and `app/i18n/he.json` — full coverage of titles, labels, hints, country names, button text, and JS error/status messages. Verified count parity (`en_charge_keys == he_charge_keys`).
