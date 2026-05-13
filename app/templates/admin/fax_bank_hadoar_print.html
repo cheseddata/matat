@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>פקס לבנק הדואר — {{ fax_date }}</title>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { font-family: 'Assistant', 'Segoe UI', Tahoma, sans-serif; color:#000;
+               background:#fff; direction: rtl; }
+  body { padding: 28px 36px; max-width: 800px; margin: 0 auto; font-size: 14px; line-height: 1.5; }
+
+  .header-row { display: flex; justify-content: space-between; margin-bottom: 22px; }
+  .date { font-size: 14px; }
+  .to-block { margin-bottom: 18px; }
+  .to-block .lekhvod { font-weight: 600; }
+  .to-block .bank { font-weight: 700; text-decoration: underline; }
+
+  .subject { margin-bottom: 18px; }
+  .subject .acct { font-weight: 700; }
+  .subject .name { font-weight: 600; }
+
+  .instruction { margin: 22px 0 14px; font-weight: 500; }
+
+  table.fax { width: 100%; border-collapse: collapse; margin-bottom: 22px; }
+  table.fax th, table.fax td { border: 1px solid #000; padding: 7px 10px; font-size: 14px;
+                               text-align: right; }
+  table.fax th { background: #f0f0f0; font-weight: 700; font-size: 13px; }
+  table.fax td.amount { font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.fax tfoot td { font-weight: 700; background: #fafafa; }
+
+  .phone-line { margin: 28px 0 10px; font-size: 13px; }
+
+  .signoff { margin-top: 22px; }
+  .signoff .blessing { font-size: 15px; margin-bottom: 6px; }
+  .signoff .signature-img { display: block; max-width: 220px; max-height: 90px; margin: 4px 0; }
+  .signoff .signature-block {
+    margin-top: 10px;
+    font-weight: 600;
+  }
+  .signoff .org-name { font-weight: 700; font-size: 15px; }
+  .signoff .org-sub { font-size: 12px; color:#222; }
+
+  .toolbar { background:#1f2937; color:#fff; padding:10px 16px; border-radius:6px;
+             display:flex; gap:10px; align-items:center; margin-bottom:18px;
+             font-family: 'Assistant', sans-serif; }
+  .toolbar button { background:#3b82f6; color:#fff; border:none; padding:8px 16px;
+                    border-radius:4px; cursor:pointer; font-weight:600; font-size:14px; }
+  .toolbar button:hover { background:#2563eb; }
+  .toolbar .hint { color:#cbd5e1; font-size:12px; margin-{% if true %}right{% else %}left{% endif %}:auto; }
+
+  @media print {
+    .toolbar { display: none !important; }
+    body { padding: 0; }
+    @page { margin: 18mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar no-print">
+  <button onclick="window.print()">🖨 הדפס</button>
+  <button onclick="window.close()" style="background:#6b7280;">סגור</button>
+  <span class="hint">תאריך הפקס: {{ fax_date }} · {{ lines|length }} העברות · סה"כ ₪ {{ '{:,.2f}'.format(total) }}</span>
+</div>
+
+<div class="header-row">
+  <div class="date">{{ fax_date }}</div>
+  <div></div>
+</div>
+
+<div class="to-block">
+  <div class="lekhvod">לכבוד</div>
+  <div class="bank">בנק הדואר</div>
+</div>
+
+<div class="subject">
+  <div>הנידון: <span class="acct">חשבון 8262070</span></div>
+  <div>ע"ש <span class="name">מתת מרדכי</span></div>
+</div>
+
+<div class="instruction">נא לבצע העברות מהחשבון הנ"ל לחשבון הרשום מטה:</div>
+
+<table class="fax">
+  <thead>
+    <tr>
+      <th>שם</th>
+      <th>מספר בנק</th>
+      <th>סניף</th>
+      <th>מספר חשבון</th>
+      <th>סכום ₪</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for l in lines %}
+    <tr>
+      <td>{{ l.name }}</td>
+      <td>{{ l.bank_number }}</td>
+      <td>{{ l.branch_number }}</td>
+      <td>{{ l.account_number }}</td>
+      <td class="amount">{{ '{:,.2f}'.format(l.amount_shekels) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr>
+      <td colspan="4" style="text-align:left;">סה"כ</td>
+      <td class="amount">₪ {{ '{:,.2f}'.format(total) }}</td>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="phone-line">טלפון של גיטל גולדבלום לעת הצורך 050-4175158</div>
+
+<div class="signoff">
+  <div class="blessing">בברכה</div>
+  <img class="signature-img" src="{{ url_for('static', filename='img/signature_matat.png') }}" alt="חתימה">
+  <div class="signature-block">
+    <div class="org-name">מתת מרדכי</div>
+    <div class="org-sub">ע"ייש המנוחה</div>
+    <div class="org-sub">מרדכי בן משה זייל (עייי)</div>
+  </div>
+</div>
+
+<script>
+  // Auto-open the print dialog when this view loads, so Gittle can print to
+  // her local printer with one click. If she cancels, she can use the toolbar
+  // button to re-trigger.
+  window.addEventListener('load', () => {
+    setTimeout(() => window.print(), 350);
+  });
+</script>
+</body>
+</html>

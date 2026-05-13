@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}פקס לבנק הדואר{% endblock %}
+
+{% block extra_css %}
+<style>
+  .fax-page { max-width: 1100px; margin: 0 auto; }
+  .fax-page h1 { margin-bottom: 4px; }
+  .fax-page .subtitle { color:#64748b; margin-bottom:18px; font-size:14px; }
+  .card-section { background:#fff; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.08);
+                  padding:20px; margin-bottom:18px; }
+  .card-section h2 { font-size:16px; margin-bottom:14px; color:#1f2937; border-bottom:1px solid #e5e7eb;
+                     padding-bottom:8px; }
+  .add-row { display:grid; grid-template-columns:2fr 1fr 1fr 1.4fr auto; gap:8px; align-items:end; }
+  .add-row label { font-size:12px; color:#4b5563; display:block; margin-bottom:3px; }
+  .add-row input { width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:4px;
+                   font-size:14px; text-align:right; }
+  .add-row button { padding:9px 16px; background:#10b981; color:#fff; border:none;
+                    border-radius:4px; font-weight:600; cursor:pointer; font-size:14px; }
+  .add-row button:hover { background:#059669; }
+
+  table.fax-table { width:100%; border-collapse:collapse; }
+  table.fax-table th, table.fax-table td { padding:8px 10px; text-align:right;
+                                            border-bottom:1px solid #e5e7eb; font-size:14px; }
+  table.fax-table th { background:#f9fafb; font-weight:600; color:#374151; font-size:13px;
+                       border-bottom:2px solid #e5e7eb; }
+  table.fax-table tbody tr:hover { background:#fafafa; }
+  table.fax-table input[type="checkbox"] { width:18px; height:18px; cursor:pointer; }
+  table.fax-table input.amount { width:110px; padding:6px 8px; border:1px solid #cbd5e1;
+                                 border-radius:4px; text-align:right; font-size:14px; }
+  table.fax-table input.edit-field { width:100%; padding:6px 8px; border:1px solid #cbd5e1;
+                                     border-radius:4px; text-align:right; font-size:14px; }
+  table.fax-table .actions { white-space:nowrap; }
+  table.fax-table .btn-mini { padding:5px 10px; font-size:12px; border:none; border-radius:3px;
+                              cursor:pointer; margin-{% if is_rtl %}left{% else %}right{% endif %}: 4px; }
+  table.fax-table .btn-mini.edit { background:#3b82f6; color:#fff; }
+  table.fax-table .btn-mini.edit:hover { background:#2563eb; }
+  table.fax-table .btn-mini.del { background:#ef4444; color:#fff; }
+  table.fax-table .btn-mini.del:hover { background:#dc2626; }
+  table.fax-table .btn-mini.save { background:#10b981; color:#fff; }
+  table.fax-table .btn-mini.cancel { background:#6b7280; color:#fff; }
+
+  .row-edit { display:none; }
+  tr.editing .row-display { display:none; }
+  tr.editing .row-edit { display:table-cell; }
+
+  .fax-meta { display:flex; justify-content:space-between; align-items:baseline; gap:18px;
+              margin-bottom:14px; }
+  .fax-meta .date-pill { font-weight:600; color:#1f2937; }
+  .fax-meta .total-pill { background:#fef3c7; padding:6px 12px; border-radius:6px;
+                          font-weight:600; color:#92400e; font-size:14px; }
+
+  .submit-row { display:flex; gap:10px; align-items:center; margin-top:16px; }
+  .btn-print { background:#2563eb; color:#fff; padding:11px 24px; border:none; border-radius:6px;
+               font-size:15px; font-weight:600; cursor:pointer; }
+  .btn-print:hover { background:#1d4ed8; }
+  .btn-secondary { background:#fff; color:#2563eb; padding:11px 16px; border:1px solid #2563eb;
+                   border-radius:6px; font-size:14px; cursor:pointer; }
+
+  .empty-state { padding:24px; text-align:center; color:#6b7280; font-style:italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fax-page">
+  <h1>פקס לבנק הדואר</h1>
+  <div class="subtitle">בחרי נמענים והזיני סכומים — ולחצי "הפק פקס להדפסה".</div>
+
+  <!-- ========== ADD RECIPIENT ========== -->
+  <div class="card-section">
+    <h2>הוספת נמען חדש</h2>
+    <form method="POST" action="{{ url_for('admin.fax_bank_hadoar_recipient_create') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="add-row">
+        <div>
+          <label>שם</label>
+          <input type="text" name="name" required>
+        </div>
+        <div>
+          <label>מספר בנק</label>
+          <input type="text" name="bank_number" inputmode="numeric" required>
+        </div>
+        <div>
+          <label>סניף</label>
+          <input type="text" name="branch_number" inputmode="numeric" required>
+        </div>
+        <div>
+          <label>מספר חשבון</label>
+          <input type="text" name="account_number" inputmode="numeric" required>
+        </div>
+        <button type="submit">+ הוסף</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ========== BUILDER ========== -->
+  <div class="card-section">
+    <h2>בחירת נמענים והכנת הפקס</h2>
+    <div class="fax-meta">
+      <div class="date-pill">תאריך הפקס: {{ now_dd_mm_yyyy }}</div>
+      <div class="total-pill" id="totalPill">סה"כ: ₪ <span id="totalAmount">0</span></div>
+    </div>
+
+    {% if not recipients %}
+      <div class="empty-state">אין עדיין נמענים. הוסיפי נמען חדש למעלה.</div>
+    {% else %}
+    <form method="POST" action="{{ url_for('admin.fax_bank_hadoar_print') }}" target="_blank" id="faxForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <table class="fax-table">
+        <thead>
+          <tr>
+            <th style="width:36px;"><input type="checkbox" id="selectAll" title="בחר הכל"></th>
+            <th>שם</th>
+            <th>מספר בנק</th>
+            <th>סניף</th>
+            <th>מספר חשבון</th>
+            <th>סכום ₪</th>
+            <th>פעולות</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recipients %}
+          <tr id="row-{{ r.id }}">
+            <td><input type="checkbox" name="selected_ids" value="{{ r.id }}" class="row-check"></td>
+
+            <td class="row-display">{{ r.name }}</td>
+            <td class="row-display">{{ r.bank_number }}</td>
+            <td class="row-display">{{ r.branch_number }}</td>
+            <td class="row-display">{{ r.account_number }}</td>
+
+            <td class="row-edit" colspan="4">
+              <form method="POST" action="{{ url_for('admin.fax_bank_hadoar_recipient_edit', rid=r.id) }}" style="display:flex; gap:6px;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input class="edit-field" name="name" value="{{ r.name }}" placeholder="שם" required>
+                <input class="edit-field" name="bank_number" value="{{ r.bank_number }}" placeholder="בנק" style="width:80px;" required>
+                <input class="edit-field" name="branch_number" value="{{ r.branch_number }}" placeholder="סניף" style="width:80px;" required>
+                <input class="edit-field" name="account_number" value="{{ r.account_number }}" placeholder="חשבון" style="width:130px;" required>
+                <button type="submit" class="btn-mini save">שמור</button>
+                <button type="button" class="btn-mini cancel" onclick="toggleEdit({{ r.id }})">ביטול</button>
+              </form>
+            </td>
+
+            <td><input type="number" min="0" step="0.01" class="amount" name="amount_{{ r.id }}" data-rid="{{ r.id }}"></td>
+
+            <td class="actions row-display">
+              <button type="button" class="btn-mini edit" onclick="toggleEdit({{ r.id }})">ערוך</button>
+              <form method="POST" action="{{ url_for('admin.fax_bank_hadoar_recipient_delete', rid=r.id) }}" style="display:inline;"
+                    onsubmit="return confirm('למחוק את {{ r.name }}?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-mini del">מחק</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="submit-row">
+        <button type="submit" class="btn-print">הפק פקס להדפסה</button>
+        <span style="color:#6b7280; font-size:13px;">הפקס ייפתח בכרטיסייה חדשה והדפסה תתחיל אוטומטית.</span>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  function toggleEdit(rid){
+    document.getElementById('row-'+rid).classList.toggle('editing');
+  }
+
+  // Select-all toggle
+  const selectAll = document.getElementById('selectAll');
+  if (selectAll) {
+    selectAll.addEventListener('change', function(){
+      document.querySelectorAll('input.row-check').forEach(c => { c.checked = selectAll.checked; });
+      recalcTotal();
+    });
+  }
+
+  // Live total
+  function recalcTotal(){
+    let total = 0;
+    document.querySelectorAll('input.row-check:checked').forEach(c => {
+      const rid = c.value;
+      const amt = parseFloat(document.querySelector('input.amount[data-rid="'+rid+'"]').value) || 0;
+      total += amt;
+    });
+    const el = document.getElementById('totalAmount');
+    if (el) el.textContent = total.toLocaleString('he-IL', {minimumFractionDigits: 0, maximumFractionDigits: 2});
+  }
+  document.querySelectorAll('input.row-check, input.amount').forEach(el => {
+    el.addEventListener('input', recalcTotal);
+    el.addEventListener('change', recalcTotal);
+  });
+
+  // Auto-check the row when an amount is typed (saves a click)
+  document.querySelectorAll('input.amount').forEach(el => {
+    el.addEventListener('input', function(){
+      const rid = el.dataset.rid;
+      const cb = document.querySelector('input.row-check[value="'+rid+'"]');
+      if (el.value && cb) cb.checked = true;
+      if (!el.value && cb) cb.checked = false;
+      recalcTotal();
+    });
+  });
+</script>
+{% endblock %}

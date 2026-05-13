@@ -1,4 +1,4 @@
-from .user import User
+﻿from .user import User
 from .donor import Donor
 from .donation import Donation
 from .commission import Commission
@@ -20,6 +20,7 @@ from .email_attachment import EmailAttachment
 from .donor_note import DonorNote
 from .wedding import Wedding
 from .user_ping import UserPing
+from .fax_recipient import FaxRecipient
 
 from .agreement import Agreement
 from .payment import Payment
@@ -76,6 +77,7 @@ __all__ = [
     'EmailAttachment',
     'DonorNote',
     'Wedding',
+    'FaxRecipient',
     'Agreement',
     'Payment',
     'StandingOrder',

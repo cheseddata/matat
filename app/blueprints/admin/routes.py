@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import current_user, login_required
 from sqlalchemy import func, extract
@@ -4283,3 +4283,123 @@ def api_pings_dismiss(ping_id):
         ping.dismissed_at = _dt.utcnow()
         db.session.commit()
     return jsonify({'success': True})
+
+
+# =============================================================================
+# FAX TO BANK HADOAR — bank-transfer fax builder + recipient registry
+# (built for Gittle Goldblum; admin-only)
+# =============================================================================
+
+from ...models.fax_recipient import FaxRecipient as _FaxRecipient
+
+
+def _parse_amount_agorot(raw):
+    """Parse a Hebrew/ASCII amount string into integer agorot. Returns None if invalid/blank."""
+    if raw is None:
+        return None
+    s = str(raw).strip().replace(',', '').replace('₪', '').replace('₪', '')
+    if not s:
+        return None
+    try:
+        return int(round(float(s) * 100))
+    except (ValueError, TypeError):
+        return None
+
+
+@admin_bp.route('/fax-bank-hadoar', methods=['GET'])
+@admin_required
+def fax_bank_hadoar():
+    """Bank Hadoar fax builder: pick recipients + enter amounts, print the fax."""
+    recipients = _FaxRecipient.query_active().order_by(_FaxRecipient.name).all()
+    return render_template(
+        'admin/fax_bank_hadoar.html',
+        recipients=recipients,
+        now_dd_mm_yyyy=datetime.now().strftime('%d/%m/%Y'),
+    )
+
+
+@admin_bp.route('/fax-bank-hadoar/recipients/create', methods=['POST'])
+@admin_required
+def fax_bank_hadoar_recipient_create():
+    name = request.form.get('name', '').strip()
+    bank = request.form.get('bank_number', '').strip()
+    branch = request.form.get('branch_number', '').strip()
+    account = request.form.get('account_number', '').strip()
+
+    if not (name and bank and branch and account):
+        flash('כל השדות חובה: שם, מספר בנק, סניף, מספר חשבון.', 'error')
+        return redirect(url_for('admin.fax_bank_hadoar'))
+
+    db.session.add(_FaxRecipient(
+        name=name,
+        bank_number=bank,
+        branch_number=branch,
+        account_number=account,
+        created_by=current_user.id,
+    ))
+    db.session.commit()
+    flash(f'נוסף: {name}', 'success')
+    return redirect(url_for('admin.fax_bank_hadoar'))
+
+
+@admin_bp.route('/fax-bank-hadoar/recipients/<int:rid>/edit', methods=['POST'])
+@admin_required
+def fax_bank_hadoar_recipient_edit(rid):
+    r = _FaxRecipient.query.filter_by(id=rid).filter(_FaxRecipient.deleted_at.is_(None)).first_or_404()
+    r.name = request.form.get('name', r.name).strip() or r.name
+    r.bank_number = request.form.get('bank_number', r.bank_number).strip() or r.bank_number
+    r.branch_number = request.form.get('branch_number', r.branch_number).strip() or r.branch_number
+    r.account_number = request.form.get('account_number', r.account_number).strip() or r.account_number
+    db.session.commit()
+    flash('עודכן', 'success')
+    return redirect(url_for('admin.fax_bank_hadoar'))
+
+
+@admin_bp.route('/fax-bank-hadoar/recipients/<int:rid>/delete', methods=['POST'])
+@admin_required
+def fax_bank_hadoar_recipient_delete(rid):
+    r = _FaxRecipient.query.filter_by(id=rid).filter(_FaxRecipient.deleted_at.is_(None)).first_or_404()
+    r.deleted_at = datetime.utcnow()
+    db.session.commit()
+    flash(f'נמחק: {r.name}', 'success')
+    return redirect(url_for('admin.fax_bank_hadoar'))
+
+
+@admin_bp.route('/fax-bank-hadoar/print', methods=['POST'])
+@admin_required
+def fax_bank_hadoar_print():
+    """Render the printable fax view based on selected recipients + amounts."""
+    selected_ids = request.form.getlist('selected_ids', type=int)
+    if not selected_ids:
+        flash('יש לבחור לפחות נמען אחד.', 'error')
+        return redirect(url_for('admin.fax_bank_hadoar'))
+
+    recipients_by_id = {
+        r.id: r for r in _FaxRecipient.query.filter(_FaxRecipient.id.in_(selected_ids))
+                                            .filter(_FaxRecipient.deleted_at.is_(None))
+    }
+    lines = []
+    for rid in selected_ids:
+        r = recipients_by_id.get(rid)
+        if not r:
+            continue
+        agorot = _parse_amount_agorot(request.form.get(f'amount_{rid}', ''))
+        if agorot is None or agorot <= 0:
+            flash(f'יש להזין סכום עבור: {r.name}', 'error')
+            return redirect(url_for('admin.fax_bank_hadoar'))
+        lines.append({
+            'name': r.name,
+            'bank_number': r.bank_number,
+            'branch_number': r.branch_number,
+            'account_number': r.account_number,
+            'amount_shekels': agorot / 100,
+        })
+
+    fax_date = datetime.now().strftime('%d/%m/%Y')
+    total = sum(l['amount_shekels'] for l in lines)
+    return render_template(
+        'admin/fax_bank_hadoar_print.html',
+        lines=lines,
+        fax_date=fax_date,
+        total=total,
+    )

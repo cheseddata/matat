@@ -568,6 +568,10 @@ def edit_link(id):
     link.donor_email = request.form.get('donor_email', '').strip() or None
     link.donor_address = request.form.get('donor_address', '').strip() or None
 
+    db.session.commit()
+    flash('Link updated successfully.', 'success')
+    return redirect(url_for('salesperson.my_links'))
+
 
 @salesperson_bp.route('/api/email-templates')
 @salesperson_required
@@ -608,10 +612,6 @@ def api_email_templates():
         })
 
     return jsonify(result)
-
-    db.session.commit()
-    flash('Link updated successfully.', 'success')
-    return redirect(url_for('salesperson.my_links'))
 
 
 @salesperson_bp.route('/api/quick-link', methods=['POST'])
