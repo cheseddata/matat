@@ -67,10 +67,40 @@ def donation_page():
     salesperson = resolve_ref_code(ref_code) if ref_code else None
     campaign = resolve_aff_code(aff_code) if aff_code else None
 
+    # Also try link_id when ref_code didn't match — Miriam's sent links
+    # carry link_id but the donor may strip ref by hand.
+    link_id = request.args.get('link_id')
+    if not salesperson and link_id:
+        try:
+            from ...models.user import User
+            link = DonationLink.query.get(int(link_id))
+            if link and link.salesperson_id:
+                salesperson = User.query.get(link.salesperson_id)
+        except (ValueError, TypeError):
+            pass
+
     _, publishable_key, stripe_mode, _ = get_stripe_keys()
 
     # Get enabled payment processors
     processors = get_enabled_processors()
+
+    # Salesperson processor scope — if the link came from a salesperson
+    # who's restricted to specific processors (User.allowed_processors),
+    # hide every other payment method on the public donate page. Per
+    # ticket #14: donors clicking Mrs. Rosen's links were seeing all 7
+    # methods and getting confused since she only handles Stripe USD.
+    if salesperson and salesperson.allowed_processors:
+        allowed = set(salesperson.allowed_processors)
+        processors['credit_card'] = [p for p in processors['credit_card']
+                                     if p.code in allowed]
+        processors['daf'] = [p for p in processors['daf']
+                             if p.code in allowed]
+        processors['has_stripe']   = 'stripe' in allowed and processors['has_stripe']
+        processors['has_nedarim']  = 'nedarim' in allowed and processors['has_nedarim']
+        processors['has_donors_fund'] = 'donors_fund' in allowed and processors['has_donors_fund']
+        processors['has_matbia']      = 'matbia' in allowed and processors['has_matbia']
+        processors['has_chariot']     = 'chariot' in allowed and processors['has_chariot']
+        processors['has_daf']         = bool(processors['daf'])
 
     # Get Nedarim config if enabled
     nedarim_config = None
