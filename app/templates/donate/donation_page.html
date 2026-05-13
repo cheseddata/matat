@@ -182,6 +182,22 @@
     }
 
     /* Payment sections */
+    /* Visual reorder — render Payment Details BEFORE Donor Info on the
+       public donate page so donors see the credit-card form without
+       scrolling past a long address block. Per Mrs. Rosen's follow-up
+       to ticket #14. Source order stays the same (info first, payment
+       second) so the Jinja conditionals around DAF/Chariot/etc. don't
+       need to move; only the rendered position changes. */
+    /* The form becomes a flex column; each direct child gets an order.
+       Default-0 items (donation-type, amount, hidden inputs, submit
+       button, etc.) render in source order; the two wrapped step-blocks
+       use explicit higher orders so payment renders before info. */
+    #donation-form { display: flex; flex-direction: column; }
+    #donation-form .step-payment { order: 2; }
+    #donation-form .step-info    { order: 3; }
+    #donation-form > button[type="submit"],
+    #donation-form > .secure-badge { order: 4; }
+
     .payment-section {
         display: none;
     }
@@ -309,11 +325,12 @@
                        placeholder="{{ t('donate.other') }}" required>
             </div>
 
+            <div class="step-block step-info">
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
 
-            <!-- Step 3: Your Information -->
+            <!-- Step 3: Your Information (rendered AFTER Payment via flex order) -->
             <div class="section-header">
-                <span class="section-number">2</span>
+                <span class="section-number">3</span>
                 <h3>{{ t('donate.donor_info') }}</h3>
             </div>
 
@@ -365,12 +382,14 @@
                     </select>
                 </div>
             </div>
+            </div> {# /step-info #}
 
+            <div class="step-block step-payment">
             <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
 
-            <!-- Step 4: Payment Method Selection -->
+            <!-- Step 2 (visually) / Step 4 (in source): Payment Method Selection -->
             <div class="section-header">
-                <span class="section-number">3</span>
+                <span class="section-number">2</span>
                 <h3>{{ t('donate.payment_details') }}</h3>
             </div>
 
@@ -487,6 +506,7 @@
                 </p>
             </div>
             {% endif %}
+            </div> {# /step-payment #}
 
             <!-- Hidden fields -->
             <input type="hidden" id="ref_code" value="{{ ref_code or '' }}">
