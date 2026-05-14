@@ -38,6 +38,19 @@
     .wd-filter { font-size: 13px; color: #555; }
     .wd-filter input { margin-right: 4px; }
 
+    .wd-search {
+        padding: 7px 12px 7px 30px;
+        border: 1px solid #d5dcdf;
+        border-radius: 4px;
+        font-size: 13px;
+        min-width: 220px;
+        background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2.5' stroke-linecap='round'><circle cx='11' cy='11' r='7'/><line x1='17' y1='17' x2='21' y2='21'/></svg>") no-repeat 8px center;
+        background-size: 14px;
+        outline: none;
+    }
+    .wd-search:focus { border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,.15); }
+    .wd-match-count { font-size: 11px; color: #888; margin-right: 4px; }
+
     .wd-table { width: 100%; border-collapse: collapse; background: #fff; table-layout: fixed; }
     .wd-table th, .wd-table td { padding: 8px 10px; border-bottom: 1px solid #ececec; vertical-align: top; font-size: 13px; word-wrap: break-word; }
     .wd-table th { background: #f5f7f9; text-align: right; color: #2c3e50; font-weight: 600; }
@@ -78,6 +91,13 @@
         <div class="wd-toolbar">
             <h1>חתונות</h1>
             <div class="wd-actions-bar">
+                {# First in source order → rightmost in RTL → sits just to
+                   the right of the green "+ הוסף חתונה" button. Filters
+                   the table client-side; no server round-trip. #}
+                <input type="search" id="wd-search" class="wd-search"
+                       placeholder="חיפוש לפי שם / טלפון / אולם..."
+                       autocomplete="off">
+                <span class="wd-match-count" id="wd-match-count" aria-live="polite"></span>
                 <a href="{{ url_for('weddings.new') }}" class="wd-btn add">+ הוסף חתונה</a>
                 <a href="{{ url_for('weddings.print_view', show_hidden=1 if show_hidden else 0) }}"
                    target="_blank" class="wd-btn">🖨 הדפס / PDF</a>
@@ -143,4 +163,37 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+(function() {
+    var input = document.getElementById('wd-search');
+    var counter = document.getElementById('wd-match-count');
+    var table = document.querySelector('.wd-table');
+    if (!input || !table) return;
+
+    // Pre-build a lowercase searchable string per row so the input
+    // handler stays O(n) without re-reading DOM text on every keystroke.
+    var rows = Array.from(table.querySelectorAll('tbody tr')).map(function(tr) {
+        return { el: tr, text: (tr.textContent || '').toLowerCase() };
+    });
+
+    function render() {
+        var q = (input.value || '').trim().toLowerCase();
+        var shown = 0;
+        for (var i = 0; i < rows.length; i++) {
+            var match = !q || rows[i].text.indexOf(q) !== -1;
+            rows[i].el.style.display = match ? '' : 'none';
+            if (match) shown++;
+        }
+        counter.textContent = q
+            ? 'מציג ' + shown + ' מתוך ' + rows.length
+            : '';
+    }
+    input.addEventListener('input', render);
+    // Esc clears the search
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') { input.value = ''; render(); }
+    });
+})();
+</script>
 {% endblock %}
