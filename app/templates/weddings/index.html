@@ -4,11 +4,27 @@
 {% block extra_css %}
 <style>
     .wd-wrap { max-width: 1200px; margin: 0 auto; }
+    /* Sticky toolbar: parks under the Matat nav (50px) + processor strip
+       (~33px) so the title and action buttons stay visible while the
+       wedding rows scroll underneath. Per Gittle's request, May 14. */
     .wd-toolbar {
+        position: sticky;
+        top: 83px;                /* nav (50) + proc-strip (~33) */
+        z-index: 50;
+        background: #f5f5f5;       /* matches body so rows don't show through */
+        padding: 10px 0;
+        margin-bottom: 0;
         display: flex; flex-wrap: wrap; justify-content: space-between;
-        align-items: center; gap: 12px; margin-bottom: 14px;
+        align-items: center; gap: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,.04);
     }
     .wd-toolbar h1 { margin: 0; }
+    /* Table header also sticky, parked just under the toolbar. */
+    .wd-table thead th {
+        position: sticky;
+        top: 140px;                /* clears nav + proc-strip + toolbar */
+        z-index: 49;
+    }
     .wd-actions-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .wd-btn {
         background: #ecf0f1; color: #2c3e50; padding: 7px 12px;
