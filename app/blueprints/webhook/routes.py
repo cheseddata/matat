@@ -90,31 +90,83 @@ def handle_payment_intent_succeeded(pi):
         return  # Already processed
 
     metadata = pi.get('metadata', {})
-    
+
+    # ---- Resolve the donor email from anywhere on the PaymentIntent ----
+    # Audit (May 20 2026): some Stripe donations were landing with
+    # `unknown@example.com` because the webhook only looked at
+    # metadata.donor_email. Two real failure modes:
+    #   1) PI created with empty metadata (Stripe Payment Link, dashboard,
+    #      older flow) → Stripe still has the email on billing_details
+    #      and we were ignoring it.
+    #   2) /salesperson/phone-entry charges without an email entered →
+    #      no email anywhere, no recovery possible.
+    # Fix (1) here: probe receipt_email → billing_details.email → customer
+    # before falling back to the synthesized placeholder.
+    donor_email = (metadata.get('donor_email') or '').strip()
+    if not donor_email:
+        donor_email = (pi.get('receipt_email') or '').strip()
+    if not donor_email:
+        # Charges live on the PI as `latest_charge` (recent API) or
+        # inside `charges.data[0]` (older shape). Handle both.
+        charge = pi.get('latest_charge')
+        if isinstance(charge, str):
+            charge = None  # an unexpanded id, skip
+        if not charge:
+            data = (pi.get('charges') or {}).get('data') or []
+            charge = data[0] if data else None
+        if charge:
+            bd = charge.get('billing_details') or {}
+            donor_email = (bd.get('email') or '').strip()
+            # Also grab the name as a better fallback than "Unknown Donor"
+            if bd.get('name') and not metadata.get('donor_first_name'):
+                name_parts = (bd.get('name') or '').strip().split(None, 1)
+                metadata = dict(metadata)
+                metadata['donor_first_name'] = name_parts[0] if name_parts else 'Unknown'
+                metadata['donor_last_name']  = name_parts[1] if len(name_parts) > 1 else 'Donor'
+
     # Get or create donor
     donor_id = metadata.get('donor_id')
     donor = Donor.query.get(donor_id) if donor_id else None
-    
+    # If no donor_id but we recovered a real email, try matching by email
+    if not donor and donor_email and donor_email != 'unknown@example.com':
+        donor = Donor.query.filter_by(email=donor_email).first()
+
     if not donor:
-        # Create donor from metadata if not exists
         donor = Donor(
             first_name=metadata.get('donor_first_name', 'Unknown'),
             last_name=metadata.get('donor_last_name', 'Donor'),
-            email=metadata.get('donor_email', 'unknown@example.com'),
+            email=donor_email or 'unknown@example.com',
             stripe_customer_id=pi.get('customer'),
             test=is_test_mode()
         )
         db.session.add(donor)
         db.session.flush()
-    
+        if donor_email and donor_email != 'unknown@example.com':
+            logger.info(f'[payment_intent.succeeded] Created donor #{donor.id} from billing_details email {donor_email}')
+
     # Resolve salesperson from ref code
     salesperson_id = metadata.get('salesperson_id')
-    
+
     # Resolve campaign from aff code
     campaign_id = metadata.get('campaign_id')
-    
-    # Resolve link
+
+    # Resolve link from metadata; failing that, try to match an unused
+    # DonationLink by donor email + salesperson so a donation that
+    # arrived without link_id but went to a salesperson with a pending
+    # link to that donor still associates correctly.
     link_id = metadata.get('link_id')
+    if not link_id and donor.email and salesperson_id:
+        from ...models.donation_link import DonationLink
+        match = (DonationLink.query
+                 .filter(DonationLink.salesperson_id == int(salesperson_id),
+                         DonationLink.donor_email == donor.email,
+                         (DonationLink.times_used == 0) | (DonationLink.times_used.is_(None)))
+                 .order_by(DonationLink.created_at.desc())
+                 .first())
+        if match:
+            link_id = match.id
+            logger.info(f'[payment_intent.succeeded] Matched donation to '
+                        f'unused link #{match.id} by donor email {donor.email!r}')
     
     # Create donation record
     donation = Donation(

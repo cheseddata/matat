@@ -213,9 +213,12 @@
                 <div id="stripe-debug" style="font-size: 11px; color: #999; margin-top: 5px;"></div>
             </div>
 
-            <!-- STEP 3: Donor Info (optional - can fill later) -->
+            <!-- STEP 3: Donor Info — email is now required so the
+                 donation can be matched back to the donor's record and
+                 a receipt sent. Mrs. Rosen lost ~5 donations to
+                 "unknown@example.com" by skipping it (May 2026). -->
             <div class="form-section">
-                <h3>3. {{ t('phone_entry.donor_info') }} <span style="font-weight: normal; font-size: 14px; color: #666;">(Optional)</span></h3>
+                <h3>3. {{ t('phone_entry.donor_info') }}</h3>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="first_name">{{ t('phone_entry.first_name') }}</label>
@@ -228,8 +231,8 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="email">{{ t('phone_entry.email') }} <span style="font-size: 12px; color: #666;">(for receipt)</span></label>
-                        <input type="email" id="email" name="email">
+                        <label for="email">{{ t('phone_entry.email') }} <span style="font-size: 12px; color: #c0392b;">(required — needed for receipt + linking)</span></label>
+                        <input type="email" id="email" name="email" required>
                     </div>
                     <div class="form-group">
                         <label for="phone">{{ t('phone_entry.phone') }}</label>
