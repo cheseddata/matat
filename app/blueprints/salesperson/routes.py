@@ -333,7 +333,16 @@ def _create_phone_payment_intent(data):
             customer_id = get_or_create_customer(donor)
             logger.info(f'Stripe customer ID: {customer_id}')
         else:
-            logger.info('Processing anonymous phone donation (no email provided)')
+            # The phone-entry form now asks the operator to confirm
+            # via JS confirm() before submitting without an email.
+            # email_skipped is the flag set there — log the two
+            # cases distinctly so a later audit can tell "donor
+            # refused / had no email" apart from "operator forgot
+            # to type it in" (which we should fix in training).
+            if data.get('email_skipped'):
+                logger.info('Phone donation: operator confirmed donor has no email')
+            else:
+                logger.warning('Phone donation: no email and no skip-confirm — possible UX bypass')
 
         # Build metadata - scoped to current salesperson
         metadata = {
@@ -342,6 +351,8 @@ def _create_phone_payment_intent(data):
             'salesperson_id': str(current_user.id),
             'ref_code': current_user.ref_code or ''
         }
+        if not email and data.get('email_skipped'):
+            metadata['no_email_confirmed'] = '1'
 
         # Add donor info if available
         if donor:

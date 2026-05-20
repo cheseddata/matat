@@ -265,6 +265,11 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-04-30 (phone-entry: warn-then-confirm instead of hard-required email)
+- Reverted yesterday's "email required" change on `/salesperson/phone-entry`. Operators reported real cases where the donor refuses or doesn't have an email; the form was blocking them from charging at all.
+- **Soft warning + confirm()**: email input is no longer `required`. Label now reads "(strongly recommended — for receipt + linking)" in red. On submit, if the field is empty, a JS `window.confirm()` pops asking the operator to confirm the donor has no email available. Cancel → focus the email input. OK → set a session flag (`window.__phoneEntryEmailSkipConfirmed`) so the confirm doesn't re-prompt on retry within the same load, and add `email_skipped: true` to the POST body.
+- **Server side**: `_create_phone_payment_intent` now logs two distinct messages — `"operator confirmed donor has no email"` (intentional, INFO) vs `"no email and no skip-confirm — possible UX bypass"` (suspicious, WARNING). When `email_skipped=true`, sets `metadata['no_email_confirmed'] = '1'` on the PaymentIntent so the Stripe-side trail also reflects the deliberate choice. Lets us audit later whether "no email" donations are operator-deliberate or training gaps.
+
 ### 2026-05-13 (fax_bank_hadoar.html: bigger signature, sticky add-row, auto-sort, auto-clear)
 - Standalone Bank-HaDoar fax-builder tool (operator's local HTML — runs from disk, no server). Four small operator-requested ergonomics fixes:
   - **Signature too small on print**: the signoff block had `max-width: 300px` and the `.sig-img` was capped at `max-height: 110px`. Bumped to 460px / 220px so the base64 signature image renders roughly 2× larger in both screen and print views (still scales to fit, won't overflow).
