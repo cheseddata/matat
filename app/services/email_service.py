@@ -29,6 +29,16 @@ def get_email_config():
     # Use configured email provider
     provider = config.email_provider or 'mailtrap'
 
+    # Microsoft Graph (Office 365 / Exchange Online)
+    # Credentials live in email_inbox_providers (code='msgraph'); _send_msgraph
+    # reads that row directly, so here we only flag the provider + from fields.
+    if provider == 'msgraph':
+        return {
+            'provider': 'msgraph',
+            'from_name': config.email_from_name or 'Matat Mordechai',
+            'from_address': config.email_from_address or 'support@matatmordechai.org',
+        }
+
     # ActiveTrail
     if provider == 'activetrail' and config.activetrail_api_key:
         return {
