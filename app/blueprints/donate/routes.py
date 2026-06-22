@@ -51,8 +51,15 @@ def get_enabled_processors():
 
 
 @donate_bp.route('/donate')
+@donate_bp.route('/give')
 def donation_page():
-    """Public donation page."""
+    """Public donation page.
+
+    A ``?only=stripe,nedarim`` query param (or the /give alias, which
+    defaults to Stripe + Nedarim Plus) restricts the visible payment
+    methods to the named processor codes. Used to hand content-filter
+    whitelisting teams a minimal page showing only Stripe + Nedarim Plus.
+    """
     # Get URL parameters
     ref_code = request.args.get('ref')
     aff_code = request.args.get('aff')
@@ -97,6 +104,25 @@ def donation_page():
                              if p.code in allowed]
         processors['has_stripe']   = 'stripe' in allowed and processors['has_stripe']
         processors['has_nedarim']  = 'nedarim' in allowed and processors['has_nedarim']
+        processors['has_donors_fund'] = 'donors_fund' in allowed and processors['has_donors_fund']
+        processors['has_matbia']      = 'matbia' in allowed and processors['has_matbia']
+        processors['has_chariot']     = 'chariot' in allowed and processors['has_chariot']
+        processors['has_daf']         = bool(processors['daf'])
+
+    # Restrict visible payment methods via ?only=code1,code2 (or the /give
+    # alias, defaulting to Stripe + Nedarim Plus). Mirrors the salesperson
+    # allowed_processors filtering above.
+    only = request.args.get('only')
+    if not only and request.path.rstrip('/').endswith('/give'):
+        only = 'stripe,nedarim'
+    if only:
+        allowed = {c.strip() for c in only.split(',') if c.strip()}
+        processors['credit_card'] = [p for p in processors['credit_card']
+                                     if p.code in allowed]
+        processors['daf'] = [p for p in processors['daf']
+                             if p.code in allowed]
+        processors['has_stripe']      = 'stripe' in allowed and processors['has_stripe']
+        processors['has_nedarim']     = 'nedarim' in allowed and processors['has_nedarim']
         processors['has_donors_fund'] = 'donors_fund' in allowed and processors['has_donors_fund']
         processors['has_matbia']      = 'matbia' in allowed and processors['has_matbia']
         processors['has_chariot']     = 'chariot' in allowed and processors['has_chariot']
