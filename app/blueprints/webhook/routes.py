@@ -69,6 +69,9 @@ def stripe_webhook():
     elif event_type == 'invoice.paid':
         logger.info(f'Handling invoice.paid: {data.get("id")}')
         handle_invoice_paid(data)
+    elif event_type == 'checkout.session.completed':
+        logger.info(f'Handling checkout.session.completed: {data.get("id")}')
+        handle_checkout_session_completed(data)
     else:
         logger.info(f'Unhandled webhook event type: {event_type}')
 
@@ -233,9 +236,21 @@ def handle_charge_succeeded(charge):
         logger.warning('[charge.succeeded] No payment_intent in charge, skipping')
         return
 
-    donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
+    # Race condition guard: Stripe fires payment_intent.succeeded and
+    # charge.succeeded almost simultaneously (~200ms apart). Gunicorn
+    # routes them to different workers, so this handler can run before
+    # the PI handler has committed the donation row. June 26 2026 audit
+    # found donation #6737 silently lost its receipt this way. Retry a
+    # few times with backoff to wait for the PI worker.
+    donation = None
+    for attempt in range(5):
+        donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
+        if donation:
+            break
+        import time as _t
+        _t.sleep(0.3)  # 300ms backoff per attempt
     if not donation:
-        logger.warning(f'[charge.succeeded] No donation found for PI {pi_id}')
+        logger.warning(f'[charge.succeeded] No donation found for PI {pi_id} after 5 retries')
         return
 
     logger.info(f'[charge.succeeded] Found donation {donation.id}')
@@ -360,11 +375,60 @@ def handle_charge_failed(charge):
     pi_id = charge.get('payment_intent')
     if not pi_id:
         return
-    
+
     donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
     if donation:
         donation.status = 'failed'
         db.session.commit()
+
+
+def handle_checkout_session_completed(session):
+    """Stripe Payment Link (filter-fallback) donations come through
+    Checkout, which has a `client_reference_id` field we set to the
+    salesperson's ref_code in the URL. Use it to credit commissions.
+
+    The PI handler creates the donation row; this handler only updates
+    salesperson_id afterward. May fire before or after PI handler — so
+    we retry the donation lookup the same way charge.succeeded does.
+    """
+    ref_code = (session.get('client_reference_id') or '').strip()
+    if not ref_code:
+        logger.info('[checkout.session.completed] no client_reference_id — nothing to attribute')
+        return
+
+    pi_id = session.get('payment_intent')
+    if not pi_id:
+        logger.info('[checkout.session.completed] no payment_intent on session — skipping')
+        return
+
+    donation = None
+    for attempt in range(5):
+        donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
+        if donation:
+            break
+        import time as _t
+        _t.sleep(0.3)
+    if not donation:
+        logger.warning(f'[checkout.session.completed] no donation for PI {pi_id} after retries')
+        return
+
+    if donation.salesperson_id:
+        return  # already attributed
+
+    from ...models.user import User
+    sp = User.query.filter_by(ref_code=ref_code).first()
+    if not sp:
+        logger.warning(f'[checkout.session.completed] unknown ref_code {ref_code!r}')
+        return
+
+    donation.salesperson_id = sp.id
+    # Stamp it so a future audit can see it came from the fallback flow
+    meta = dict(donation.stripe_metadata or {})
+    meta.setdefault('source', 'filter_fallback_link')
+    meta['attributed_via'] = 'client_reference_id'
+    donation.stripe_metadata = meta
+    db.session.commit()
+    logger.info(f'[checkout.session.completed] donation #{donation.id} → salesperson {sp.username} ({ref_code})')
 
 
 def handle_invoice_paid(invoice):

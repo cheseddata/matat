@@ -743,11 +743,45 @@ def send_custom_donation_link_email(donor_email, subject, body_text, link, langu
         link_fallback = "אם הכפתור לא עובד, העתק והדבק את הקישור הבא בדפדפן שלך:"
         tax_notice = "תרומתך מוכרת לצורכי מס בהתאם לחוק. תקבל קבלה רשמית לאחר עיבוד התרומה."
         thanks = "תודה על נדיבותך!"
+        # Filter-fallback block, Hebrew
+        fb_heading = "האם הקישור חסום?"
+        fb_body = ("הובא לתשומת לבנו שלעיתים מסנני אינטרנט מסוימים טרם עדכנו "
+                   "את רשימת האתרים המאושרים שלהם, מה שעלול למנוע גישה לאתר התרומות שלנו. "
+                   "אם אינך מצליח לגשת לקישור למעלה, נא להשתמש בקישור הבטוח הבא — "
+                   "המופעל ישירות על-ידי Stripe ופתוח לכל המסננים:")
+        fb_button = "תרומה דרך Stripe (קישור בטוח)"
     else:
         button_text = "Donate Now"
         link_fallback = "If the button above doesn't work, copy and paste this link into your browser:"
         tax_notice = "Your donation is tax-deductible to the extent allowed by law. You will receive an official receipt via email after your donation is processed."
         thanks = "Thank you for your generosity!"
+        # Filter-fallback block, English
+        fb_heading = "Trouble accessing the link above?"
+        fb_body = ("It has come to our attention that certain internet content "
+                   "filters may not yet have updated their approved-sites list, "
+                   "which can occasionally prevent access to our donation page. "
+                   "If the link above does not load, please use the secure "
+                   "alternative below — hosted directly by Stripe and "
+                   "accessible through all major filters:")
+        fb_button = "Donate via Stripe (Secure Link)"
+
+    # Hard-coded for now — once a config column lands we'll move this
+    # into ConfigSettings so it can be rotated without a code deploy.
+    stripe_fallback_url = "https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02"
+    # Suffix client_reference_id when we can derive the salesperson's
+    # ref code from the DonationLink. The checkout.session.completed
+    # webhook reads this and credits the salesperson on the donation —
+    # otherwise filter-fallback donations come in unattributed.
+    try:
+        sp = getattr(link, 'salesperson', None)
+        if sp is None and getattr(link, 'salesperson_id', None):
+            from ..models.user import User
+            sp = User.query.get(link.salesperson_id)
+        ref_code = (getattr(sp, 'ref_code', None) or '').strip() if sp else ''
+        if ref_code:
+            stripe_fallback_url = f'{stripe_fallback_url}?client_reference_id={ref_code}'
+    except Exception:
+        pass  # never let URL-building fail the send
 
     html_body = f'''<!DOCTYPE html>
 <html>
@@ -779,6 +813,28 @@ def send_custom_donation_link_email(donor_email, subject, body_text, link, langu
         <p style="font-size: 14px; color: #3498db; word-break: break-all;">
             {link.full_url}
         </p>
+
+        <!-- Filter-fallback block. Some content filters (Techloq, Netspark,
+             etc.) may not yet have whitelisted matatmordechai.org. The
+             Stripe-hosted alternative below loads on *.stripe.com, which
+             every major filter approves by default. -->
+        <div style="margin: 30px 0; padding: 20px; background: #fff8e1; border-left: 4px solid #f39c12; border-radius: 4px;">
+            <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: 600; color: #2c3e50;">
+                {fb_heading}
+            </p>
+            <p style="margin: 0 0 16px 0; font-size: 14px; color: #555; line-height: 1.6;">
+                {fb_body}
+            </p>
+            <div style="text-align: center;">
+                <a href="{stripe_fallback_url}"
+                   style="display: inline-block; padding: 12px 28px; background: #635bff; color: white; text-decoration: none; border-radius: 6px; font-size: 15px; font-weight: 600;">
+                    {fb_button}
+                </a>
+            </div>
+            <p style="margin: 14px 0 0 0; font-size: 12px; color: #888; word-break: break-all; text-align: center;">
+                {stripe_fallback_url}
+            </p>
+        </div>
 
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
 

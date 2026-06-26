@@ -43,6 +43,24 @@
             {{ donation_url }}
         </p>
 
+        <div style="margin: 30px 0; padding: 20px; background: #fff8e1; border-right: 4px solid #f39c12; border-radius: 4px;">
+            <p style="margin: 0 0 10px 0; font-size: 15px; font-weight: 600; color: #2c3e50;">
+                האם הקישור חסום?
+            </p>
+            <p style="margin: 0 0 16px 0; font-size: 14px; color: #555; line-height: 1.8;">
+                הובא לתשומת לבנו שלעיתים מסנני אינטרנט מסוימים טרם עדכנו את רשימת האתרים המאושרים שלהם, מה שעלול למנוע גישה לאתר התרומות שלנו. אם אינך מצליח לגשת לקישור למעלה, נא להשתמש בקישור הבטוח הבא &mdash; המופעל ישירות על-ידי Stripe ופתוח לכל המסננים:
+            </p>
+            <div style="text-align: center;">
+                <a href="https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02{% if salesperson and salesperson.ref_code %}?client_reference_id={{ salesperson.ref_code }}{% endif %}"
+                   style="display: inline-block; padding: 12px 28px; background: #635bff; color: white; text-decoration: none; border-radius: 6px; font-size: 15px; font-weight: 600;">
+                    תרומה דרך Stripe (קישור בטוח)
+                </a>
+            </div>
+            <p style="margin: 14px 0 0 0; font-size: 12px; color: #888; word-break: break-all; text-align: center; direction: ltr;">
+                https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02{% if salesperson and salesperson.ref_code %}?client_reference_id={{ salesperson.ref_code }}{% endif %}
+            </p>
+        </div>
+
         <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
 
         <p style="font-size: 14px; color: #666; line-height: 1.8;">
