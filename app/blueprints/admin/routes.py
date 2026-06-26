@@ -4464,6 +4464,7 @@ def recover_non_donors_send():
         abort(403)
 
     from ..models.donation_link import DonationLink
+    from ..models.message import MessageQueue
     from ..services.email_service import send_email
     from ..models.config_settings import ConfigSettings
 
@@ -4489,26 +4490,57 @@ def recover_non_donors_send():
         direct = stripe_url + (f'?client_reference_id={ref_code}' if ref_code else '')
         first_name = (link.donor_name or '').split(None, 1)[0] if link.donor_name else 'Friend'
 
-        subject = 'Following up — your Matat Mordechai donation link'
+        # Pull the original email we sent to this donor (when one exists)
+        # so we can quote it back to them and reference the exact date +
+        # subject. Otherwise fall back to the link's own create-date so
+        # the recovery message still feels grounded.
+        orig = (MessageQueue.query
+                .filter(MessageQueue.related_link_id == link.id,
+                        MessageQueue.channel == 'email',
+                        MessageQueue.status == 'sent')
+                .order_by(MessageQueue.sent_at.desc())
+                .first())
+        orig_dt = (orig.sent_at if orig and orig.sent_at
+                   else (orig.created_at if orig else link.created_at))
+        orig_date = orig_dt.strftime('%B %d, %Y') if orig_dt else 'a recent date'
+        orig_subject = (orig.subject or '').strip() if orig else ''
+        orig_body = (orig.body_html or '').strip() if orig else ''
+
+        sp_label = sp.full_name if sp else 'someone from our team'
+        subject = (f'Re: {orig_subject}' if orig_subject
+                   else 'Following up — your Matat Mordechai donation link')
+
+        # Quoted-original block (omitted when we have nothing to quote)
+        if orig_body:
+            quoted_block = f'''
+    <div style="margin-top:24px; padding:14px 18px; border-left:4px solid #ccc; background:#f8f8f8; color:#444; font-size:13px;">
+      <div style="font-size:12px; color:#888; margin-bottom:8px;">
+        &mdash; original message sent {orig_date}{', subject: <em>' + orig_subject + '</em>' if orig_subject else ''} &mdash;
+      </div>
+      {orig_body}
+    </div>'''
+        elif orig_subject:
+            quoted_block = (f'<p style="font-size:13px; color:#666; '
+                            f'margin-top:24px;">(Original subject: '
+                            f'<em>{orig_subject}</em>)</p>')
+        else:
+            quoted_block = ''
+
         html = f'''<!DOCTYPE html>
 <html><body style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background:#f5f5f5;">
   <div style="background:white; border-radius:8px; padding:30px;">
     <h2 style="color:#2c3e50; margin-top:0;">Matat Mordechai</h2>
     <p>Dear {first_name},</p>
-    <p>It has come to our attention that some of the donation links we
-    sent recently were not functioning correctly for all recipients —
-    in particular, donors on certain content-filtered networks may not
-    have been able to reach our donation page.</p>
-    <p>If you tried to donate and the link did not work, our apologies
-    for the inconvenience. The button below goes directly to a secure
-    payment page hosted on <strong>donate.stripe.com</strong>, which is
-    accessible through all major filters:</p>
+    <p>On <strong>{orig_date}</strong> {sp_label} sent you an email with a donation link to support Matat Mordechai.</p>
+    <p>It has come to our attention that some of those links were not functioning correctly for all recipients &mdash; in particular, donors on certain content-filtered networks (Techloq, Netspark, Rimon, etc.) may not have been able to reach our donation page at all.</p>
+    <p>If that was your experience, our sincere apologies. We&rsquo;ve set up a secure alternative that goes directly through <strong>donate.stripe.com</strong>, which every major filter approves by default:</p>
     <div style="text-align:center; margin:30px 0;">
       <a href="{direct}" style="display:inline-block; padding:14px 36px; background:#635bff; color:white; text-decoration:none; border-radius:6px; font-size:16px; font-weight:600;">Donate Securely</a>
     </div>
     <p style="font-size:13px; color:#666;">Or copy &amp; paste:<br>
        <span style="color:#3498db; word-break:break-all;">{direct}</span></p>
     <p>Thank you for your generosity and patience.</p>
+    {quoted_block}
     <p style="margin-top:30px; font-size:12px; color:#999;">
        Matat Mordechai &mdash; a registered 501(c)(3) nonprofit.
     </p>
