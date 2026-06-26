@@ -242,15 +242,21 @@ def handle_charge_succeeded(charge):
     # the PI handler has committed the donation row. June 26 2026 audit
     # found donation #6737 silently lost its receipt this way. Retry a
     # few times with backoff to wait for the PI worker.
+    # The PI handler can take 1-2s when it retrieves the charge from
+    # Stripe for billing_details (June 26 audit), and SQLAlchemy caches
+    # the negative result in the session identity map, so we have to
+    # expire between retries to force a fresh query. 10 × 500ms = 5s
+    # ceiling — covers even the slowest PI handler runs.
     donation = None
-    for attempt in range(5):
+    for attempt in range(10):
+        db.session.expire_all()
         donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
         if donation:
             break
         import time as _t
-        _t.sleep(0.3)  # 300ms backoff per attempt
+        _t.sleep(0.5)
     if not donation:
-        logger.warning(f'[charge.succeeded] No donation found for PI {pi_id} after 5 retries')
+        logger.warning(f'[charge.succeeded] No donation found for PI {pi_id} after 10 retries')
         return
 
     logger.info(f'[charge.succeeded] Found donation {donation.id}')
@@ -401,15 +407,19 @@ def handle_checkout_session_completed(session):
         logger.info('[checkout.session.completed] no payment_intent on session — skipping')
         return
 
+    # Same retry pattern as charge.succeeded — expire SQLAlchemy session
+    # between attempts so the next query actually hits the DB instead
+    # of returning the previous None from the identity map.
     donation = None
-    for attempt in range(5):
+    for attempt in range(10):
+        db.session.expire_all()
         donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
         if donation:
             break
         import time as _t
-        _t.sleep(0.3)
+        _t.sleep(0.5)
     if not donation:
-        logger.warning(f'[checkout.session.completed] no donation for PI {pi_id} after retries')
+        logger.warning(f'[checkout.session.completed] no donation for PI {pi_id} after 10 retries')
         return
 
     if donation.salesperson_id:
