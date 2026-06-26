@@ -540,6 +540,20 @@ def sync_email_cmd(limit):
             click.echo(f'[ERR] {r["provider"]:10s} {r.get("error")}')
 
 
+@click.command('sweep-bounces')
+@click.option('--hours', default=72, type=int, help='inbox window to scan')
+@click.option('--dry-run', is_flag=True, help='log without flipping or resending')
+@with_appcontext
+def sweep_bounces_cmd(hours, dry_run):
+    """Scan the Exchange inbox for delivery-failure notifications,
+    flip the matching DonationContactSnapshot rows, and resend
+    receipts to the donor's canonical email."""
+    from .services.bounce_sweep import sweep_bounces
+    stats = sweep_bounces(window_hours=hours, dry_run=dry_run)
+    for k, v in stats.items():
+        click.echo(f'  {k:24s} = {v}')
+
+
 def init_app(app):
     """Register CLI commands with the app."""
     app.cli.add_command(import_donors_cmd)
@@ -547,3 +561,4 @@ def init_app(app):
     app.cli.add_command(sync_nedarim_cmd)
     app.cli.add_command(backfill_donor_owner_cmd)
     app.cli.add_command(sync_email_cmd)
+    app.cli.add_command(sweep_bounces_cmd)

@@ -200,18 +200,25 @@ def handle_payment_intent_succeeded(pi):
     )
     db.session.add(donation)
     db.session.flush()
-    
+
+    # Capture the per-transaction donor snapshot here too, not just on
+    # checkout.session.completed. For the embedded /donate flow our own
+    # form puts the typed fields into metadata; for the Stripe Payment
+    # Link flow metadata is empty and the checkout.session handler
+    # enriches the snapshot afterwards. Either way one row per donation.
+    _write_contact_snapshot_from_pi(donation, donor, pi, metadata)
+
     # Calculate and create commission
     commission_data = calculate_commission(donation)
     if commission_data:
         create_commission_record(donation, commission_data)
-    
+
     # Update campaign total if applicable
     if donation.campaign_id:
         campaign = Campaign.query.get(donation.campaign_id)
         if campaign:
             campaign.total_raised = (campaign.total_raised or 0) + donation.amount
-    
+
     # Update link usage if applicable
     if donation.link_id:
         link = DonationLink.query.get(donation.link_id)
@@ -219,8 +226,54 @@ def handle_payment_intent_succeeded(pi):
             link.times_used = (link.times_used or 0) + 1
             from datetime import datetime
             link.last_used_at = datetime.utcnow()
-    
+
     db.session.commit()
+
+
+def _write_contact_snapshot_from_pi(donation, donor, pi, metadata):
+    """Build a per-transaction snapshot from the PI payload + our form
+    metadata. For the embedded /donate flow metadata carries the fields
+    the donor typed. For the Stripe Payment Link path metadata is empty
+    but we still write a sparse row from billing_details — the matching
+    checkout.session.completed handler fills it in further.
+    """
+    from ...models.donation_contact_snapshot import DonationContactSnapshot
+
+    md = dict(metadata or {})
+    charge = pi.get('latest_charge')
+    if isinstance(charge, str):
+        charge = None  # not expanded — billing_details unreachable here
+    bd = (charge.get('billing_details') if isinstance(charge, dict) else None) or {}
+    bd_addr = bd.get('address') or {}
+
+    # Idempotent: re-deliveries of the same webhook may run this twice
+    snap = (DonationContactSnapshot.query
+            .filter_by(donation_id=donation.id).first())
+    if snap is None:
+        snap = DonationContactSnapshot(
+            donation_id=donation.id,
+            donor_id=donation.donor_id,
+            source='stripe_pi',
+        )
+        db.session.add(snap)
+
+    def _set(field, *candidates):
+        for v in candidates:
+            v = (v or '').strip() if isinstance(v, str) else v
+            if v:
+                setattr(snap, field, v)
+                return
+
+    _set('first_name',    md.get('donor_first_name'))
+    _set('last_name',     md.get('donor_last_name'))
+    _set('email',         md.get('donor_email'), bd.get('email'))
+    _set('phone',         md.get('donor_phone'), bd.get('phone'))
+    _set('address_line1', md.get('address_line1'), bd_addr.get('line1'))
+    _set('address_line2', md.get('address_line2'), bd_addr.get('line2'))
+    _set('city',          md.get('city'),  bd_addr.get('city'))
+    _set('state',         md.get('state'), bd_addr.get('state'))
+    _set('zip',           md.get('zip'),   bd_addr.get('postal_code'))
+    _set('country',       md.get('country'), bd_addr.get('country'))
 
 
 def handle_charge_succeeded(charge):
