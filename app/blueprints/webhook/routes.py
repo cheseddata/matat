@@ -439,6 +439,40 @@ def handle_checkout_session_completed(session):
     meta.setdefault('source', 'filter_fallback_link')
     meta['attributed_via'] = 'client_reference_id'
     donation.stripe_metadata = meta
+
+    # Backfill donor contact info from what Stripe Checkout collected,
+    # but ONLY into blank donor fields — never clobber existing data.
+    # Phone lives in custom_fields (since we made it optional via that
+    # mechanism rather than the built-in phone_number_collection which
+    # forces required). Address lives in customer_details.address; with
+    # billing_address_collection='auto' only the ZIP is reliably filled
+    # for US cards.
+    donor = donation.donor
+    cd = session.get('customer_details') or {}
+    addr = cd.get('address') or {}
+
+    # Phone from custom_fields[phone]
+    for cf in (session.get('custom_fields') or []):
+        if cf.get('key') == 'phone':
+            ph = ((cf.get('text') or {}).get('value') or '').strip()
+            if ph and not (donor.phone or '').strip():
+                donor.phone = ph
+            break
+
+    # Address bits — each only if currently blank
+    if addr.get('line1') and not (donor.address_line1 or '').strip():
+        donor.address_line1 = addr['line1'].strip()
+    if addr.get('line2') and not (donor.address_line2 or '').strip():
+        donor.address_line2 = addr['line2'].strip()
+    if addr.get('city') and not (donor.city or '').strip():
+        donor.city = addr['city'].strip()
+    if addr.get('state') and not (donor.state or '').strip():
+        donor.state = addr['state'].strip()
+    if addr.get('postal_code') and not (donor.zip or '').strip():
+        donor.zip = addr['postal_code'].strip()
+    if addr.get('country') and not (donor.country or '').strip():
+        donor.country = addr['country'].strip()
+
     db.session.commit()
     logger.info(f'[checkout.session.completed] donation #{donation.id} → salesperson {sp.username} ({ref_code})')
 
