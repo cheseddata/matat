@@ -242,14 +242,16 @@ def handle_charge_succeeded(charge):
     # the PI handler has committed the donation row. June 26 2026 audit
     # found donation #6737 silently lost its receipt this way. Retry a
     # few times with backoff to wait for the PI worker.
-    # The PI handler can take 1-2s when it retrieves the charge from
-    # Stripe for billing_details (June 26 audit), and SQLAlchemy caches
-    # the negative result in the session identity map, so we have to
-    # expire between retries to force a fresh query. 10 × 500ms = 5s
-    # ceiling — covers even the slowest PI handler runs.
+    # Race condition: the PI handler runs on a different worker and may
+    # commit the donation row after this handler has already started.
+    # rollback() between attempts ends the worker's current transaction
+    # so the next query starts fresh and can see the new commit. MySQL's
+    # default REPEATABLE READ pins the read snapshot to the transaction
+    # — expire_all() alone wasn't enough, the rollback is what releases
+    # the snapshot. 10 × 500ms = 5s ceiling, plenty for the PI worker.
     donation = None
     for attempt in range(10):
-        db.session.expire_all()
+        db.session.rollback()
         donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
         if donation:
             break
@@ -407,12 +409,12 @@ def handle_checkout_session_completed(session):
         logger.info('[checkout.session.completed] no payment_intent on session — skipping')
         return
 
-    # Same retry pattern as charge.succeeded — expire SQLAlchemy session
-    # between attempts so the next query actually hits the DB instead
-    # of returning the previous None from the identity map.
+    # Same race-retry pattern as charge.succeeded — rollback between
+    # attempts to release the MySQL REPEATABLE READ snapshot so the
+    # next query actually sees the freshly-committed donation row.
     donation = None
     for attempt in range(10):
-        db.session.expire_all()
+        db.session.rollback()
         donation = Donation.query.filter_by(stripe_payment_intent_id=pi_id).first()
         if donation:
             break
