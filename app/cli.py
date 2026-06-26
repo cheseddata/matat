@@ -540,6 +540,21 @@ def sync_email_cmd(limit):
             click.echo(f'[ERR] {r["provider"]:10s} {r.get("error")}')
 
 
+@click.command('backfill-stripe-snapshots')
+@click.option('--limit', type=int, default=None, help='process at most N donations')
+@click.option('--start-id', type=int, default=0, help='resume from this donation id')
+@click.option('--dry-run', is_flag=True, help='fetch but do not commit')
+@with_appcontext
+def backfill_stripe_snapshots_cmd(limit, start_id, dry_run):
+    """Pull full PaymentIntent + Charge + Customer + Checkout Session
+    from Stripe for every historical donation, write into
+    DonationContactSnapshot.raw_data. Idempotent."""
+    from .services.stripe_backfill import backfill_all
+    stats = backfill_all(limit=limit, start_id=start_id, dry_run=dry_run)
+    for k, v in stats.items():
+        click.echo(f'  {k:8s} = {v}')
+
+
 @click.command('sweep-bounces')
 @click.option('--hours', default=72, type=int, help='inbox window to scan')
 @click.option('--dry-run', is_flag=True, help='log without flipping or resending')
@@ -562,3 +577,4 @@ def init_app(app):
     app.cli.add_command(backfill_donor_owner_cmd)
     app.cli.add_command(sync_email_cmd)
     app.cli.add_command(sweep_bounces_cmd)
+    app.cli.add_command(backfill_stripe_snapshots_cmd)
