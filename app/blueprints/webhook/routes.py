@@ -440,41 +440,65 @@ def handle_checkout_session_completed(session):
     meta['attributed_via'] = 'client_reference_id'
     donation.stripe_metadata = meta
 
-    # Backfill donor contact info from what Stripe Checkout collected,
-    # but ONLY into blank donor fields — never clobber existing data.
-    # Phone lives in custom_fields (since we made it optional via that
-    # mechanism rather than the built-in phone_number_collection which
-    # forces required). Address lives in customer_details.address; with
-    # billing_address_collection='auto' only the ZIP is reliably filled
-    # for US cards.
-    donor = donation.donor
-    cd = session.get('customer_details') or {}
-    addr = cd.get('address') or {}
-
-    # Phone from custom_fields[phone]
-    for cf in (session.get('custom_fields') or []):
-        if cf.get('key') == 'phone':
-            ph = ((cf.get('text') or {}).get('value') or '').strip()
-            if ph and not (donor.phone or '').strip():
-                donor.phone = ph
-            break
-
-    # Address bits — each only if currently blank
-    if addr.get('line1') and not (donor.address_line1 or '').strip():
-        donor.address_line1 = addr['line1'].strip()
-    if addr.get('line2') and not (donor.address_line2 or '').strip():
-        donor.address_line2 = addr['line2'].strip()
-    if addr.get('city') and not (donor.city or '').strip():
-        donor.city = addr['city'].strip()
-    if addr.get('state') and not (donor.state or '').strip():
-        donor.state = addr['state'].strip()
-    if addr.get('postal_code') and not (donor.zip or '').strip():
-        donor.zip = addr['postal_code'].strip()
-    if addr.get('country') and not (donor.country or '').strip():
-        donor.country = addr['country'].strip()
+    # Capture everything the donor typed for THIS transaction in a
+    # snapshot row. We never overwrite the canonical Donor record —
+    # the snapshot is the transactional truth of what they entered
+    # this time, while the donor row stays as the operator's
+    # source-of-truth identity. (See DonationContactSnapshot
+    # docstring for the design rationale.)
+    _write_contact_snapshot_from_checkout(donation, session)
 
     db.session.commit()
     logger.info(f'[checkout.session.completed] donation #{donation.id} → salesperson {sp.username} ({ref_code})')
+
+
+def _write_contact_snapshot_from_checkout(donation, session):
+    """Build/update a DonationContactSnapshot row from a Stripe
+    Checkout Session. Idempotent — if a snapshot already exists for
+    this donation we just refresh the non-null fields, so re-deliveries
+    of the same webhook don't duplicate rows.
+    """
+    from ...models.donation_contact_snapshot import DonationContactSnapshot
+
+    cd = session.get('customer_details') or {}
+    addr = cd.get('address') or {}
+
+    phone = None
+    for cf in (session.get('custom_fields') or []):
+        if cf.get('key') == 'phone':
+            phone = ((cf.get('text') or {}).get('value') or '').strip() or None
+            break
+
+    name_parts = ((cd.get('name') or '').strip().split(None, 1)) if cd.get('name') else []
+    first = name_parts[0] if name_parts else None
+    last  = name_parts[1] if len(name_parts) > 1 else None
+
+    snap = (DonationContactSnapshot.query
+            .filter_by(donation_id=donation.id).first())
+    if not snap:
+        snap = DonationContactSnapshot(
+            donation_id=donation.id,
+            donor_id=donation.donor_id,
+            source='stripe_checkout',
+        )
+        db.session.add(snap)
+
+    snap.first_name    = first             or snap.first_name
+    snap.last_name     = last              or snap.last_name
+    snap.email         = (cd.get('email') or '').strip() or snap.email
+    snap.phone         = phone             or snap.phone
+    snap.address_line1 = addr.get('line1') or snap.address_line1
+    snap.address_line2 = addr.get('line2') or snap.address_line2
+    snap.city          = addr.get('city')  or snap.city
+    snap.state         = addr.get('state') or snap.state
+    snap.zip           = addr.get('postal_code') or snap.zip
+    snap.country       = addr.get('country')     or snap.country
+    snap.raw_data      = {
+        'customer_details': cd,
+        'custom_fields':    session.get('custom_fields'),
+        'payment_link':     session.get('payment_link'),
+        'submit_type':      session.get('submit_type'),
+    }
 
 
 def handle_invoice_paid(invoice):

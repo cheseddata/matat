@@ -606,8 +606,26 @@ def send_receipt_email(donor, donation, receipt, language=None, extra_attachment
     if not attachments:
         attachments = None
 
+    # Pick the recipient: prefer what the donor typed for THIS specific
+    # transaction (DonationContactSnapshot.email) — they may have used a
+    # different email at the Stripe page than the one on their main
+    # donor record. Only fall back to donor.email when there's no
+    # snapshot or its email matches anyway. Bounce-based fallback to
+    # donor.email is handled by the inbox DSN sweep (separate flow).
+    from ..models.donation_contact_snapshot import DonationContactSnapshot
+    snap = (DonationContactSnapshot.query
+            .filter_by(donation_id=donation.id).first())
+    snap_email = (snap.email or '').strip().lower() if snap else ''
+    main_email = (donor.email or '').strip()
+    to_email = snap_email if snap_email and snap_email != main_email.lower() else main_email
+    if snap and snap_email and snap_email != main_email.lower():
+        logger.info(
+            f'Receipt for donation {donation.id}: using snapshot email '
+            f'{to_email!r} (donor.email is {main_email!r})'
+        )
+
     success = send_email(
-        to=donor.email,
+        to=to_email,
         subject=subject,
         html_body=html_body,
         attachments=attachments,
@@ -617,10 +635,12 @@ def send_receipt_email(donor, donation, receipt, language=None, extra_attachment
     )
 
     if success:
-        receipt.email_sent_to = donor.email
+        receipt.email_sent_to = to_email
         receipt.sent_at = datetime.utcnow()
         donation.receipt_sent = True
         donation.receipt_sent_at = datetime.utcnow()
+        if snap:
+            snap.receipt_sent_to_email = to_email
         db.session.commit()
 
     return success

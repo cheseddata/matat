@@ -265,6 +265,12 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-06-26 (per-transaction donor snapshot table)
+- **New table `donation_contact_snapshots`** (model `DonationContactSnapshot`, Alembic `f7cb2fe916d7`) holds whatever the donor typed for THIS specific transaction — name, email, phone, address, plus the raw Stripe `customer_details` blob for forensics. One row per donation (unique on `donation_id`).
+- **Why**: the canonical `Donor` row is the operator's source-of-truth identity for a person. A given donation may carry a different email (e.g. a work address), a one-off phone, a different shipping address — and we want to preserve all of that without overwriting the main record every time. So instead of yesterday's "fill blanks on Donor" approach (which I just reverted), the new `checkout.session.completed` handler writes everything to a snapshot row tied to the donation.
+- **Receipt routing prefers snapshot.email.** `send_receipt_email` looks up the snapshot; if `snapshot.email` exists and differs from `donor.email`, that's where the receipt goes. Logged at INFO. `receipt.email_sent_to` and `snapshot.receipt_sent_to_email` both record the actual recipient. Bounce-then-fall-back-to-donor.email is wired through `snapshot.receipt_bounced` + `receipt_fallback_used` columns for a future inbox-DSN sweep to flip and resend (not implemented yet — needs MSGraph NDR parser).
+- **Backfilled donation #6740** (today's $4 test) into snapshot `id=1` from the live Stripe Checkout Session so the new logic has data to work with from day one.
+
 ### 2026-06-26 (Stripe Payment Link URL moved to ConfigSettings)
 - Followed up on the hardcoded fallback URL from earlier today. New column `config.stripe_payment_link_url` (VARCHAR 500, nullable), seeded with the current URL via Alembic `c9fb6b81cbfd`. Admin can rotate from `/admin/settings` &rarr; Stripe section &rarr; "Filter-Fallback Payment Link" without a code deploy.
 - Removed every hardcoded `donate.stripe.com/dRm5kE2IRb2AdC16I22cg02` reference. Inline HTML (`send_custom_donation_link_email`) and static templates (`donation_link_en.html` / `donation_link_he.html`) now read the URL from the config row at render time, falling back to the original URL only if the row's value is null so the email never goes out empty.

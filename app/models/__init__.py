@@ -4,6 +4,7 @@ from .donation import Donation
 from .commission import Commission
 from .campaign import Campaign
 from .donation_link import DonationLink
+from .donation_contact_snapshot import DonationContactSnapshot
 from .receipt import Receipt, ReceiptCounter
 from .message import MessageQueue, MessageTemplate, CommProvider
 from .config_settings import ConfigSettings
