@@ -265,6 +265,18 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-06-26 (stripe webhook: retrieve charge when latest_charge arrives as a bare id)
+- **Bug**: the April 30 "recover donor email from billing_details when metadata is empty" fix didn't actually trigger for new unknowns. Audit found 3 more unknown-donor charges since the fix shipped (#6714, #6716, #6736 — $30 / $1 / $18). Pulling those PIs directly from Stripe showed `billing_details.email` and `billing_details.name` were present — Kalman Berenbaum, Miriam Rosen (test $1), Adam Lieberman.
+- **Root cause**: in `payment_intent.succeeded` webhook payloads, `latest_charge` arrives as a bare **string id** ("ch_...") rather than the expanded charge object. The code path was:
+  ```python
+  charge = pi.get('latest_charge')
+  if isinstance(charge, str):
+      charge = None  # an unexpanded id, skip
+  ```
+  So we threw away the only field that had the donor info and fell straight to the synthesized `unknown@example.com`.
+- **Fix**: when `latest_charge` is a string, retrieve the full Charge object via `stripe.Charge.retrieve(charge_id)` so billing_details are accessible. Uses the same key resolution as the rest of the webhook (`get_stripe_keys()`).
+- **Backfill**: `backfill_unknowns_20260626.py` recovered all 3 in-place — placeholder donor rows updated to real names + emails. None of the recovered emails matched existing donors, so no merging was needed.
+
 ### 2026-04-30 (phone-entry: warn-then-confirm instead of hard-required email)
 - Reverted yesterday's "email required" change on `/salesperson/phone-entry`. Operators reported real cases where the donor refuses or doesn't have an email; the form was blocking them from charging at all.
 - **Soft warning + confirm()**: email input is no longer `required`. Label now reads "(strongly recommended — for receipt + linking)" in red. On submit, if the field is empty, a JS `window.confirm()` pops asking the operator to confirm the donor has no email available. Cancel → focus the email input. OK → set a session flag (`window.__phoneEntryEmailSkipConfirmed`) so the confirm doesn't re-prompt on retry within the same load, and add `email_skipped: true` to the POST body.

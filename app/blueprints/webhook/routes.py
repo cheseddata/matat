@@ -108,9 +108,22 @@ def handle_payment_intent_succeeded(pi):
     if not donor_email:
         # Charges live on the PI as `latest_charge` (recent API) or
         # inside `charges.data[0]` (older shape). Handle both.
+        # Important: in webhook payloads `latest_charge` arrives as a
+        # bare string id, not the expanded object — June 2026 audit
+        # found 3 unknown-donor charges where billing_details were
+        # there on Stripe's side but our code skipped them. If we
+        # only have an id, retrieve the charge so we get its
+        # billing_details too.
         charge = pi.get('latest_charge')
         if isinstance(charge, str):
-            charge = None  # an unexpanded id, skip
+            try:
+                import stripe as _stripe
+                _secret, _, _, _ = get_stripe_keys()
+                _stripe.api_key = _secret
+                charge = _stripe.Charge.retrieve(charge)
+            except Exception as e:
+                logger.warning(f'[payment_intent.succeeded] Could not retrieve charge {charge}: {e}')
+                charge = None
         if not charge:
             data = (pi.get('charges') or {}).get('data') or []
             charge = data[0] if data else None
