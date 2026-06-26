@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Recover Non-Donors — Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    .rn-wrap { max-width: 1200px; margin: 0 auto; }
+    .rn-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .rn-header h1 { margin: 0; }
+    .rn-info-box {
+        background: #fff8e1; border-left: 4px solid #f39c12; padding: 14px 18px;
+        border-radius: 4px; margin-bottom: 20px; font-size: 14px; color: #444; line-height: 1.5;
+    }
+    .rn-filter {
+        background: white; padding: 14px 16px; border-radius: 6px;
+        margin-bottom: 16px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center;
+    }
+    .rn-filter select, .rn-filter input { padding: 6px 10px; border: 1px solid #d5dcdf; border-radius: 4px; font-size: 13px; }
+    .rn-filter button {
+        background: #34495e; color: white; border: 0; padding: 7px 14px;
+        border-radius: 4px; cursor: pointer; font-size: 13px;
+    }
+    .rn-table { width: 100%; border-collapse: collapse; background: white; }
+    .rn-table th, .rn-table td { padding: 9px 11px; border-bottom: 1px solid #ececec; font-size: 13px; vertical-align: top; }
+    .rn-table th { background: #f5f7f9; text-align: left; color: #2c3e50; font-weight: 600; position: sticky; top: 50px; z-index: 5; }
+    .rn-table tr:hover td { background: #fafafa; }
+    .rn-table .col-chk { width: 30px; }
+    .rn-table .col-days { width: 70px; text-align: right; color: #888; font-size: 12px; }
+    .rn-actions-bar {
+        background: white; padding: 12px 16px; border-radius: 6px;
+        position: sticky; bottom: 0; box-shadow: 0 -2px 6px rgba(0,0,0,0.06);
+        display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        margin-top: 0;
+    }
+    .rn-send-btn {
+        background: #635bff; color: white; border: 0; padding: 10px 22px;
+        border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
+    }
+    .rn-send-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .rn-count { font-size: 13px; color: #666; }
+    .rn-empty { padding: 48px 24px; text-align: center; color: #888; background: white; border-radius: 6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="rn-wrap">
+        <div class="rn-header">
+            <h1>Recover non-donors</h1>
+            <div style="font-size: 13px; color: #666;">
+                {{ total }} link{{ '' if total == 1 else 's' }} sent, no donation yet
+            </div>
+        </div>
+
+        <div class="rn-info-box">
+            <strong>What this is:</strong> donation links sent to a donor whose <code>times_used = 0</code>.
+            Many of these are the filter-block backlog &mdash; donors whose Techloq/Netspark/Rimon filter quietly
+            blocked the link without anyone noticing. Selecting one and sending the recovery email
+            apologises, explains the filter issue, and points the donor at the
+            <code>donate.stripe.com</code> fallback URL (filter-safe). When the donor opens that, the donation
+            is auto-credited to the original salesperson via <code>?client_reference_id=&lt;ref_code&gt;</code>.
+        </div>
+
+        <form method="GET" class="rn-filter">
+            <label>Window:
+                <select name="days" onchange="this.form.submit()">
+                    {% for d in [7, 14, 30, 60, 90, 180, 365] %}
+                    <option value="{{ d }}" {% if d == days %}selected{% endif %}>last {{ d }}d</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Salesperson:
+                <select name="salesperson_id" onchange="this.form.submit()">
+                    <option value="">— any —</option>
+                    {% for sp in salespersons %}
+                    <option value="{{ sp.id }}" {% if sp_id == sp.id|string %}selected{% endif %}>
+                        {{ sp.full_name }} ({{ sp.username }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </label>
+            <noscript><button type="submit">Apply</button></noscript>
+        </form>
+
+        {% if links %}
+        <form method="POST" action="{{ url_for('admin.recover_non_donors_send') }}"
+              onsubmit="return confirm('Send recovery emails to the selected donors? They will receive the Stripe-direct link.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <table class="rn-table">
+                <thead>
+                    <tr>
+                        <th class="col-chk"><input type="checkbox" id="chk-all" onclick="document.querySelectorAll('.rn-row-chk').forEach(c => c.checked = this.checked); updateBtn();"></th>
+                        <th>Donor email</th>
+                        <th>Donor name</th>
+                        <th>Salesperson</th>
+                        <th>Sent</th>
+                        <th class="col-days">Days ago</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for L in links %}
+                    {% set sp = L.salesperson %}
+                    {% set days_ago = ((now - L.created_at).days if now else 0) %}
+                    <tr>
+                        <td><input type="checkbox" name="link_ids" value="{{ L.id }}" class="rn-row-chk" onclick="updateBtn()"></td>
+                        <td>{{ L.donor_email }}</td>
+                        <td>{{ L.donor_name or '—' }}</td>
+                        <td>{{ sp.full_name if sp else '—' }}{% if sp and sp.ref_code %} <span style="color:#aaa">({{ sp.ref_code }})</span>{% endif %}</td>
+                        <td>{{ L.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="col-days">{{ days_ago }}d</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="rn-actions-bar">
+                <div class="rn-count" id="rn-selected">0 selected</div>
+                <button type="submit" class="rn-send-btn" id="rn-send-btn" disabled>
+                    Send recovery emails to selected
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div class="rn-empty">
+            No outstanding links in this window.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function updateBtn() {
+    const n = document.querySelectorAll('.rn-row-chk:checked').length;
+    document.getElementById('rn-selected').textContent = n + ' selected';
+    document.getElementById('rn-send-btn').disabled = n === 0;
+}
+</script>
+{% endblock %}

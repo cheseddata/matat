@@ -1,5 +1,5 @@
 ﻿import logging
-from flask import render_template, request, redirect, url_for, flash, jsonify
+from flask import render_template, request, redirect, url_for, flash, jsonify, abort, current_app
 from flask_login import current_user, login_required
 from sqlalchemy import func, extract
 from datetime import datetime, timedelta
@@ -4407,3 +4407,129 @@ def fax_bank_hadoar_print():
         fax_date=fax_date,
         total=total,
     )
+
+
+# ---------------------------------------------------------------------
+# Non-donor recovery — list every DonationLink that was sent out but
+# never resulted in a donation, and offer a one-click resend with copy
+# that points the recipient at the Stripe-direct fallback link in case
+# the matatmordechai link was blocked by their filter. The send button
+# is operator-triggered, not automatic.
+# ---------------------------------------------------------------------
+@admin_bp.route('/recover/non-donors')
+@login_required
+def recover_non_donors():
+    if not (current_user.role == 'admin' or current_user.can_view_all_donations):
+        abort(403)
+
+    from ..models.donation_link import DonationLink
+    days = int(request.args.get('days') or 90)
+    sp_id = request.args.get('salesperson_id')
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    q = (DonationLink.query
+         .filter(DonationLink.donor_email.isnot(None))
+         .filter(DonationLink.donor_email != '')
+         .filter(db.or_(DonationLink.times_used.is_(None),
+                        DonationLink.times_used == 0))
+         .filter(DonationLink.created_at >= cutoff))
+    if sp_id and sp_id.isdigit():
+        q = q.filter(DonationLink.salesperson_id == int(sp_id))
+
+    links = q.order_by(DonationLink.created_at.desc()).all()
+
+    salespersons = (User.query
+                    .filter(User.role.in_(['salesperson', 'admin']))
+                    .filter(User.active.is_(True))
+                    .order_by(User.first_name.asc()).all())
+
+    return render_template(
+        'admin/recover_non_donors.html',
+        links=links,
+        salespersons=salespersons,
+        days=days,
+        sp_id=sp_id,
+        total=len(links),
+        now=datetime.utcnow(),
+    )
+
+
+@admin_bp.route('/recover/non-donors/send', methods=['POST'])
+@login_required
+def recover_non_donors_send():
+    """Send the 'we noticed the link may not have worked' recovery
+    email to the donors selected on /admin/recover/non-donors.
+    Operator-triggered; never runs on its own."""
+    if not (current_user.role == 'admin' or current_user.can_view_all_donations):
+        abort(403)
+
+    from ..models.donation_link import DonationLink
+    from ..services.email_service import send_email
+    from ..models.config_settings import ConfigSettings
+
+    raw_ids = request.form.getlist('link_ids')
+    link_ids = [int(x) for x in raw_ids if x.isdigit()]
+    if not link_ids:
+        flash('No links selected.', 'warning')
+        return redirect(url_for('admin.recover_non_donors'))
+
+    cfg = ConfigSettings.query.first()
+    stripe_url = (getattr(cfg, 'stripe_payment_link_url', None)
+                  or 'https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02')
+
+    sent = skipped = errored = 0
+    for lid in link_ids:
+        link = DonationLink.query.get(lid)
+        if not link or not link.donor_email or link.times_used:
+            skipped += 1
+            continue
+
+        sp = link.salesperson_id and User.query.get(link.salesperson_id)
+        ref_code = (sp.ref_code if sp else '') or ''
+        direct = stripe_url + (f'?client_reference_id={ref_code}' if ref_code else '')
+        first_name = (link.donor_name or '').split(None, 1)[0] if link.donor_name else 'Friend'
+
+        subject = 'Following up — your Matat Mordechai donation link'
+        html = f'''<!DOCTYPE html>
+<html><body style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background:#f5f5f5;">
+  <div style="background:white; border-radius:8px; padding:30px;">
+    <h2 style="color:#2c3e50; margin-top:0;">Matat Mordechai</h2>
+    <p>Dear {first_name},</p>
+    <p>It has come to our attention that some of the donation links we
+    sent recently were not functioning correctly for all recipients —
+    in particular, donors on certain content-filtered networks may not
+    have been able to reach our donation page.</p>
+    <p>If you tried to donate and the link did not work, our apologies
+    for the inconvenience. The button below goes directly to a secure
+    payment page hosted on <strong>donate.stripe.com</strong>, which is
+    accessible through all major filters:</p>
+    <div style="text-align:center; margin:30px 0;">
+      <a href="{direct}" style="display:inline-block; padding:14px 36px; background:#635bff; color:white; text-decoration:none; border-radius:6px; font-size:16px; font-weight:600;">Donate Securely</a>
+    </div>
+    <p style="font-size:13px; color:#666;">Or copy &amp; paste:<br>
+       <span style="color:#3498db; word-break:break-all;">{direct}</span></p>
+    <p>Thank you for your generosity and patience.</p>
+    <p style="margin-top:30px; font-size:12px; color:#999;">
+       Matat Mordechai &mdash; a registered 501(c)(3) nonprofit.
+    </p>
+  </div>
+</body></html>'''
+        try:
+            ok = send_email(
+                to=link.donor_email,
+                subject=subject,
+                html_body=html,
+                message_type='donation_link_recovery',
+                related_link_id=link.id,
+            )
+            if ok:
+                sent += 1
+            else:
+                errored += 1
+        except Exception as e:
+            current_app.logger.warning(f'[recover] link {lid}: {e}')
+            errored += 1
+
+    flash(f'Recovery emails: sent={sent}, skipped={skipped}, errored={errored}.',
+          'success' if sent else 'warning')
+    return redirect(url_for('admin.recover_non_donors'))

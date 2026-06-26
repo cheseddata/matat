@@ -569,7 +569,11 @@
                 </form>
             </div>
 
-            <!-- Donations History -->
+            <!-- Donations History — per-transaction breakdown.
+                 Pulls card brand/last4 + email-used + decline reason
+                 (when applicable) from the per-transaction snapshot
+                 so the operator can answer "what card did they pay
+                 with on Mar 14?" without leaving this page. -->
             <h2 class="section-title">{{ t('admin.donation_history') }}</h2>
 
             {% if donations %}
@@ -578,23 +582,48 @@
                     <tr>
                         <th>{{ t('common.date') }}</th>
                         <th>{{ t('common.amount') }}</th>
-                        <th>{{ t('common.type') }}</th>
-                        <th>{{ t('common.source') }}</th>
+                        <th>Processor</th>
+                        <th>Card</th>
+                        <th>Email used</th>
                         <th>{{ t('common.status') }}</th>
                         <th>{{ t('common.actions') }}</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for d in donations %}
-                    <tr>
+                    {% set snap = d.contact_snapshot %}
+                    {% set rd = (snap.raw_data if snap else {}) or {} %}
+                    {% set csv_row = rd.get('csv_row', {}) %}
+                    {% set charge = rd.get('charge', {}) or {} %}
+                    {% set pmd = charge.get('payment_method_details', {}) or {} %}
+                    {% set card = pmd.get('card', {}) or {} %}
+                    {% set brand = card.get('brand') or csv_row.get('Card Brand') %}
+                    {% set last4 = card.get('last4') or csv_row.get('Card Last4') %}
+                    {% set used_email = snap.email if snap and snap.email else (charge.get('billing_details', {}) or {}).get('email') %}
+                    {% set decline = (csv_row.get('Decline Reason') or charge.get('failure_message') or '') %}
+                    <tr {% if d.status == 'failed' %}style="background:#fff5f5"{% elif d.status in ['pending','canceled'] %}style="background:#fafafa;color:#888"{% endif %}>
                         <td>{{ d.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                         <td>{% if (d.currency or 'usd')|upper == 'ILS' %}&#8362;{% else %}${% endif %}{{ "%.2f"|format(d.amount / 100) }}</td>
-                        <td>{{ d.donation_type | replace('_', ' ') | title }}</td>
-                        <td>{{ d.source or t('common.direct') }}</td>
+                        <td>{{ (d.payment_processor or 'stripe') | title }}</td>
                         <td>
-                            <span class="status-badge {{ d.status }}">
-                                {{ d.status | title }}
-                            </span>
+                            {% if brand or last4 %}
+                                <span style="font-size:12px;color:#444">{{ (brand or '')|title }} {% if last4 %}•••• {{ last4 }}{% endif %}</span>
+                            {% else %}
+                                <span style="color:#bbb;font-size:12px">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if used_email and used_email|lower != (donor.email or '')|lower %}
+                                <span style="font-size:12px;color:#c0392b" title="Different from main donor email">{{ used_email }}</span>
+                            {% elif used_email %}
+                                <span style="font-size:12px;color:#888">{{ used_email }}</span>
+                            {% else %}
+                                <span style="color:#bbb;font-size:12px">&mdash;</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge {{ d.status }}">{{ d.status | title }}</span>
+                            {% if decline %}<div style="font-size:11px;color:#c0392b;margin-top:2px">{{ decline }}</div>{% endif %}
                         </td>
                         <td>
                             <a href="{{ url_for('admin.donation_detail', id=d.id) }}" class="action-btn primary">{{ t('common.view') }}</a>
@@ -603,6 +632,9 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <p style="font-size:12px;color:#888;margin-top:8px">
+                Includes every Stripe attempt — paid, failed, canceled, abandoned. Reports use only <em>succeeded</em>.
+            </p>
             {% else %}
             <div class="card" style="text-align: center; padding: 30px; background: white; border-radius: 8px;">
                 <p style="color: #666;">{{ t('admin.no_donations') }}</p>
