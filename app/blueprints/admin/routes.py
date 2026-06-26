@@ -2121,6 +2121,10 @@ def settings():
         config.stripe_live_secret_key = request.form.get('stripe_live_secret_key', '').strip() or None
         config.stripe_live_publishable_key = request.form.get('stripe_live_publishable_key', '').strip() or None
         config.stripe_webhook_secret = request.form.get('stripe_webhook_secret', '').strip() or None
+        # Stripe Payment Link URL — used as the filter-fallback button in
+        # donation-link emails. Admin can rotate without a code deploy
+        # if a new Payment Link is created in the Stripe dashboard.
+        config.stripe_payment_link_url = request.form.get('stripe_payment_link_url', '').strip() or None
 
         # Site URL
         config.site_url = request.form.get('site_url', '').strip() or 'https://matatmordechai.org'

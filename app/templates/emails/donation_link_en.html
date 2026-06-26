@@ -51,13 +51,13 @@
                 It has come to our attention that certain internet content filters may not yet have updated their approved-sites list, which can occasionally prevent access to our donation page. If the link above does not load, please use the secure alternative below &mdash; hosted directly by Stripe and accessible through all major filters:
             </p>
             <div style="text-align: center;">
-                <a href="https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02{% if salesperson and salesperson.ref_code %}?client_reference_id={{ salesperson.ref_code }}{% endif %}"
+                <a href="{{ stripe_fallback_url }}{% if salesperson and salesperson.ref_code %}?client_reference_id={{ salesperson.ref_code }}{% endif %}"
                    style="display: inline-block; padding: 12px 28px; background: #635bff; color: white; text-decoration: none; border-radius: 6px; font-size: 15px; font-weight: 600;">
                     Donate via Stripe (Secure Link)
                 </a>
             </div>
             <p style="margin: 14px 0 0 0; font-size: 12px; color: #888; word-break: break-all; text-align: center;">
-                https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02{% if salesperson and salesperson.ref_code %}?client_reference_id={{ salesperson.ref_code }}{% endif %}
+                {{ stripe_fallback_url }}{% if salesperson and salesperson.ref_code %}?client_reference_id={{ salesperson.ref_code }}{% endif %}
             </p>
         </div>
 

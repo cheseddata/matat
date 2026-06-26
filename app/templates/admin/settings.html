@@ -494,6 +494,20 @@
                            placeholder="whsec_...">
                     <p class="help-text">Webhook URL: <code>https://matatmordechai.org/api/stripe/webhook</code></p>
                 </div>
+
+                <h4 style="margin-top: 20px;">Filter-Fallback Payment Link</h4>
+                <div class="form-group">
+                    <label>Stripe Payment Link URL</label>
+                    <input type="url" name="stripe_payment_link_url"
+                           value="{{ config.stripe_payment_link_url or '' }}"
+                           placeholder="https://donate.stripe.com/xxxxxxxxxxxx"
+                           style="font-family: monospace; font-size: 13px;">
+                    <p class="help-text">
+                        Appears as a secondary &ldquo;Donate via Stripe&rdquo; button under the main matat link in every donation-link email.
+                        Stripe-hosted on <code>*.stripe.com</code>, which content filters whitelist by default &mdash; donors on filtered networks who can&rsquo;t reach matatmordechai.org can still donate here.
+                        Create or rotate the link at Stripe Dashboard &rarr; Payment Links.
+                    </p>
+                </div>
             </div>
 
             <!-- Info Section -->

@@ -77,6 +77,13 @@ class ConfigSettings(db.Model):
     yeshinvoice_enabled = db.Column(db.Boolean, default=False)
     yeshinvoice_default_doc_type = db.Column(db.String(50), default='receipt')
 
+    # Stripe Payment Link URL — used as the filter-fallback button in
+    # donation-link emails. Stripe-hosted on *.stripe.com, which the
+    # Jewish content filters (Techloq/Netspark/Rimon/etc.) whitelist
+    # by default. Donors on filtered networks who can't reach
+    # matatmordechai.org can still complete the donation through this.
+    stripe_payment_link_url = db.Column(db.String(500), nullable=True)
+
     # AI API keys (encrypted)
     _anthropic_api_key_enc = db.Column('anthropic_api_key', db.Text, nullable=True)
     _openai_api_key_enc = db.Column('openai_api_key', db.Text, nullable=True)

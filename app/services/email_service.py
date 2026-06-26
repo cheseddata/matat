@@ -639,12 +639,18 @@ def send_donation_link_email(donor_email, donor_name, link, salesperson=None, la
     else:
         subject = "Donation Link - Matat Mordechai"
 
+    cfg = ConfigSettings.query.first()
+    stripe_fallback_url = (
+        getattr(cfg, 'stripe_payment_link_url', None)
+        or 'https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02'
+    )
     html_body = render_template(
         f'emails/donation_link_{lang}.html',
         donor_name=donor_name,
         donation_url=link.full_url,
         preset_amount=link.preset_amount_dollars,
-        salesperson=salesperson
+        salesperson=salesperson,
+        stripe_fallback_url=stripe_fallback_url,
     )
 
     return send_email(
@@ -765,9 +771,15 @@ def send_custom_donation_link_email(donor_email, subject, body_text, link, langu
                    "accessible through all major filters:")
         fb_button = "Donate via Stripe (Secure Link)"
 
-    # Hard-coded for now — once a config column lands we'll move this
-    # into ConfigSettings so it can be rotated without a code deploy.
-    stripe_fallback_url = "https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02"
+    # Pulled from ConfigSettings.stripe_payment_link_url so admins can
+    # rotate the URL via the settings UI without a code deploy. Falls
+    # back to the original PaymentLink if the row is missing the value,
+    # so the email never goes out without a fallback link.
+    _cfg = ConfigSettings.query.first()
+    stripe_fallback_url = (
+        getattr(_cfg, 'stripe_payment_link_url', None)
+        or 'https://donate.stripe.com/dRm5kE2IRb2AdC16I22cg02'
+    )
     # Suffix client_reference_id when we can derive the salesperson's
     # ref code from the DonationLink. The checkout.session.completed
     # webhook reads this and credits the salesperson on the donation —
