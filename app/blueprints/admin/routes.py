@@ -4490,10 +4490,10 @@ def recover_non_donors_send():
         direct = stripe_url + (f'?client_reference_id={ref_code}' if ref_code else '')
         first_name = (link.donor_name or '').split(None, 1)[0] if link.donor_name else 'Friend'
 
-        # Look up the original email only to grab its date + subject —
-        # we used to quote the body verbatim at the bottom, but per
-        # operator feedback (June 26) that's noisy and the donor
-        # doesn't need to re-read it. Just reference when it was sent.
+        # Look up the original email so we can quote it back to them
+        # at the bottom — same context they originally saw, minus the
+        # broken matatmordechai.org link itself (the whole point of
+        # this flow is that the link didn't work).
         orig = (MessageQueue.query
                 .filter(MessageQueue.related_link_id == link.id,
                         MessageQueue.channel == 'email',
@@ -4504,10 +4504,47 @@ def recover_non_donors_send():
                    else (orig.created_at if orig else link.created_at))
         orig_date = orig_dt.strftime('%B %d, %Y') if orig_dt else 'a recent date'
         orig_subject = (orig.subject or '').strip() if orig else ''
+        orig_body = (orig.body_html or '').strip() if orig else ''
+
+        # Strip the old donation link out of the quoted body. Two passes:
+        # (1) de-anchor any <a> whose href is the donation URL (keeps the
+        # button label but removes the broken link itself); (2) replace
+        # any remaining visible matatmordechai.org/donate URLs with a
+        # short placeholder so a donor can't accidentally click a dead
+        # link in the quoted history.
+        import re as _re
+        sanitized_orig = orig_body
+        if sanitized_orig:
+            sanitized_orig = _re.sub(
+                r'<a\b[^>]*\bhref=["\']?https?://matatmordechai\.org/donate[^"\'<>]*["\']?[^>]*>(.*?)</a>',
+                r'<span style="color:#888;text-decoration:line-through">\1</span>',
+                sanitized_orig,
+                flags=_re.IGNORECASE | _re.DOTALL,
+            )
+            sanitized_orig = _re.sub(
+                r'https?://matatmordechai\.org/donate[^\s<"\']*',
+                '[previous link &mdash; removed]',
+                sanitized_orig,
+            )
 
         sp_label = sp.full_name if sp else 'someone from our team'
         subject = (f'Re: {orig_subject}' if orig_subject
                    else 'Following up — your Matat Mordechai donation link')
+
+        if sanitized_orig:
+            quoted_block = f'''
+    <div style="margin-top:24px; padding:14px 18px; border-left:4px solid #ccc; background:#f8f8f8; color:#444; font-size:13px;">
+      <div style="font-size:12px; color:#888; margin-bottom:8px;">
+        &mdash; original message sent {orig_date}{', subject: <em>' + orig_subject + '</em>' if orig_subject else ''} &mdash;
+      </div>
+      {sanitized_orig}
+    </div>'''
+        elif orig_subject:
+            quoted_block = (f'<p style="font-size:13px; color:#666; '
+                            f'margin-top:24px;">(Original subject: '
+                            f'<em>{orig_subject}</em>)</p>')
+        else:
+            quoted_block = ''
 
         html = f'''<!DOCTYPE html>
 <html><body style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background:#f5f5f5;">
@@ -4523,6 +4560,7 @@ def recover_non_donors_send():
     <p style="font-size:13px; color:#666;">Or copy &amp; paste:<br>
        <span style="color:#3498db; word-break:break-all;">{direct}</span></p>
     <p>Thank you for your generosity and patience.</p>
+    {quoted_block}
     <p style="margin-top:30px; font-size:12px; color:#999;">
        Matat Mordechai &mdash; a registered 501(c)(3) nonprofit.
     </p>
