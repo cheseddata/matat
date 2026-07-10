@@ -50,9 +50,22 @@ class NedarimProcessor(BasePaymentProcessor):
         return 'Nedarim Plus'
 
     def initialize(self) -> bool:
-        """Initialize with Nedarim Plus credentials."""
+        """Initialize with Nedarim Plus credentials.
+
+        Nedarim issues TWO separate secrets per Mosad:
+          - api_password       : reports / GetHistoryJson / GetKevaJson / refund
+          - iframe_api_valid   : the iframe's FinishTransaction2 ApiValid
+        Same secret WILL NOT work in both places. If iframe_api_valid isn't
+        set we fall back to api_password for compat, but the iframe will
+        return 'סיסמת אימות לא תקינה' — Nedarim's spec requires the
+        dedicated charging token. (Confirmed by Eliyahu / Nedarim CTO,
+        July 2026 — see project_nedarim_ops memory.)
+        """
         self._mosad_id = self.config.get('mosad_id')
         self._api_password = self.config.get('api_password')
+        self._iframe_api_valid = (
+            self.config.get('iframe_api_valid') or self._api_password
+        )
 
         if not self._mosad_id or not self._api_password:
             logger.warning('Nedarim Plus credentials not configured')
@@ -86,10 +99,12 @@ class NedarimProcessor(BasePaymentProcessor):
 
         currency_code = self.CURRENCY_CODES.get(currency.upper(), '2')  # Default USD
 
-        # Prepare PostMessage data for iframe
+        # Prepare PostMessage data for iframe. Uses the iframe token, NOT
+        # the reporting api_password — Nedarim rejects the reports secret
+        # here with 'סיסמת אימות לא תקינה'.
         iframe_data = {
             'Mosad': self._mosad_id,
-            'ApiValid': self._api_password,
+            'ApiValid': self._iframe_api_valid,
             'PaymentType': 'Ragil',  # One-time payment
             'Amount': str(amount),
             'Currency': currency_code,
@@ -123,7 +138,7 @@ class NedarimProcessor(BasePaymentProcessor):
             'type': 'nedarim_iframe',
             'iframe_url': self.IFRAME_URL,
             'mosad_id': self._mosad_id if self._initialized else None,
-            'api_valid': self._api_password if self._initialized else None,
+            'api_valid': self._iframe_api_valid if self._initialized else None,
         }
 
     def process_webhook(self, request_data: bytes, headers: Dict[str, str]) -> Dict[str, Any]:

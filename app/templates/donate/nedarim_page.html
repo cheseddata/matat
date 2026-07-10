@@ -347,7 +347,7 @@
                         </div>
                         <div class="card-iframe-wrap">
                             <iframe id="nedarim-iframe"
-                                    src="https://www.matara.pro/nedarimplus/iframe/"
+                                    src="https://matara.pro/nedarimplus/iframe?language={{ lang or 'he' }}&Captcha=1"
                                     allow="payment"
                                     scrolling="no"
                                     style="height: 280px;"
@@ -385,12 +385,15 @@
 function requestIframeHeight() {
     const iframe = document.getElementById('nedarim-iframe');
     if (iframe && iframe.contentWindow) {
-        iframe.contentWindow.postMessage({ Name: 'GetHeight' }, 'https://www.matara.pro');
+        iframe.contentWindow.postMessage({ Name: 'GetHeight' }, '*');
     }
 }
 
 const MOSAD_ID = '{{ mosad_id }}';
-const API_PASSWORD = '{{ api_password }}';
+// This is the CHARGING token (Nedarim's separate iframe secret), NOT
+// the reports/GetHistoryJson password. Wrong secret here = the iframe
+// returns "סיסמת אימות לא תקינה" and the charge silently fails.
+const API_VALID = '{{ iframe_api_valid }}';
 let selectedMethod = 'credit';
 
 // ===== STEP 1: Method selection =====
@@ -471,10 +474,12 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
     submitBtn.disabled = true;
     submitBtn.textContent = '{% if lang == "he" %}מעבד...{% else %}Processing...{% endif %}';
 
-    // Map method to Nedarim PaymentType
+    // Valid PaymentTypes per Nedarim spec: Ragil | HK | CreateToken.
+    // "Tashlumim" is NOT a payment type — it's the installment count on
+    // a Ragil transaction. Sending PaymentType='Tashlumim' was one of
+    // the two bugs that broke charging.
     let paymentType = 'Ragil';
     if (selectedMethod === 'standing') paymentType = 'HK';
-    else if (selectedMethod === 'credit' && document.getElementById('installments').value > 1) paymentType = 'Tashlumim';
 
     const iframe = document.getElementById('nedarim-iframe');
 
@@ -489,29 +494,35 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
     const linkId = document.getElementById('link_id').value;
     if (linkId) comment = (comment ? comment + ' | ' : '') + 'link_id:' + linkId;
 
+    // Nedarim spec: send EVERY parameter, even empty ones. Missing keys
+    // trigger unpredictable behavior on their side.
     const data = {
-        Mosad: MOSAD_ID,
-        ApiValid: API_PASSWORD,
-        PaymentType: paymentType,
-        Amount: amount,
-        Currency: '1',
-        Zeout: document.getElementById('donor_id').value || '',
-        FirstName: firstName,
-        LastName: lastName,
-        Phone: document.getElementById('donor_phone').value || '',
-        Mail: document.getElementById('donor_email').value || '',
-        Comment: comment,
-        Groupe: 'Donations',
-        Tashlumim: (selectedMethod === 'credit') ? (document.getElementById('installments').value || '1') : '1',
-        Param1: '',
-        Param2: refCode || '',
+        Mosad:             MOSAD_ID,
+        ApiValid:          API_VALID,
+        Zeout:             document.getElementById('donor_id').value || '',
+        FirstName:         firstName,
+        LastName:          lastName,
+        Street:            '',
+        City:              '',
+        Phone:             document.getElementById('donor_phone').value || '',
+        Mail:              document.getElementById('donor_email').value || '',
+        PaymentType:       paymentType,
+        Amount:            amount,
+        Tashlumim:         (selectedMethod === 'credit') ? (document.getElementById('installments').value || '1') : '1',
+        Currency:          '1',
+        Groupe:            '{{ groupe or "מתת מרדכי" }}',
+        Comment:           comment,
+        Param1:            '',
+        Param2:            refCode || '',
+        CallBack:          '{{ callback_url or "" }}',
+        CallBackMailError: '',
     };
 
     // Send as object (not JSON string) - iframe reads event.data.Name directly
     console.log('Sending to Nedarim iframe:', data);
     iframe.contentWindow.postMessage(
         { Name: 'FinishTransaction2', Value: data },
-        'https://www.matara.pro'
+        '*'
     );
 
     // Timeout fallback - re-enable button after 30s if no response
@@ -526,7 +537,9 @@ document.getElementById('donate-form').addEventListener('submit', function(e) {
 
 // ===== PostMessage listener =====
 window.addEventListener('message', function(event) {
-    if (event.origin !== 'https://www.matara.pro') return;
+    // Accept origins from either matara.pro variant (with or without
+    // the www. prefix — the iframe HTML now uses the bare host).
+    if (!/^https?:\/\/(www\.)?matara\.pro/i.test(event.origin || '')) return;
 
     let msg;
     try { msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; }

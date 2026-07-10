@@ -168,16 +168,51 @@ def donation_page():
 
 @donate_bp.route('/donate/nedarim')
 def nedarim_donation_page():
-    """Redirect to Nedarim Plus online donation page."""
+    """Render the embedded Nedarim iframe donation page.
+
+    Historically we redirected to Nedarim's hosted page as a workaround
+    for the iframe auth-failure. As of July 2026 that's fixed — the
+    iframe needs Nedarim's separate charging token (config
+    'iframe_api_valid'), not the reports 'api_password'. Donor now stays
+    on matatmordechai.org through the whole flow. Falls back to the
+    hosted page if `?hosted=1` is passed.
+    """
     nedarim_proc = PaymentProcessor.get_by_code('nedarim')
     if not nedarim_proc or not nedarim_proc.enabled:
         return redirect(url_for('donate.donation_page'))
 
-    mosad_id = nedarim_proc.config_json.get('mosad_id') if nedarim_proc.config_json else None
+    config = nedarim_proc.config_json or {}
+    mosad_id = config.get('mosad_id')
+    api_password = config.get('api_password')
+    iframe_api_valid = config.get('iframe_api_valid') or api_password
     if not mosad_id:
         return redirect(url_for('donate.donation_page'))
 
-    return redirect(f'https://www.matara.pro/nedarimplus/online/?mosad={mosad_id}')
+    if request.args.get('hosted') == '1':
+        return redirect(f'https://www.matara.pro/nedarimplus/online/?mosad={mosad_id}')
+
+    lang = request.args.get('lang', 'he')
+    ref_code = request.args.get('ref')
+    aff_code = request.args.get('aff')
+    preset_amount = request.args.get('amt')
+    groupe = request.args.get('groupe') or 'מתת מרדכי'
+
+    salesperson = resolve_ref_code(ref_code) if ref_code else None
+    campaign = resolve_aff_code(aff_code) if aff_code else None
+
+    return render_template(
+        'donate/nedarim_page.html',
+        mosad_id=mosad_id,
+        iframe_api_valid=iframe_api_valid,
+        ref_code=ref_code,
+        aff_code=aff_code,
+        preset_amount=preset_amount,
+        salesperson=salesperson,
+        campaign=campaign,
+        lang=lang,
+        groupe=groupe,
+        callback_url=url_for('webhook.nedarim_webhook', _external=True),
+    )
 
 
 @donate_bp.route('/donate/nedarim-test')
@@ -190,6 +225,7 @@ def nedarim_test_page():
     config = nedarim_proc.config_json or {}
     mosad_id = config.get('mosad_id')
     api_password = config.get('api_password')
+    iframe_api_valid = config.get('iframe_api_valid') or api_password
     if not mosad_id:
         return redirect(url_for('donate.donation_page'))
 
@@ -197,6 +233,7 @@ def nedarim_test_page():
     ref_code = request.args.get('ref')
     aff_code = request.args.get('aff')
     preset_amount = request.args.get('amt')
+    groupe = request.args.get('groupe') or 'מתת מרדכי'
 
     salesperson = resolve_ref_code(ref_code) if ref_code else None
     campaign = resolve_aff_code(aff_code) if aff_code else None
@@ -204,13 +241,15 @@ def nedarim_test_page():
     return render_template(
         'donate/nedarim_page.html',
         mosad_id=mosad_id,
-        api_password=api_password,
+        iframe_api_valid=iframe_api_valid,
         ref_code=ref_code,
         aff_code=aff_code,
         preset_amount=preset_amount,
         salesperson=salesperson,
         campaign=campaign,
         lang=lang,
+        groupe=groupe,
+        callback_url=url_for('webhook.nedarim_webhook', _external=True),
     )
 
 

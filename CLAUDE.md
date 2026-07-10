@@ -265,6 +265,18 @@ estimate_fee()        # Estimate processing fee
 
 ## Changelog
 
+### 2026-07-10 (Nedarim iframe charging works — dual-token fix)
+- **Root cause:** the embedded Nedarim iframe was failing every charge with *"סיסמת אימות לא תקינה"* because our `ApiValid` was the reports token (`kx351`). Nedarim requires a **separate charging token** for the iframe — same account, different secret. Confirmed by Nedarim's CTO (Eliyahu) and by another Chesed developer who ran a working ₪5 charge with the new token (Shovar 23001009).
+- **`PaymentProcessor.config_json` gains `iframe_api_valid`** — new key holding the charging secret (`H2Mu5ZoO5B` for Mosad 7007385). `api_password` (`kx351`) stays untouched — it still authenticates GetHistoryJson / GetKevaJson / RefundTransaction, and the sync's `last_sync_id` is calibrated to its Id sequence.
+- **`nedarim_processor.initialize()`** now reads `iframe_api_valid` alongside `api_password`, defaulting to the latter if unset for backwards-compat (the fallback still won't clear — but at least a mis-configured install stays honest).
+- **`nedarim_page.html`** — three coordinated fixes per Nedarim's official spec:
+  - Uses `{{ iframe_api_valid }}` on `API_VALID`, not `api_password`.
+  - Sends every one of the 19 `FinishTransaction2` params even when empty (`Street`, `City`, `CallBack`, `CallBackMailError` were missing; Nedarim treats missing keys as undefined behavior).
+  - **`PaymentType='Ragil'` for both single and installments** (installment count goes in `Tashlumim`). The old code sent `PaymentType='Tashlumim'` when installments>1 — that's not a valid PaymentType (only `Ragil`, `HK`, `CreateToken` are).
+- **Iframe src** switched to `matara.pro/nedarimplus/iframe?language=<lang>&Captcha=1` (bare host, per current spec — the old `www.` variant works but their sample uses the bare form).
+- **`/donate/nedarim`** flipped from redirect-to-hosted-page back to the embedded iframe. Donor stays on matatmordechai.org through the whole flow; `?hosted=1` preserves the redirect as an escape hatch. Route now also accepts `?groupe=...` so links can pre-tag the fund (e.g. `/donate/nedarim?groupe=מתנות לאביונים`) and pipes the callback URL through to `webhook.nedarim_webhook`.
+- **Two secrets, two purposes — memory captured:** [[project-nedarim-ops]] documents which secret goes where so this doesn't get relitigated.
+
 ### 2026-06-26 (per-customer transaction breakdown + non-donor recovery page)
 - **`/admin/donors/<id>`** donation table extended to a per-transaction breakdown: each row now also surfaces the card brand + last4, the email actually used at payment time (red highlight when it differs from the donor's main email), the payment processor, and the decline reason for failed attempts. Pulled from `donation_contact_snapshot` + `raw_data.csv_row` so we don't need to re-query Stripe. Includes all statuses (paid / failed / canceled / abandoned) so the operator can answer "did you try?" when a donor calls — but the page makes clear that reports count only succeeded.
 - **`/admin/recover/non-donors`** new page (linked from the Donations dropdown). Lists every `DonationLink` that's been sent out but never resulted in a donation (`times_used IS NULL OR = 0`), filterable by window (7/14/30/60/90/180/365 days) and by salesperson. Multi-select + bulk "Send recovery emails to selected" button. The email body explains that some links may have been blocked by content filters and points the recipient at the `donate.stripe.com` fallback URL with `?client_reference_id=<ref_code>` appended so the salesperson still gets commission credit. Operator-triggered only — no auto-send.
