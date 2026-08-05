@@ -171,13 +171,14 @@
             {% if current_user.username in ['admin', 'ggoldblum', 'matatmor@gmail.com'] %}
             <a href="{{ url_for('weddings.index') }}" class="nav-direct">💍 {{ t('nav.weddings') }}</a>
             {% endif %}
-            {# Chesed Projects campaign-intake link — Sara only. The URL
-               carries a customer-53 token that skips who-are-you on the
-               Chesed side and opens the form in Hebrew. #}
-            {% if current_user.username == 'matatmor@gmail.com' %}
+            {# Chesed Projects campaign-intake link — visible to any
+               admin. Gating happens via the enclosing admin branch
+               (role == 'admin') above; the salesperson branch below
+               deliberately omits this link. The URL carries a
+               customer-53 token that skips who-are-you on the Chesed
+               side and opens the form in Hebrew. #}
             <a href="https://chesedprojects.org/intake/for/Nh2ciN2T2BkfUYrwlrNXKHuf"
                target="_blank" rel="noopener" class="nav-direct">בקשה לקמפיין חדש</a>
-            {% endif %}
             <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             {% if current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" class="nav-direct" style="color: #90EE90; font-weight: bold;">💚 Gemach</a>{% endif %}
 
@@ -211,12 +212,6 @@
             <a href="{{ url_for('admin.new_check_donation') }}" class="nav-direct">{{ t('nav.manual_donation') }}</a>
             {% if current_user.username in ['admin', 'ggoldblum', 'matatmor@gmail.com'] %}
             <a href="{{ url_for('weddings.index') }}" class="nav-direct">💍 {{ t('nav.weddings') }}</a>
-            {% endif %}
-            {# Chesed Projects campaign-intake link — Sara only. See
-               matching block in the admin branch above. #}
-            {% if current_user.username == 'matatmor@gmail.com' %}
-            <a href="https://chesedprojects.org/intake/for/Nh2ciN2T2BkfUYrwlrNXKHuf"
-               target="_blank" rel="noopener" class="nav-direct">בקשה לקמפיין חדש</a>
             {% endif %}
             <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             {% if current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" class="nav-direct" style="color: #90EE90; font-weight: bold;">💚 Gemach</a>{% endif %}
