@@ -4,18 +4,14 @@
 {% block extra_css %}
 <style>
     /* Zero out the default container so the iframe fills edge-to-edge.
-       The nav + optional processor-strip stays visible via base.html's
-       header block; we just fill everything below them. */
+       The Matat nav + optional processor-strip stay visible via
+       base.html's header block; the iframe grows to fit its content
+       and the outer page scrolls, so there's only one scrollbar. */
     body { margin: 0; }
     .cr-wrap { position: relative; width: 100%; }
-    /* 100vh minus the header stack (nav 50px + proc-strip ~33px when
-       present + a small buffer). If proc-strip isn't rendered for this
-       user the extra ~33px shows as a hair of empty margin below the
-       iframe — acceptable. Doing this in JS would flicker on load. */
     .cr-frame {
         display: block;
         width: 100%;
-        height: calc(100vh - 90px);
         border: 0;
         background: #f5f5f5;
     }
@@ -24,10 +20,31 @@
 
 {% block content %}
 <div class="cr-wrap">
-    <iframe class="cr-frame"
-            src="https://chesedprojects.org/intake/for/Nh2ciN2T2BkfUYrwlrNXKHuf"
+    {# ?embed=1 tells the Chesed side to skip its own title bar and
+       language switcher explicitly (their page also detects iframing
+       automatically, but the flag makes the intent unambiguous). #}
+    <iframe id="cp-intake-frame"
+            class="cr-frame"
+            src="https://chesedprojects.org/intake/for/Nh2ciN2T2BkfUYrwlrNXKHuf?embed=1"
             title="בקשה לקמפיין חדש — Chesed Projects intake"
+            scrolling="no"
+            style="height:1200px"
             allow="clipboard-read; clipboard-write"
             referrerpolicy="no-referrer-when-downgrade"></iframe>
 </div>
+
+{# Auto-resize protocol: the Chesed page posts { cpIntakeHeight: N }
+   to the parent whenever its rendered height changes. Match that to
+   the iframe's CSS height so the iframe grows to fit and the inner
+   scrollbar disappears — the outer Matat page scrolls naturally. #}
+<script>
+(function() {
+    var frame = document.getElementById('cp-intake-frame');
+    window.addEventListener('message', function(e) {
+        if (e.origin !== 'https://chesedprojects.org') return;
+        var h = e.data && e.data.cpIntakeHeight;
+        if (h) frame.style.height = h + 'px';
+    });
+})();
+</script>
 {% endblock %}
