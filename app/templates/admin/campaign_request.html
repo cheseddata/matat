@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}בקשה לקמפיין חדש — Matat Mordechai{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Zero out the default container so the iframe fills edge-to-edge.
+       The nav + optional processor-strip stays visible via base.html's
+       header block; we just fill everything below them. */
+    body { margin: 0; }
+    .cr-wrap { position: relative; width: 100%; }
+    /* 100vh minus the header stack (nav 50px + proc-strip ~33px when
+       present + a small buffer). If proc-strip isn't rendered for this
+       user the extra ~33px shows as a hair of empty margin below the
+       iframe — acceptable. Doing this in JS would flicker on load. */
+    .cr-frame {
+        display: block;
+        width: 100%;
+        height: calc(100vh - 90px);
+        border: 0;
+        background: #f5f5f5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cr-wrap">
+    <iframe class="cr-frame"
+            src="https://chesedprojects.org/intake/for/Nh2ciN2T2BkfUYrwlrNXKHuf"
+            title="בקשה לקמפיין חדש — Chesed Projects intake"
+            allow="clipboard-read; clipboard-write"
+            referrerpolicy="no-referrer-when-downgrade"></iframe>
+</div>
+{% endblock %}

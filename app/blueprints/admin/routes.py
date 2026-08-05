@@ -4585,3 +4585,17 @@ def recover_non_donors_send():
     flash(f'Recovery emails: sent={sent}, skipped={skipped}, errored={errored}.',
           'success' if sent else 'warning')
     return redirect(url_for('admin.recover_non_donors'))
+
+
+# ---------------------------------------------------------------------
+# Chesed Projects campaign-request page — the nav item בקשה לקמפיין חדש
+# embeds Chesed's intake form inside a Matat page so it looks and feels
+# like part of the site instead of opening a new tab. The intake URL
+# carries a customer-53 token so Chesed's side already knows the
+# request came from Matat. Admin-only by nav gating; a route-level
+# guard keeps direct URL access consistent.
+# ---------------------------------------------------------------------
+@admin_bp.route('/campaign-request')
+@admin_required
+def campaign_request():
+    return render_template('admin/campaign_request.html')

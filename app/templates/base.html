@@ -171,14 +171,14 @@
             {% if current_user.username in ['admin', 'ggoldblum', 'matatmor@gmail.com'] %}
             <a href="{{ url_for('weddings.index') }}" class="nav-direct">💍 {{ t('nav.weddings') }}</a>
             {% endif %}
-            {# Chesed Projects campaign-intake link — visible to any
+            {# Chesed Projects campaign-intake page — visible to any
                admin. Gating happens via the enclosing admin branch
-               (role == 'admin') above; the salesperson branch below
-               deliberately omits this link. The URL carries a
-               customer-53 token that skips who-are-you on the Chesed
-               side and opens the form in Hebrew. #}
-            <a href="https://chesedprojects.org/intake/for/Nh2ciN2T2BkfUYrwlrNXKHuf"
-               target="_blank" rel="noopener" class="nav-direct">בקשה לקמפיין חדש</a>
+               above; the salesperson branch deliberately omits this
+               link. Points at our internal /admin/campaign-request
+               route (not directly at chesedprojects.org) so the
+               Chesed intake form renders inside the Matat header
+               and nav via a full-viewport iframe. #}
+            <a href="{{ url_for('admin.campaign_request') }}" class="nav-direct">בקשה לקמפיין חדש</a>
             <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             {% if current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" class="nav-direct" style="color: #90EE90; font-weight: bold;">💚 Gemach</a>{% endif %}
 
