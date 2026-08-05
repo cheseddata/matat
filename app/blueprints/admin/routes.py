@@ -4599,3 +4599,14 @@ def recover_non_donors_send():
 @admin_required
 def campaign_request():
     return render_template('admin/campaign_request.html')
+
+
+@admin_bp.route('/campaign-requests-mine')
+@admin_required
+def my_campaign_requests():
+    """הבקשות שלנו — Chesed's list of every campaign-request this
+    customer has sent, including unfinished drafts (which reopen where
+    they left off) and submitted ones (whose status page allows adding
+    more documents). Same iframe-under-the-header treatment as
+    campaign_request()."""
+    return render_template('admin/my_campaign_requests.html')

@@ -179,6 +179,7 @@
                Chesed intake form renders inside the Matat header
                and nav via a full-viewport iframe. #}
             <a href="{{ url_for('admin.campaign_request') }}" class="nav-direct">בקשה לקמפיין חדש</a>
+            <a href="{{ url_for('admin.my_campaign_requests') }}" class="nav-direct">הבקשות שלנו</a>
             <a href="/ztorm/" class="nav-direct" style="color: #FFD700; font-weight: bold;">🏛 ZTorm</a>
             {% if current_user.role in ('admin', 'gemach_user') %}<a href="/gemach/" class="nav-direct" style="color: #90EE90; font-weight: bold;">💚 Gemach</a>{% endif %}
 
